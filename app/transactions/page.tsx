@@ -31,7 +31,7 @@ export default function TransactionsPage() {
     useEffect(() => { setMounted(true); reload(); }, []);
 
     const handleDelete = async (id: string) => {
-        if (!confirm("この取引を削除しますか？\n添付ファイルも削除されます。")) return;
+        if (!confirm("この執行データを削除しますか？\n添付ファイルも削除されます。")) return;
         await deleteAttachmentsByTransaction(id);
         deleteTransaction(id);
         reload();
@@ -80,7 +80,7 @@ export default function TransactionsPage() {
         <div className="animate-fade-in">
             <div className="page-header flex items-center justify-between">
                 <div>
-                    <h1 className="page-title">取引一覧</h1>
+                    <h1 className="page-title">執行一覧</h1>
                     <p className="page-subtitle">全支出明細</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -114,8 +114,8 @@ export default function TransactionsPage() {
                             <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                             </svg>
-                            <p className="text-sm">取引データがありません</p>
-                            <p className="text-xs mt-0.5">「取引登録」から追加してください</p>
+                            <p className="text-sm">執行データがありません</p>
+                            <p className="text-xs mt-0.5">「執行登録」から追加してください</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -215,8 +215,8 @@ export default function TransactionsPage() {
                                         key={att.id}
                                         onClick={() => showAttachment(att.id, att.fileName)}
                                         className={`px-3 py-1.5 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${previewName === att.fileName
-                                                ? "bg-brand-50 text-brand-700"
-                                                : "text-gray-500 hover:bg-gray-50"
+                                            ? "bg-brand-50 text-brand-700"
+                                            : "text-gray-500 hover:bg-gray-50"
                                             }`}
                                     >
                                         {att.fileName}

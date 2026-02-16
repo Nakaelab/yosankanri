@@ -237,8 +237,8 @@ export default function ImportPage() {
     return (
         <div className="animate-fade-in">
             <div className="page-header">
-                <h1 className="page-title">取引登録</h1>
-                <p className="page-subtitle">手入力またはOCRで取引を登録</p>
+                <h1 className="page-title">執行登録</h1>
+                <p className="page-subtitle">手入力またはOCRで執行を登録</p>
             </div>
 
             <div className="p-6 space-y-5 max-w-4xl">
@@ -324,7 +324,7 @@ export default function ImportPage() {
                     <div className="section-card p-5 space-y-5">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-bold text-gray-900">
-                                {mode === "ocr" ? "抽出結果の確認・修正" : "取引情報の入力"}
+                                {mode === "ocr" ? "抽出結果の確認・修正" : "執行情報の入力"}
                             </h2>
                             {errors.length > 0 && <span className="badge-error">{errors.length}件の確認事項</span>}
                         </div>
@@ -464,7 +464,7 @@ export default function ImportPage() {
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3" />
                                 </svg>
-                                保存して取引一覧へ
+                                保存して執行一覧へ
                             </button>
                             <button className="btn-secondary" onClick={resetForm}>クリア</button>
                             {estimates.length > 0 && (
