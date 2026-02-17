@@ -88,6 +88,7 @@ export function emptyAllocations(): CategoryAllocations {
 /** 予算（研究費/グラント） */
 export interface Budget {
     id: string;
+    teacherId?: string;     // 所有者の先生ID（オプション: 後方互換性のため）
     name: string;           // 研究費名（例："AMED脳神経チーム代表"）
     jCode: string;          // Jコード（例："J250000252"）
     fiscalYear: number;     // 年度
@@ -98,6 +99,7 @@ export interface Budget {
 /** 取引（支出明細） */
 export interface Transaction {
     id: string;
+    teacherId?: string;     // 所有者の先生ID
     budgetId: string;       // どの予算に紐づくか
     slipNumber: string;     // 伝票番号（例："P250000026-001"）
     date: string;           // 納品日 YYYY-MM-DD

@@ -8,7 +8,8 @@ import {
     DOC_TYPE_LABELS, DocType, validateExtracted,
 } from "@/lib/types";
 import { extractFromOCRText } from "@/lib/extract";
-import { saveTransaction, getBudgets } from "@/lib/storage";
+import { saveTransactionAction, getBudgetsAction } from "@/app/actions";
+import { getCurrentTeacherId } from "@/lib/storage";
 import { saveAttachment, fileToArrayBuffer } from "@/lib/attachments";
 import type { Budget } from "@/lib/types";
 
@@ -60,7 +61,13 @@ export default function ImportPage() {
     const [dragging, setDragging] = useState(false);
 
     useEffect(() => {
-        setBudgets(getBudgets());
+        const load = async () => {
+            const tid = getCurrentTeacherId();
+            const currentTeacherId = tid === "default" ? undefined : tid;
+            const data = await getBudgetsAction(currentTeacherId || undefined);
+            setBudgets(data);
+        };
+        load();
     }, []);
 
     // ---- Auto-calc amount ----
@@ -174,6 +181,7 @@ export default function ImportPage() {
     };
 
     // ---- Save ----
+    // ---- Save ----
     const handleSave = async () => {
         if (!selectedBudgetId) { alert("予算（研究費）を選択してください"); return; }
         const errs = validate();
@@ -185,6 +193,8 @@ export default function ImportPage() {
         }
 
         const txId = uuidv4();
+        const tid = getCurrentTeacherId();
+        const teacherId = tid === "default" ? undefined : tid;
 
         // Save attachments to IndexedDB
         for (const est of estimates) {
@@ -200,8 +210,9 @@ export default function ImportPage() {
             });
         }
 
-        saveTransaction({
+        await saveTransactionAction({
             id: txId,
+            teacherId: teacherId || undefined,
             budgetId: selectedBudgetId,
             slipNumber,
             date,

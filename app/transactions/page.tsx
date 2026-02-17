@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget } from "@/lib/types";
-import { getTransactions, deleteTransaction, getBudgets } from "@/lib/storage";
+import { getTransactionsAction, deleteTransactionAction, getBudgetsAction } from "../actions";
+import { getCurrentTeacherId } from "@/lib/storage";
 import {
     getAttachmentsByTransaction, getAttachment, deleteAttachmentsByTransaction,
     arrayBufferToUrl, formatFileSize,
@@ -21,11 +22,19 @@ export default function TransactionsPage() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [previewName, setPreviewName] = useState("");
 
-    const reload = () => {
+    const reload = async () => {
+        const tid = getCurrentTeacherId();
+        const currentTeacherId = tid === "default" ? undefined : tid;
+
+        const [txData, bData] = await Promise.all([
+            getTransactionsAction(currentTeacherId || undefined),
+            getBudgetsAction(currentTeacherId || undefined)
+        ]);
+
         setTransactions(
-            getTransactions().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            txData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         );
-        setBudgets(getBudgets());
+        setBudgets(bData);
     };
 
     useEffect(() => { setMounted(true); reload(); }, []);
@@ -33,7 +42,7 @@ export default function TransactionsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("この執行データを削除しますか？\n添付ファイルも削除されます。")) return;
         await deleteAttachmentsByTransaction(id);
-        deleteTransaction(id);
+        await deleteTransactionAction(id);
         reload();
     };
 

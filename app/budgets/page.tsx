@@ -6,7 +6,8 @@ import {
     Budget, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES,
     CategoryAllocations, emptyAllocations, ExpenseCategory,
 } from "@/lib/types";
-import { getBudgets, saveBudget, deleteBudget, getBudgetSummary } from "@/lib/storage";
+import { getCurrentTeacherId, getBudgetSummary } from "@/lib/storage";
+import { getBudgetsAction, saveBudgetAction, deleteBudgetAction, getTransactionsAction } from "../actions";
 import type { BudgetSummary } from "@/lib/types";
 
 export default function BudgetsPage() {
@@ -21,22 +22,53 @@ export default function BudgetsPage() {
     const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
     const [allocations, setAllocations] = useState<CategoryAllocations>(emptyAllocations());
 
-    const reload = () => {
-        const b = getBudgets().sort((a, b) => a.name.localeCompare(b.name, "ja"));
-        setBudgets(b);
+    const reload = async () => {
+        const tid = getCurrentTeacherId();
+        const currentTeacherId = tid === "default" ? undefined : tid;
+
+        const [bData, tData] = await Promise.all([
+            getBudgetsAction(currentTeacherId || undefined),
+            getTransactionsAction(currentTeacherId || undefined)
+        ]);
+
+        const bSorted = bData.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+        setBudgets(bSorted);
+
+        // Calculate summaries client-side
         const map = new Map<string, BudgetSummary>();
-        b.forEach((budget) => map.set(budget.id, getBudgetSummary(budget)));
+        bSorted.forEach((budget) => {
+            // Re-implement simplified getBudgetSummary logic here
+            const budgetTxs = tData.filter((t) => t.budgetId === budget.id);
+            const categories = ALL_CATEGORIES.map((cat) => {
+                const allocated = budget.allocations[cat] || 0;
+                const spent = budgetTxs
+                    .filter((t) => t.category === cat)
+                    .reduce((sum, t) => sum + t.amount, 0);
+                return { category: cat, allocated, spent, remaining: allocated - spent };
+            });
+            const totalAllocated = categories.reduce((s, c) => s + c.allocated, 0);
+            const totalSpent = categories.reduce((s, c) => s + c.spent, 0);
+
+            map.set(budget.id, {
+                budget, categories, totalAllocated, totalSpent,
+                totalRemaining: totalAllocated - totalSpent
+            });
+        });
         setSummaries(map);
     };
 
     useEffect(() => { setMounted(true); reload(); }, []);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) { alert("研究費名を入力してください"); return; }
 
-        saveBudget({
+        const tid = getCurrentTeacherId();
+        const teacherId = tid === "default" ? undefined : tid;
+
+        await saveBudgetAction({
             id: uuidv4(),
+            teacherId: teacherId || undefined,
             name: name.trim(),
             jCode: jCode.trim(),
             fiscalYear,
@@ -48,9 +80,9 @@ export default function BudgetsPage() {
         reload();
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm("この予算を削除しますか？\n紐づく執行データは削除されません。")) return;
-        deleteBudget(id);
+        await deleteBudgetAction(id);
         reload();
     };
 

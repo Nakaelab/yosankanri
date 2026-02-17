@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher } from "@/lib/types";
-import {
-    getAllBudgetSummaries, getTotalSpent, getTotalAllocated, getBudgets, getTransactions,
-    getTeachers, saveTeacher, getCurrentTeacherId, setCurrentTeacherId,
-} from "@/lib/storage";
+import { getCurrentTeacherId, setCurrentTeacherId } from "@/lib/storage";
+import { getTeachersAction, saveTeacherAction, getBudgetsAction, getTransactionsAction } from "@/app/actions";
 
 // ===============================================
 // Teacher Selection
@@ -16,17 +14,25 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [newName, setNewName] = useState("");
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setTeachers(getTeachers());
+        loadTeachers();
     }, []);
+
+    const loadTeachers = async () => {
+        setLoading(true);
+        const list = await getTeachersAction();
+        setTeachers(list);
+        setLoading(false);
+    };
 
     const handleSelect = (id: string) => {
         setCurrentTeacherId(id);
         onSelected();
     };
 
-    const handleCreate = (e: React.FormEvent) => {
+    const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newName.trim()) return;
         const newTeacher: Teacher = {
@@ -34,7 +40,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
             name: newName.trim(),
             createdAt: new Date().toISOString(),
         };
-        saveTeacher(newTeacher);
+        await saveTeacherAction(newTeacher);
         setCurrentTeacherId(newTeacher.id);
         onSelected();
     };
@@ -43,6 +49,12 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         setCurrentTeacherId("default");
         onSelected();
     };
+
+    if (loading) {
+        return <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center p-4">
+            <div className="text-gray-400">読み込み中...</div>
+        </div>;
+    }
 
     return (
         <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center p-4">
@@ -53,7 +65,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                         </svg>
                     </div>
-                    <h1 className="text-xl font-bold text-gray-900 mb-2">利用者を選択してください</h1>
+                    <h1 className="text-xl font-bold text-gray-900 mb-2">利用者を選択してください(保存版)</h1>
                     <p className="text-sm text-gray-500">研究費の管理を行う先生（ユーザー）を選択します</p>
                 </div>
 
@@ -70,7 +82,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                         </div>
                         <div className="text-left">
                             <div className="font-bold text-gray-900 group-hover:text-brand-700">メインユーザー</div>
-                            <div className="text-xs text-gray-400">デフォルトのデータを使用</div>
+                            <div className="text-xs text-gray-400">従来のデータを使用</div>
                         </div>
                         <svg className="w-5 h-5 ml-auto text-gray-300 group-hover:text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -152,13 +164,42 @@ function Dashboard() {
 
     useEffect(() => {
         setMounted(true);
-        // Load data for the current teacher
-        const s = getAllBudgetSummaries();
-        setSummaries(s);
-        setTotalSpent(getTotalSpent());
-        setTotalAllocated(getTotalAllocated());
-        setBudgetCount(getBudgets().length);
-        setTxCount(getTransactions().length);
+
+        const load = async () => {
+            const tid = getCurrentTeacherId();
+            const teacherId = tid === "default" ? undefined : tid;
+
+            const [budgets, transactions] = await Promise.all([
+                getBudgetsAction(teacherId),
+                getTransactionsAction(teacherId)
+            ]);
+
+            // Calculate summaries
+            const s: BudgetSummary[] = budgets.map(b => {
+                const bTxs = transactions.filter(t => t.budgetId === b.id);
+                const categories = ALL_CATEGORIES.map(cat => {
+                    const allocated = b.allocations[cat] || 0;
+                    const spent = bTxs.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
+                    return { category: cat, allocated, spent, remaining: allocated - spent };
+                });
+                const totalAllocated = categories.reduce((sum, c) => sum + c.allocated, 0);
+                const totalSpent = categories.reduce((sum, c) => sum + c.spent, 0);
+                return {
+                    budget: b,
+                    categories,
+                    totalAllocated,
+                    totalSpent,
+                    totalRemaining: totalAllocated - totalSpent
+                };
+            });
+
+            setSummaries(s);
+            setTotalAllocated(s.reduce((sum, item) => sum + item.totalAllocated, 0));
+            setTotalSpent(s.reduce((sum, item) => sum + item.totalSpent, 0));
+            setBudgetCount(budgets.length);
+            setTxCount(transactions.length);
+        };
+        load();
     }, []);
 
     if (!mounted) {
