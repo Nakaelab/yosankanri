@@ -7,6 +7,7 @@ export type ExpenseCategory =
     | "goods"        // 物品（フラグなし）
     | "travel"       // 旅費(R)
     | "honorarium"   // 謝金(S)
+    | "labor"        // 人件費(L)
     | "other"        // その他(T)
     | "subcontract"  // 再委託(I)
     | "refund";      // 返金(H)
@@ -16,6 +17,7 @@ export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
     goods: "物品",
     travel: "旅費(R)",
     honorarium: "謝金(S)",
+    labor: "人件費(L)",
     other: "その他(T)",
     subcontract: "再委託(I)",
     refund: "返金(H)",
@@ -26,6 +28,7 @@ export const CATEGORY_SHORT: Record<ExpenseCategory, string> = {
     goods: "物品",
     travel: "旅費",
     honorarium: "謝金",
+    labor: "人件費",
     other: "その他",
     subcontract: "再委託",
     refund: "返金",
@@ -36,6 +39,7 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, { bg: string; text: string
     goods: { bg: "bg-blue-50", text: "text-blue-700", bar: "bg-blue-500" },
     travel: { bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-500" },
     honorarium: { bg: "bg-purple-50", text: "text-purple-700", bar: "bg-purple-500" },
+    labor: { bg: "bg-indigo-50", text: "text-indigo-700", bar: "bg-indigo-500" },
     other: { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-500" },
     subcontract: { bg: "bg-rose-50", text: "text-rose-700", bar: "bg-rose-500" },
     refund: { bg: "bg-gray-50", text: "text-gray-600", bar: "bg-gray-400" },
@@ -46,6 +50,7 @@ export const FLAG_TO_CATEGORY: Record<string, ExpenseCategory> = {
     "": "goods",
     "R": "travel",
     "S": "honorarium",
+    "L": "labor",
     "T": "other",
     "I": "subcontract",
     "H": "refund",
@@ -53,7 +58,7 @@ export const FLAG_TO_CATEGORY: Record<string, ExpenseCategory> = {
 
 /** 全費目カテゴリ一覧 */
 export const ALL_CATEGORIES: ExpenseCategory[] = [
-    "goods", "travel", "honorarium", "other", "subcontract", "refund",
+    "goods", "travel", "honorarium", "labor", "other", "subcontract", "refund",
 ];
 
 /** 書類種別（OCR判定用） */
@@ -70,6 +75,7 @@ export interface CategoryAllocations {
     goods: number;
     travel: number;
     honorarium: number;
+    labor: number;
     other: number;
     subcontract: number;
     refund: number;
@@ -77,7 +83,7 @@ export interface CategoryAllocations {
 
 /** 空の配分 */
 export function emptyAllocations(): CategoryAllocations {
-    return { goods: 0, travel: 0, honorarium: 0, other: 0, subcontract: 0, refund: 0 };
+    return { goods: 0, travel: 0, honorarium: 0, labor: 0, other: 0, subcontract: 0, refund: 0 };
 }
 
 /** 予算（研究費/グラント） */

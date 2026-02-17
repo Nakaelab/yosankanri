@@ -221,18 +221,29 @@ export default function ImportPage() {
     };
 
     // ---- Reset ----
+    // ... existing imports ...
+
     const resetForm = () => {
         setSlipNumber(""); setItemName(""); setSpecification(""); setPayee("");
-        setUnitPrice(0); setQuantity(1); setAmount(0); setCategory("goods");
+        setUnitPrice(0); setQuantity(1); setAmount(0); setCategory(mode === "labor" ? "labor" : "goods");
         setEstimates([]); setErrors([]);
         setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText("");
         const d = new Date();
         setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
     };
 
+    // Update category when mode changes
+    useEffect(() => {
+        if (mode === "labor") {
+            setCategory("labor");
+        } else if (mode === "manual") {
+            setCategory("goods");
+        }
+    }, [mode]);
+
     const hasError = (field: string) => errors.some((e) => e.field === field);
     const getError = (field: string) => errors.find((e) => e.field === field)?.message;
-    const showForm = mode === "manual" || (mode === "ocr" && ocrStatus === "done");
+    const showForm = mode === "manual" || mode === "labor" || (mode === "ocr" && ocrStatus === "done");
 
     return (
         <div className="animate-fade-in">
@@ -243,22 +254,34 @@ export default function ImportPage() {
 
             <div className="p-6 space-y-5 max-w-4xl">
                 {/* Mode Tabs */}
-                <div className="flex bg-gray-100 rounded-lg p-0.5 w-fit">
+                <div className="flex bg-slate-100 rounded-lg p-1 w-fit gap-1">
                     <button
-                        onClick={() => { setMode("manual"); resetForm(); }}
-                        className={`px-5 py-2 rounded-md text-sm font-medium transition-all ${mode === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        onClick={() => { setMode("manual"); }}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === "manual" ? "bg-white text-slate-800 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                             }`}
                     >
                         <span className="flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                             </svg>
-                            手入力
+                            手入力 (物品等)
                         </span>
                     </button>
                     <button
-                        onClick={() => { setMode("ocr"); resetForm(); }}
-                        className={`px-5 py-2 rounded-md text-sm font-medium transition-all ${mode === "ocr" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        onClick={() => { setMode("labor"); }}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === "labor" ? "bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                            }`}
+                    >
+                        <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                            </svg>
+                            人件費登録
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => { setMode("ocr"); }}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === "ocr" ? "bg-white text-slate-800 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                             }`}
                     >
                         <span className="flex items-center gap-2">
@@ -324,7 +347,7 @@ export default function ImportPage() {
                     <div className="section-card p-5 space-y-5">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-bold text-gray-900">
-                                {mode === "ocr" ? "抽出結果の確認・修正" : "執行情報の入力"}
+                                {mode === "ocr" ? "抽出結果の確認・修正" : mode === "labor" ? "人件費情報の入力" : "執行情報の入力"}
                             </h2>
                             {errors.length > 0 && <span className="badge-error">{errors.length}件の確認事項</span>}
                         </div>
@@ -348,39 +371,65 @@ export default function ImportPage() {
                             </div>
                             <div>
                                 <label className="form-label">費目カテゴリ</label>
-                                <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>
+                                <select
+                                    className="form-select"
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+                                    disabled={mode === "labor"} // Lock in labor mode
+                                >
                                     {ALL_CATEGORIES.map((cat) => (<option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>))}
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label">納品日</label>
+                                <label className="form-label">{mode === "labor" ? "支払日 / 計上日" : "納品日"}</label>
                                 <input type="date" className={`form-input ${hasError("date") ? "field-error" : ""}`} value={date} onChange={(e) => setDate(e.target.value)} />
                                 {hasError("date") && <p className="field-error-text">{getError("date")}</p>}
                             </div>
                             <div>
-                                <label className="form-label">品名 *</label>
-                                <input type="text" className={`form-input ${hasError("itemName") ? "field-error" : ""}`} value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="例: 電源タップ" />
+                                <label className="form-label">{mode === "labor" ? "内容・期間 *" : "品名 *"}</label>
+                                <input
+                                    type="text"
+                                    className={`form-input ${hasError("itemName") ? "field-error" : ""}`}
+                                    value={itemName}
+                                    onChange={(e) => setItemName(e.target.value)}
+                                    placeholder={mode === "labor" ? "例: 人件費試算額(6月～3月)" : "例: 電源タップ"}
+                                />
                                 {hasError("itemName") && <p className="field-error-text">{getError("itemName")}</p>}
                             </div>
                             <div>
-                                <label className="form-label">規格等</label>
-                                <input type="text" className="form-input" value={specification} onChange={(e) => setSpecification(e.target.value)} placeholder="例: エレコム 10個口 2m" />
+                                <label className="form-label">{mode === "labor" ? "対象者名" : "規格等"}</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={specification}
+                                    onChange={(e) => setSpecification(e.target.value)}
+                                    placeholder={mode === "labor" ? "例: 山田 太郎" : "例: エレコム 10個口 2m"}
+                                />
                             </div>
+                            {mode !== "labor" && (
+                                <div>
+                                    <label className="form-label">支払先</label>
+                                    <input type="text" className="form-input" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="例: 法人カード / Amazon" />
+                                </div>
+                            )}
                             <div>
-                                <label className="form-label">支払先</label>
-                                <input type="text" className="form-input" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="例: 法人カード / Amazon" />
-                            </div>
-                            <div>
-                                <label className="form-label">単価</label>
+                                <label className="form-label">{mode === "labor" ? "支給額 (単価)" : "単価"}</label>
                                 <input type="number" className="form-input" value={unitPrice || ""} onChange={(e) => setUnitPrice(parseInt(e.target.value, 10) || 0)} min={0} placeholder="0" />
                             </div>
                             <div>
-                                <label className="form-label">数量</label>
+                                <label className="form-label">{mode === "labor" ? "支給回数 (数量)" : "数量"}</label>
                                 <input type="number" className="form-input" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)} min={1} />
                             </div>
                             <div className="md:col-span-2">
                                 <label className="form-label">金額（円）*</label>
-                                <input type="number" className={`form-input text-lg font-bold ${hasError("amount") ? "field-error" : ""}`} value={amount || ""} onChange={(e) => setAmount(parseInt(e.target.value, 10) || 0)} min={0} placeholder="0" />
+                                <input
+                                    type="number"
+                                    className={`form-input text-lg font-bold ${hasError("amount") ? "field-error" : ""}`}
+                                    value={amount || ""}
+                                    onChange={(e) => setAmount(parseInt(e.target.value, 10) || 0)}
+                                    min={0}
+                                    placeholder="0"
+                                />
                                 {hasError("amount") && <p className="field-error-text">{getError("amount")}</p>}
                                 {unitPrice > 0 && quantity > 1 && (
                                     <p className="text-[11px] text-gray-400 mt-1">単価 {unitPrice.toLocaleString()} × 数量 {quantity} = {(unitPrice * quantity).toLocaleString()}</p>
@@ -396,9 +445,11 @@ export default function ImportPage() {
                                         <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
                                         </svg>
-                                        見積書・添付ファイル
+                                        {mode === "labor" ? "関連書類・メモ" : "見積書・添付ファイル"}
                                     </h3>
-                                    <p className="text-[11px] text-gray-400 mt-0.5">見積書や関連書類の画像を添付できます（任意）</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">
+                                        {mode === "labor" ? "雇用契約書や計算メモなどを添付できます（任意）" : "見積書や関連書類の画像を添付できます（任意）"}
+                                    </p>
                                 </div>
                                 <button
                                     type="button"
@@ -453,7 +504,7 @@ export default function ImportPage() {
                                     <svg className="w-8 h-8 mx-auto text-gray-300 mb-1" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
                                     </svg>
-                                    <p className="text-xs text-gray-400">見積書をここに追加（任意）</p>
+                                    <p className="text-xs text-gray-400">ファイルをここに追加（任意）</p>
                                 </div>
                             )}
                         </div>
@@ -468,11 +519,12 @@ export default function ImportPage() {
                             </button>
                             <button className="btn-secondary" onClick={resetForm}>クリア</button>
                             {estimates.length > 0 && (
-                                <span className="text-[11px] text-gray-400 ml-auto">見積書 {estimates.length}件添付</span>
+                                <span className="text-[11px] text-gray-400 ml-auto">ファイル {estimates.length}件添付</span>
                             )}
                         </div>
                     </div>
                 )}
+// ... existing ocr raw text render ...
 
                 {/* OCR Raw Text */}
                 {ocrRawText && (
