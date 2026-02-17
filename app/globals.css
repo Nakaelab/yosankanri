@@ -10,12 +10,24 @@
 
 body {
   @apply font-sans text-gray-800 bg-slate-50 antialiased;
+  overflow-x: hidden;
+}
+
+/* ===== Mobile Hamburger Button ===== */
+.mobile-menu-btn {
+  @apply fixed top-3 left-3 z-50 w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg;
+  @apply transition-all duration-300;
+}
+
+.mobile-menu-btn:hover {
+  @apply bg-slate-800;
 }
 
 /* ===== Sidebar ===== */
 .sidebar {
-  @apply fixed top-0 left-0 h-screen bg-slate-900 flex flex-col z-30;
+  @apply fixed top-0 left-0 h-screen bg-slate-900 flex flex-col z-40;
   width: var(--sidebar-width);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-logo {
@@ -39,10 +51,24 @@ body {
   @apply absolute left-0 w-[3px] h-6 bg-brand-500 rounded-r-full;
 }
 
+/* Sidebar overlay (mobile) */
+.sidebar-overlay {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-30;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* ===== Main ===== */
 .main-content {
   margin-left: var(--sidebar-width);
   @apply min-h-screen;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ===== Page Header ===== */
@@ -98,7 +124,7 @@ body {
 }
 
 .data-table th {
-  @apply px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider;
+  @apply px-4 py-2.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap;
 }
 
 .data-table td {
@@ -286,4 +312,94 @@ body {
 
 .empty-state-icon {
   @apply w-10 h-10 mx-auto mb-2 text-gray-300;
+}
+
+/* ========================================
+   MOBILE RESPONSIVE (max-width: 768px)
+   ======================================== */
+@media (max-width: 768px) {
+  /* Hide sidebar off-screen by default on mobile */
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Main content takes full width on mobile */
+  .main-content {
+    margin-left: 0;
+  }
+
+  /* Page header adjustments */
+  .page-header {
+    @apply px-4 py-4;
+    padding-top: 3.5rem; /* Make room for hamburger button */
+  }
+
+  .page-header.flex {
+    @apply flex-col items-start gap-3;
+  }
+
+  .page-title {
+    @apply text-lg;
+  }
+
+  /* Stat cards: 1 column on very small, 2 columns on slightly wider */
+  .stat-card {
+    @apply p-3;
+  }
+
+  .stat-card-value {
+    @apply text-lg;
+  }
+
+  .stat-card-label {
+    @apply text-[10px];
+  }
+
+  /* Budget card adjustments */
+  .budget-card-header {
+    @apply px-3 py-3 flex-col items-start gap-2;
+  }
+
+  .budget-card-header > .text-right {
+    @apply text-left;
+  }
+
+  /* Upload zone smaller padding on mobile */
+  .upload-zone {
+    @apply p-6;
+  }
+
+  /* Section card padding */
+  .section-header {
+    @apply px-3 py-2;
+  }
+
+  /* Modal: full width on mobile */
+  .fixed.inset-0 .bg-white.rounded-2xl {
+    @apply mx-2 max-h-[95vh];
+  }
+
+  /* Form select in header */
+  .form-select.w-52 {
+    @apply w-full;
+  }
+}
+
+/* Small phone adjustments */
+@media (max-width: 480px) {
+  .page-header {
+    @apply px-3 py-3;
+  }
+
+  .stat-card-value {
+    @apply text-base;
+  }
+
+  .btn-primary, .btn-secondary {
+    @apply text-xs px-3 py-1.5;
+  }
 }

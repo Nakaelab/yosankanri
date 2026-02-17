@@ -3,6 +3,7 @@
 import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
     {
@@ -45,6 +46,20 @@ const NAV_ITEMS = [
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    // Close sidebar on route change (mobile)
+    useEffect(() => {
+        if (isMobile) setSidebarOpen(false);
+    }, [pathname, isMobile]);
 
     return (
         <html lang="ja">
@@ -54,8 +69,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
             </head>
             <body>
+                {/* Mobile Hamburger Button */}
+                {isMobile && (
+                    <button
+                        className="mobile-menu-btn"
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        aria-label="メニュー"
+                    >
+                        {sidebarOpen ? (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                        )}
+                    </button>
+                )}
+
+                {/* Sidebar Overlay (mobile only) */}
+                {isMobile && (
+                    <div
+                        className={`sidebar-overlay ${sidebarOpen ? "visible" : ""}`}
+                        onClick={() => setSidebarOpen(false)}
+                    />
+                )}
+
                 {/* Sidebar */}
-                <aside className="sidebar">
+                <aside className={`sidebar ${isMobile && sidebarOpen ? "open" : ""}`}>
                     <div className="sidebar-logo">
                         <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -76,6 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                     key={item.href}
                                     href={item.href}
                                     className={`sidebar-link relative ${isActive ? "active" : ""}`}
+                                    onClick={() => isMobile && setSidebarOpen(false)}
                                 >
                                     {item.icon}
                                     {item.label}

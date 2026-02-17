@@ -78,31 +78,33 @@ export default function TransactionsPage() {
 
     return (
         <div className="animate-fade-in">
-            <div className="page-header flex items-center justify-between">
-                <div>
-                    <h1 className="page-title">取引一覧</h1>
-                    <p className="page-subtitle">全支出明細</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="text-right mr-2">
-                        <div className="text-[10px] text-gray-400 uppercase">表示中の合計</div>
-                        <div className="text-sm font-bold tabular-nums">{fmt(filteredTotal)}</div>
+            <div className="page-header">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h1 className="page-title">取引一覧</h1>
+                        <p className="page-subtitle">全支出明細</p>
                     </div>
-                    <select
-                        className="form-select text-xs py-1.5 w-52"
-                        value={filterBudgetId}
-                        onChange={(e) => setFilterBudgetId(e.target.value)}
-                    >
-                        <option value="all">すべての予算 ({transactions.length}件)</option>
-                        {budgets.map((b) => {
-                            const count = transactions.filter((t) => t.budgetId === b.id).length;
-                            return <option key={b.id} value={b.id}>{b.name} ({count}件)</option>;
-                        })}
-                    </select>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <div className="text-left sm:text-right">
+                            <div className="text-[10px] text-gray-400 uppercase">表示中の合計</div>
+                            <div className="text-sm font-bold tabular-nums">{fmt(filteredTotal)}</div>
+                        </div>
+                        <select
+                            className="form-select text-xs py-1.5 w-full sm:w-52"
+                            value={filterBudgetId}
+                            onChange={(e) => setFilterBudgetId(e.target.value)}
+                        >
+                            <option value="all">すべての予算 ({transactions.length}件)</option>
+                            {budgets.map((b) => {
+                                const count = transactions.filter((t) => t.budgetId === b.id).length;
+                                return <option key={b.id} value={b.id}>{b.name} ({count}件)</option>;
+                            })}
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-3 md:p-6">
                 <div className="section-card">
                     <div className="section-header">
                         <div className="section-title">支出明細</div>
@@ -215,8 +217,8 @@ export default function TransactionsPage() {
                                         key={att.id}
                                         onClick={() => showAttachment(att.id, att.fileName)}
                                         className={`px-3 py-1.5 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${previewName === att.fileName
-                                                ? "bg-brand-50 text-brand-700"
-                                                : "text-gray-500 hover:bg-gray-50"
+                                            ? "bg-brand-50 text-brand-700"
+                                            : "text-gray-500 hover:bg-gray-50"
                                             }`}
                                     >
                                         {att.fileName}

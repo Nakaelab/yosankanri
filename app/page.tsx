@@ -43,9 +43,9 @@ export default function DashboardPage() {
                 <p className="page-subtitle">研究費予算の概要</p>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-6">
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <div className="stat-card">
                         <div className="stat-card-label">配分総額</div>
                         <div className="stat-card-value text-gray-900">{fmtYen(totalAllocated)}</div>
@@ -114,8 +114,8 @@ export default function DashboardPage() {
                                     </div>
 
                                     {/* Utilization bar */}
-                                    <div className="px-5 py-2">
-                                        <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                                    <div className="px-3 md:px-5 py-2">
+                                        <div className="flex items-center justify-between text-[10px] md:text-[11px] text-gray-400 mb-1 flex-wrap gap-1">
                                             <span>執行率 {usageRate}%</span>
                                             <span>{fmtYen(s.totalSpent)} / {fmtYen(s.totalAllocated)}</span>
                                         </div>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
 
                                     {/* Category breakdown table (like spreadsheet right panel) */}
                                     {activeCats.length > 0 && (
-                                        <div className="px-5 pb-4">
+                                        <div className="px-3 md:px-5 pb-4 overflow-x-auto">
                                             <table className="cat-table w-full">
                                                 <thead>
                                                     <tr>

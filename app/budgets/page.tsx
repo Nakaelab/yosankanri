@@ -67,19 +67,21 @@ export default function BudgetsPage() {
 
     return (
         <div className="animate-fade-in">
-            <div className="page-header flex items-center justify-between">
-                <div>
-                    <h1 className="page-title">予算設定</h1>
-                    <p className="page-subtitle">研究費予算の登録・管理</p>
+            <div className="page-header">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h1 className="page-title">予算設定</h1>
+                        <p className="page-subtitle">研究費予算の登録・管理</p>
+                    </div>
+                    <button className="btn-primary w-full sm:w-auto" onClick={() => setShowForm(!showForm)}>
+                        {showForm ? "閉じる" : (
+                            <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>新規登録</>
+                        )}
+                    </button>
                 </div>
-                <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
-                    {showForm ? "閉じる" : (
-                        <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>新規登録</>
-                    )}
-                </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-4 md:p-6 space-y-5">
                 {/* Form */}
                 {showForm && (
                     <div className="section-card p-5 animate-slide-in">
@@ -103,7 +105,7 @@ export default function BudgetsPage() {
                             {/* Category allocations */}
                             <div>
                                 <label className="form-label mb-2">費目別配分額</label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                                     {ALL_CATEGORIES.map((cat) => {
                                         const colors = CATEGORY_COLORS[cat];
                                         return (
@@ -155,7 +157,7 @@ export default function BudgetsPage() {
 
                             return (
                                 <div key={b.id} className="section-card">
-                                    <div className="px-5 py-3 flex items-center justify-between border-b border-gray-50">
+                                    <div className="px-3 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50">
                                         <div className="flex items-center gap-3">
                                             <div className="w-2 h-2 rounded-full bg-brand-500" />
                                             <div>
@@ -180,7 +182,7 @@ export default function BudgetsPage() {
                                     {/* Category breakdown */}
                                     {activeCats.length > 0 && (
                                         <div className="px-5 py-3">
-                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                                                 {activeCats.map((c) => {
                                                     const colors = CATEGORY_COLORS[c.category];
                                                     return (
