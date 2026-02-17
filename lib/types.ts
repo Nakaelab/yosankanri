@@ -16,8 +16,8 @@ export type ExpenseCategory =
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
     goods: "物品",
     travel: "旅費(R)",
-    honorarium: "謝金(S)",
-    labor: "人件費(L)",
+    honorarium: "謝金",
+    labor: "人件費(S)",
     other: "その他(T)",
     subcontract: "再委託(I)",
     refund: "返金(H)",
@@ -49,8 +49,7 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, { bg: string; text: string
 export const FLAG_TO_CATEGORY: Record<string, ExpenseCategory> = {
     "": "goods",
     "R": "travel",
-    "S": "honorarium",
-    "L": "labor",
+    "S": "labor",
     "T": "other",
     "I": "subcontract",
     "H": "refund",
