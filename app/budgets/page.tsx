@@ -22,6 +22,9 @@ export default function BudgetsPage() {
     const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
     const [allocations, setAllocations] = useState<CategoryAllocations>(emptyAllocations());
 
+    const [editId, setEditId] = useState<string | null>(null);
+    const [createdAt, setCreatedAt] = useState<string>("");
+
     const reload = async () => {
         const tid = getCurrentTeacherId();
         const currentTeacherId = tid === "default" ? undefined : tid;
@@ -59,6 +62,27 @@ export default function BudgetsPage() {
 
     useEffect(() => { setMounted(true); reload(); }, []);
 
+    const resetForm = () => {
+        setName("");
+        setJCode("");
+        setFiscalYear(new Date().getFullYear());
+        setAllocations(emptyAllocations());
+        setEditId(null);
+        setCreatedAt("");
+        setShowForm(false);
+    };
+
+    const handleEdit = (b: Budget) => {
+        setName(b.name);
+        setJCode(b.jCode || "");
+        setFiscalYear(b.fiscalYear);
+        setAllocations(b.allocations);
+        setEditId(b.id);
+        setCreatedAt(b.createdAt);
+        setShowForm(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) { alert("研究費名を入力してください"); return; }
@@ -67,16 +91,16 @@ export default function BudgetsPage() {
         const teacherId = tid === "default" ? undefined : tid;
 
         await saveBudgetAction({
-            id: uuidv4(),
+            id: editId || uuidv4(),
             teacherId: teacherId || undefined,
             name: name.trim(),
             jCode: jCode.trim(),
             fiscalYear,
             allocations,
-            createdAt: new Date().toISOString(),
+            createdAt: editId ? createdAt : new Date().toISOString(),
         });
 
-        setName(""); setJCode(""); setAllocations(emptyAllocations()); setShowForm(false);
+        resetForm();
         reload();
     };
 
@@ -105,7 +129,13 @@ export default function BudgetsPage() {
                         <h1 className="page-title">予算設定</h1>
                         <p className="page-subtitle">研究費予算の登録・管理</p>
                     </div>
-                    <button className="btn-primary w-full sm:w-auto" onClick={() => setShowForm(!showForm)}>
+                    <button
+                        className="btn-primary w-full sm:w-auto"
+                        onClick={() => {
+                            if (showForm) resetForm();
+                            else setShowForm(true);
+                        }}
+                    >
                         {showForm ? "閉じる" : (
                             <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>新規登録</>
                         )}
@@ -117,7 +147,10 @@ export default function BudgetsPage() {
                 {/* Form */}
                 {showForm && (
                     <div className="section-card p-5 animate-slide-in">
-                        <h2 className="text-sm font-bold text-gray-900 mb-4">新規予算登録</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-gray-900">{editId ? "予算を編集" : "新規予算登録"}</h2>
+                            {editId && <span className="text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded-full">編集中</span>}
+                        </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
@@ -163,8 +196,8 @@ export default function BudgetsPage() {
                             </div>
 
                             <div className="flex gap-3 pt-2">
-                                <button type="submit" className="btn-primary">予算を登録</button>
-                                <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>キャンセル</button>
+                                <button type="submit" className="btn-primary">{editId ? "更新" : "予算を登録"}</button>
+                                <button type="button" className="btn-secondary" onClick={resetForm}>キャンセル</button>
                             </div>
                         </form>
                     </div>
@@ -200,14 +233,15 @@ export default function BudgetsPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
                                             {s && (
-                                                <div className="text-right mr-3">
+                                                <div className="text-right mr-3 hidden sm:block">
                                                     <div className="text-[10px] text-gray-400 uppercase">配分合計</div>
                                                     <div className="text-sm font-bold tabular-nums">{fmt(s.totalAllocated)}</div>
                                                 </div>
                                             )}
-                                            <button className="btn-danger" onClick={() => handleDelete(b.id)}>削除</button>
+                                            <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => handleEdit(b)}>編集</button>
+                                            <button className="btn-danger text-xs py-1.5 px-3" onClick={() => handleDelete(b.id)}>削除</button>
                                         </div>
                                     </div>
 
