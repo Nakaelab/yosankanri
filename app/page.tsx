@@ -61,7 +61,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                     <div className="stat-card">
-                        <div className="stat-card-label">予算 / 取引</div>
+                        <div className="stat-card-label">予算 / 執行</div>
                         <div className="stat-card-value text-gray-900">
                             {budgetCount}<span className="text-base text-gray-400 ml-1">件</span>
                             <span className="text-base text-gray-300 mx-1">/</span>

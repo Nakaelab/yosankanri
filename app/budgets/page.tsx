@@ -49,7 +49,7 @@ export default function BudgetsPage() {
     };
 
     const handleDelete = (id: string) => {
-        if (!confirm("この予算を削除しますか？\n紐づく取引データは削除されません。")) return;
+        if (!confirm("この予算を削除しますか？\n紐づく執行データは削除されません。")) return;
         deleteBudget(id);
         reload();
     };

@@ -31,7 +31,7 @@ export default function TransactionsPage() {
     useEffect(() => { setMounted(true); reload(); }, []);
 
     const handleDelete = async (id: string) => {
-        if (!confirm("この取引を削除しますか？\n添付ファイルも削除されます。")) return;
+        if (!confirm("この執行データを削除しますか？\n添付ファイルも削除されます。")) return;
         await deleteAttachmentsByTransaction(id);
         deleteTransaction(id);
         reload();
@@ -104,6 +104,7 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
+
             <div className="p-3 md:p-6">
                 <div className="section-card">
                     <div className="section-header">
@@ -116,8 +117,8 @@ export default function TransactionsPage() {
                             <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                             </svg>
-                            <p className="text-sm">取引データがありません</p>
-                            <p className="text-xs mt-0.5">「取引登録」から追加してください</p>
+                            <p className="text-sm">執行データがありません</p>
+                            <p className="text-xs mt-0.5">「執行登録」から追加してください</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -188,67 +189,69 @@ export default function TransactionsPage() {
             </div>
 
             {/* Attachment Preview Modal */}
-            {previewTx && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={closePreview}>
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col animate-fade-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-900">添付ファイル</h3>
-                                <p className="text-[11px] text-gray-400 mt-0.5">
-                                    {previewTx.itemName} — {previewTx.date}
-                                </p>
+            {
+                previewTx && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={closePreview}>
+                        <div
+                            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col animate-fade-in"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900">添付ファイル</h3>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">
+                                        {previewTx.itemName} — {previewTx.date}
+                                    </p>
+                                </div>
+                                <button onClick={closePreview} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
-                            <button onClick={closePreview} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
-                                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
 
-                        {/* File List */}
-                        {previewAttachments.length > 1 && (
-                            <div className="px-6 py-2 border-b border-gray-50 flex gap-2 overflow-x-auto">
-                                {previewAttachments.map((att) => (
-                                    <button
-                                        key={att.id}
-                                        onClick={() => showAttachment(att.id, att.fileName)}
-                                        className={`px-3 py-1.5 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${previewName === att.fileName
-                                            ? "bg-brand-50 text-brand-700"
-                                            : "text-gray-500 hover:bg-gray-50"
-                                            }`}
-                                    >
-                                        {att.fileName}
-                                        <span className="text-gray-400 ml-1">({formatFileSize(att.size)})</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Preview */}
-                        <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-gray-50/50">
-                            {previewUrl ? (
-                                previewName.toLowerCase().endsWith(".pdf") ? (
-                                    <iframe src={previewUrl} className="w-full h-[60vh] rounded-lg border border-gray-200" />
-                                ) : (
-                                    <img src={previewUrl} alt={previewName} className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />
-                                )
-                            ) : (
-                                <p className="text-gray-400 text-sm">ファイルを読み込み中...</p>
+                            {/* File List */}
+                            {previewAttachments.length > 1 && (
+                                <div className="px-6 py-2 border-b border-gray-50 flex gap-2 overflow-x-auto">
+                                    {previewAttachments.map((att) => (
+                                        <button
+                                            key={att.id}
+                                            onClick={() => showAttachment(att.id, att.fileName)}
+                                            className={`px-3 py-1.5 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${previewName === att.fileName
+                                                ? "bg-brand-50 text-brand-700"
+                                                : "text-gray-500 hover:bg-gray-50"
+                                                }`}
+                                        >
+                                            {att.fileName}
+                                            <span className="text-gray-400 ml-1">({formatFileSize(att.size)})</span>
+                                        </button>
+                                    ))}
+                                </div>
                             )}
-                        </div>
 
-                        {/* Footer */}
-                        <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
-                            <span className="text-[11px] text-gray-400">{previewName}</span>
-                            <button className="btn-secondary text-xs" onClick={closePreview}>閉じる</button>
+                            {/* Preview */}
+                            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-gray-50/50">
+                                {previewUrl ? (
+                                    previewName.toLowerCase().endsWith(".pdf") ? (
+                                        <iframe src={previewUrl} className="w-full h-[60vh] rounded-lg border border-gray-200" />
+                                    ) : (
+                                        <img src={previewUrl} alt={previewName} className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />
+                                    )
+                                ) : (
+                                    <p className="text-gray-400 text-sm">ファイルを読み込み中...</p>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+                                <span className="text-[11px] text-gray-400">{previewName}</span>
+                                <button className="btn-secondary text-xs" onClick={closePreview}>閉じる</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

@@ -17,7 +17,7 @@ const NAV_ITEMS = [
     },
     {
         href: "/import",
-        label: "取引登録",
+        label: "執行登録",
         icon: (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
@@ -26,7 +26,7 @@ const NAV_ITEMS = [
     },
     {
         href: "/transactions",
-        label: "取引一覧",
+        label: "執行一覧",
         icon: (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
@@ -98,14 +98,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
                 {/* Sidebar */}
                 <aside className={`sidebar ${isMobile && sidebarOpen ? "open" : ""}`}>
-                    <div className="sidebar-logo">
+                    <Link href="/" className="sidebar-logo cursor-pointer hover:opacity-80 transition-opacity">
                         <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
                         </div>
                         <span className="text-base">予算管理</span>
-                    </div>
+                    </Link>
 
                     <nav className="sidebar-nav">
                         <div className="px-4 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
