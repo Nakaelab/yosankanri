@@ -1,6 +1,7 @@
 import {
     Transaction, Budget, BudgetSummary, CategorySummary,
     ALL_CATEGORIES, ExpenseCategory, CategoryAllocations,
+    Teacher,
 } from "./types";
 
 // ==========================================
@@ -9,13 +10,72 @@ import {
 
 const TRANSACTIONS_KEY = "budget_app_transactions_v2";
 const BUDGETS_KEY = "budget_app_budgets_v2";
+const TEACHERS_KEY = "budget_app_teachers";
+const CURRENT_TEACHER_KEY = "budget_app_current_teacher";
+
+// ---------- Teachers ----------
+
+export function getTeachers(): Teacher[] {
+    if (typeof window === "undefined") return [];
+    try {
+        const raw = localStorage.getItem(TEACHERS_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
+export function saveTeacher(teacher: Teacher): void {
+    const list = getTeachers();
+    list.push(teacher);
+    localStorage.setItem(TEACHERS_KEY, JSON.stringify(list));
+}
+
+export function deleteTeacher(id: string): void {
+    const list = getTeachers().filter((t) => t.id !== id);
+    localStorage.setItem(TEACHERS_KEY, JSON.stringify(list));
+    // 関連データの削除も行う（オプション）
+    localStorage.removeItem(`${TRANSACTIONS_KEY}_${id}`);
+    localStorage.removeItem(`${BUDGETS_KEY}_${id}`);
+}
+
+export function getCurrentTeacherId(): string | null {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(CURRENT_TEACHER_KEY);
+}
+
+export function setCurrentTeacherId(id: string | null): void {
+    if (id) {
+        localStorage.setItem(CURRENT_TEACHER_KEY, id);
+    } else {
+        localStorage.removeItem(CURRENT_TEACHER_KEY);
+    }
+}
+
+export function getTeacherById(id: string): Teacher | undefined {
+    return getTeachers().find((t) => t.id === id);
+}
+
+export function getCurrentTeacher(): Teacher | undefined {
+    const id = getCurrentTeacherId();
+    return id ? getTeacherById(id) : undefined;
+}
+
+// キー生成ロジック
+function getStorageKey(baseKey: string): string {
+    const current = getCurrentTeacherId();
+    // デフォルトユーザー（未設定含む）の場合は元のキーを使用
+    if (!current || current === "default") return baseKey;
+    return `${baseKey}_${current}`;
+}
 
 // ---------- Transactions ----------
 
 export function getTransactions(): Transaction[] {
     if (typeof window === "undefined") return [];
     try {
-        const raw = localStorage.getItem(TRANSACTIONS_KEY);
+        const key = getStorageKey(TRANSACTIONS_KEY);
+        const raw = localStorage.getItem(key);
         return raw ? JSON.parse(raw) : [];
     } catch {
         return [];
@@ -25,12 +85,14 @@ export function getTransactions(): Transaction[] {
 export function saveTransaction(tx: Transaction): void {
     const list = getTransactions();
     list.push(tx);
-    localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(list));
+    const key = getStorageKey(TRANSACTIONS_KEY);
+    localStorage.setItem(key, JSON.stringify(list));
 }
 
 export function deleteTransaction(id: string): void {
     const list = getTransactions().filter((t) => t.id !== id);
-    localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(list));
+    const key = getStorageKey(TRANSACTIONS_KEY);
+    localStorage.setItem(key, JSON.stringify(list));
 }
 
 export function getTransactionsByBudget(budgetId: string): Transaction[] {
@@ -44,7 +106,8 @@ export function getTransactionsByBudget(budgetId: string): Transaction[] {
 export function getBudgets(): Budget[] {
     if (typeof window === "undefined") return [];
     try {
-        const raw = localStorage.getItem(BUDGETS_KEY);
+        const key = getStorageKey(BUDGETS_KEY);
+        const raw = localStorage.getItem(key);
         return raw ? JSON.parse(raw) : [];
     } catch {
         return [];
@@ -54,17 +117,20 @@ export function getBudgets(): Budget[] {
 export function saveBudget(budget: Budget): void {
     const list = getBudgets();
     list.push(budget);
-    localStorage.setItem(BUDGETS_KEY, JSON.stringify(list));
+    const key = getStorageKey(BUDGETS_KEY);
+    localStorage.setItem(key, JSON.stringify(list));
 }
 
 export function updateBudget(budget: Budget): void {
     const list = getBudgets().map((b) => (b.id === budget.id ? budget : b));
-    localStorage.setItem(BUDGETS_KEY, JSON.stringify(list));
+    const key = getStorageKey(BUDGETS_KEY);
+    localStorage.setItem(key, JSON.stringify(list));
 }
 
 export function deleteBudget(id: string): void {
     const list = getBudgets().filter((b) => b.id !== id);
-    localStorage.setItem(BUDGETS_KEY, JSON.stringify(list));
+    const key = getStorageKey(BUDGETS_KEY);
+    localStorage.setItem(key, JSON.stringify(list));
 }
 
 export function getBudgetById(id: string): Budget | undefined {

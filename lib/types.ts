@@ -158,3 +158,10 @@ export function validateExtracted(data: ExtractedData): ValidationResult[] {
     }
     return errors;
 }
+
+/** 先生（ユーザープロファイル） */
+export interface Teacher {
+    id: string;
+    name: string;
+    createdAt: string;
+}
