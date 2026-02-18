@@ -6,7 +6,7 @@ import {
     Budget, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES,
     CategoryAllocations, emptyAllocations, ExpenseCategory,
 } from "@/lib/types";
-import { getCurrentTeacherId, getBudgetSummary } from "@/lib/storage";
+import { getCurrentTeacherId } from "@/lib/storage";
 import { getBudgetsAction, saveBudgetAction, deleteBudgetAction, getTransactionsAction } from "../actions";
 import type { BudgetSummary } from "@/lib/types";
 
@@ -14,15 +14,16 @@ export default function BudgetsPage() {
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [summaries, setSummaries] = useState<Map<string, BudgetSummary>>(new Map());
     const [mounted, setMounted] = useState(false);
-    const [showForm, setShowForm] = useState(false);
 
-    // Form
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+
+    // Form State
     const [name, setName] = useState("");
     const [jCode, setJCode] = useState("");
     const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
     const [allocations, setAllocations] = useState<CategoryAllocations>(emptyAllocations());
-
-    const [editId, setEditId] = useState<string | null>(null);
     const [createdAt, setCreatedAt] = useState<string>("");
 
     const reload = async () => {
@@ -40,7 +41,6 @@ export default function BudgetsPage() {
         // Calculate summaries client-side
         const map = new Map<string, BudgetSummary>();
         bSorted.forEach((budget) => {
-            // Re-implement simplified getBudgetSummary logic here
             const budgetTxs = tData.filter((t) => t.budgetId === budget.id);
             const categories = ALL_CATEGORIES.map((cat) => {
                 const allocated = budget.allocations[cat] || 0;
@@ -62,25 +62,29 @@ export default function BudgetsPage() {
 
     useEffect(() => { setMounted(true); reload(); }, []);
 
-    const resetForm = () => {
+    const openCreateModal = () => {
+        setEditingBudget(null);
         setName("");
         setJCode("");
         setFiscalYear(new Date().getFullYear());
         setAllocations(emptyAllocations());
-        setEditId(null);
         setCreatedAt("");
-        setShowForm(false);
+        setIsModalOpen(true);
     };
 
-    const handleEdit = (b: Budget) => {
+    const openEditModal = (b: Budget) => {
+        setEditingBudget(b);
         setName(b.name);
         setJCode(b.jCode || "");
         setFiscalYear(b.fiscalYear);
         setAllocations(b.allocations);
-        setEditId(b.id);
         setCreatedAt(b.createdAt);
-        setShowForm(true);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingBudget(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -91,16 +95,16 @@ export default function BudgetsPage() {
         const teacherId = tid === "default" ? undefined : tid;
 
         await saveBudgetAction({
-            id: editId || uuidv4(),
+            id: editingBudget ? editingBudget.id : uuidv4(),
             teacherId: teacherId || undefined,
             name: name.trim(),
             jCode: jCode.trim(),
             fiscalYear,
             allocations,
-            createdAt: editId ? createdAt : new Date().toISOString(),
+            createdAt: editingBudget ? createdAt : new Date().toISOString(),
         });
 
-        resetForm();
+        closeModal();
         reload();
     };
 
@@ -131,80 +135,17 @@ export default function BudgetsPage() {
                     </div>
                     <button
                         className="btn-primary w-full sm:w-auto"
-                        onClick={() => {
-                            if (showForm) resetForm();
-                            else setShowForm(true);
-                        }}
+                        onClick={openCreateModal}
                     >
-                        {showForm ? "閉じる" : (
-                            <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>新規登録</>
-                        )}
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        新規登録
                     </button>
                 </div>
             </div>
 
             <div className="p-4 md:p-6 space-y-5">
-                {/* Form */}
-                {showForm && (
-                    <div className="section-card p-5 animate-slide-in">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-bold text-gray-900">{editId ? "予算を編集" : "新規予算登録"}</h2>
-                            {editId && <span className="text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded-full">編集中</span>}
-                        </div>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="form-label">研究費名 *</label>
-                                    <input type="text" className="form-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="例: AMED脳神経チーム代表" />
-                                </div>
-                                <div>
-                                    <label className="form-label">Jコード</label>
-                                    <input type="text" className="form-input font-mono" value={jCode} onChange={(e) => setJCode(e.target.value)} placeholder="例: J250000252" />
-                                </div>
-                                <div>
-                                    <label className="form-label">年度</label>
-                                    <input type="number" className="form-input" value={fiscalYear} onChange={(e) => setFiscalYear(parseInt(e.target.value, 10) || 0)} />
-                                </div>
-                            </div>
-
-                            {/* Category allocations */}
-                            <div>
-                                <label className="form-label mb-2">費目別配分額</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                                    {ALL_CATEGORIES.map((cat) => {
-                                        const colors = CATEGORY_COLORS[cat];
-                                        return (
-                                            <div key={cat} className={`rounded-lg p-3 ${colors.bg} border border-opacity-20`}>
-                                                <label className={`text-[10px] font-bold uppercase tracking-wider ${colors.text}`}>
-                                                    {CATEGORY_LABELS[cat]}
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    className="form-input mt-1 text-sm"
-                                                    value={allocations[cat] || ""}
-                                                    onChange={(e) => updateAlloc(cat, parseInt(e.target.value, 10) || 0)}
-                                                    min={0}
-                                                    placeholder="0"
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="mt-2 text-right text-sm font-bold text-gray-700">
-                                    配分合計: {fmt(totalAlloc)}
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                                <button type="submit" className="btn-primary">{editId ? "更新" : "予算を登録"}</button>
-                                <button type="button" className="btn-secondary" onClick={resetForm}>キャンセル</button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-
                 {/* Budget List */}
-                {budgets.length === 0 && !showForm ? (
+                {budgets.length === 0 ? (
                     <div className="section-card">
                         <div className="empty-state">
                             <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
@@ -221,7 +162,7 @@ export default function BudgetsPage() {
                             const activeCats = s ? s.categories.filter((c) => c.allocated > 0 || c.spent > 0) : [];
 
                             return (
-                                <div key={b.id} className="section-card">
+                                <div key={b.id} className="section-card relative group">
                                     <div className="px-3 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50">
                                         <div className="flex items-center gap-3">
                                             <div className="w-2 h-2 rounded-full bg-brand-500" />
@@ -240,13 +181,23 @@ export default function BudgetsPage() {
                                                     <div className="text-sm font-bold tabular-nums">{fmt(s.totalAllocated)}</div>
                                                 </div>
                                             )}
-                                            <button className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1" onClick={() => handleEdit(b)}>
+
+                                            {/* Edit Button */}
+                                            <button
+                                                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
+                                                onClick={() => openEditModal(b)}
+                                            >
                                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                                                 </svg>
                                                 編集
                                             </button>
-                                            <button className="btn-danger text-xs py-1.5 px-3 flex items-center gap-1" onClick={() => handleDelete(b.id)}>
+
+                                            {/* Delete Button */}
+                                            <button
+                                                className="btn-danger text-xs py-1.5 px-3 flex items-center gap-1"
+                                                onClick={() => handleDelete(b.id)}
+                                            >
                                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                                 </svg>
@@ -283,6 +234,84 @@ export default function BudgetsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Create/Edit Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={closeModal}>
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full flex flex-col animate-fade-in my-8"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
+                            <h3 className="text-base font-bold text-gray-900">
+                                {editingBudget ? "予算の編集" : "新規予算登録"}
+                            </h3>
+                            <button onClick={closeModal} className="w-8 h-8 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
+                                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6">
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="form-label">研究費名 *</label>
+                                        <input type="text" className="form-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="例: AMED脳神経チーム代表" />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Jコード</label>
+                                        <input type="text" className="form-input font-mono" value={jCode} onChange={(e) => setJCode(e.target.value)} placeholder="例: J250000252" />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">年度</label>
+                                        <input type="number" className="form-input" value={fiscalYear} onChange={(e) => setFiscalYear(parseInt(e.target.value, 10) || 0)} />
+                                    </div>
+                                </div>
+
+                                {/* Category allocations */}
+                                <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
+                                    <label className="form-label mb-3">費目別配分額</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                                        {ALL_CATEGORIES.map((cat) => {
+                                            const colors = CATEGORY_COLORS[cat];
+                                            return (
+                                                <div key={cat} className={`rounded-lg p-3 ${colors.bg} border border-opacity-20`}>
+                                                    <label className={`text-[10px] font-bold uppercase tracking-wider ${colors.text}`}>
+                                                        {CATEGORY_LABELS[cat]}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input mt-1 text-sm bg-white/80"
+                                                        value={allocations[cat] || ""}
+                                                        onChange={(e) => updateAlloc(cat, parseInt(e.target.value, 10) || 0)}
+                                                        min={0}
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="mt-3 text-right text-sm font-bold text-gray-700">
+                                        配分合計: {fmt(totalAlloc)}
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+                            <button className="btn-secondary" onClick={closeModal}>キャンセル</button>
+                            <button className="btn-primary" onClick={handleSubmit}>
+                                {editingBudget ? "更新する" : "登録する"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
