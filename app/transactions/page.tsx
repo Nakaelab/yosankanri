@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta } from "@/lib/types";
-import { getTransactionsAction, deleteTransactionAction, getBudgetsAction, getAttachmentsAction } from "../actions";
+import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta, ALL_CATEGORIES, ExpenseCategory } from "@/lib/types";
+import { getTransactionsAction, deleteTransactionAction, getBudgetsAction, getAttachmentsAction, saveTransactionAction } from "../actions";
 import { getCurrentTeacherId } from "@/lib/storage";
 import { formatFileSize } from "@/lib/attachments";
 
@@ -17,6 +17,21 @@ export default function TransactionsPage() {
     const [previewAttachments, setPreviewAttachments] = useState<AttachmentMeta[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [previewName, setPreviewName] = useState("");
+
+    // Edit modal
+    const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+    const [editForm, setEditForm] = useState({
+        slipNumber: "",
+        date: "",
+        itemName: "",
+        specification: "",
+        payee: "",
+        unitPrice: 0,
+        quantity: 1,
+        amount: 0,
+        category: "goods" as ExpenseCategory,
+        budgetId: "",
+    });
 
     const reload = async () => {
         const tid = getCurrentTeacherId();
@@ -40,6 +55,53 @@ export default function TransactionsPage() {
         await deleteTransactionAction(id);
         reload();
     };
+
+    // Edit handlers
+    const handleEdit = (tx: Transaction) => {
+        setEditingTx(tx);
+        setEditForm({
+            slipNumber: tx.slipNumber,
+            date: tx.date,
+            itemName: tx.itemName,
+            specification: tx.specification,
+            payee: tx.payee,
+            unitPrice: tx.unitPrice,
+            quantity: tx.quantity,
+            amount: tx.amount,
+            category: tx.category,
+            budgetId: tx.budgetId,
+        });
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingTx) return;
+        if (!editForm.budgetId) { alert("予算を選択してください"); return; }
+        if (!editForm.itemName.trim()) { alert("品名を入力してください"); return; }
+        if (editForm.amount <= 0) { alert("金額を確認してください"); return; }
+
+        const updated: Transaction = {
+            ...editingTx,
+            ...editForm,
+        };
+
+        await saveTransactionAction(updated);
+        setEditingTx(null);
+        reload();
+    };
+
+    const handleCancelEdit = () => {
+        setEditingTx(null);
+    };
+
+    // Auto-calc amount in edit form
+    useEffect(() => {
+        if (editingTx) {
+            if (editForm.unitPrice > 0 && editForm.quantity > 0) {
+                setEditForm(prev => ({ ...prev, amount: prev.unitPrice * prev.quantity }));
+            }
+        }
+    }, [editForm.unitPrice, editForm.quantity]);
+
 
     const openAttachments = async (tx: Transaction) => {
         setPreviewTx(tx);
@@ -70,6 +132,8 @@ export default function TransactionsPage() {
         : transactions.filter((t) => t.budgetId === filterBudgetId);
 
     const filteredTotal = filtered.reduce((s, t) => s + t.amount, 0);
+
+    const isLabor = editForm.category === "labor";
 
     if (!mounted) {
         return <div className="flex items-center justify-center h-screen"><div className="text-gray-400 text-sm">読み込み中...</div></div>;
@@ -175,7 +239,26 @@ export default function TransactionsPage() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <button className="btn-danger" onClick={() => handleDelete(tx.id)}>削除</button>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
+                                                            onClick={() => handleEdit(tx)}
+                                                            title="編集"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                            onClick={() => handleDelete(tx.id)}
+                                                            title="削除"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -216,7 +299,7 @@ export default function TransactionsPage() {
                                     {previewAttachments.map((att) => (
                                         <button
                                             key={att.id}
-                                            onClick={() => showAttachment(att.id, att.fileName)}
+                                            onClick={() => showAttachment(att)}
                                             className={`px-3 py-1.5 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${previewName === att.fileName
                                                 ? "bg-brand-50 text-brand-700"
                                                 : "text-gray-500 hover:bg-gray-50"
@@ -251,6 +334,146 @@ export default function TransactionsPage() {
                     </div>
                 )
             }
+
+            {/* Edit Modal */}
+            {editingTx && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={handleCancelEdit}>
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-fade-in my-8"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
+                            <h3 className="text-base font-bold text-gray-900">執行データの編集</h3>
+                            <button onClick={handleCancelEdit} className="w-8 h-8 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
+                                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4">
+                            {/* Budget Selection */}
+                            <div>
+                                <label className="form-label">予算（研究費）</label>
+                                <select
+                                    className="form-select mt-1"
+                                    value={editForm.budgetId}
+                                    onChange={(e) => setEditForm({ ...editForm, budgetId: e.target.value })}
+                                >
+                                    <option value="">-- 選択してください --</option>
+                                    {budgets.map((b) => (
+                                        <option key={b.id} value={b.id}>{b.name} {b.jCode ? `(${b.jCode})` : ""}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="form-label">伝票番号</label>
+                                    <input
+                                        type="text"
+                                        className="form-input font-mono"
+                                        value={editForm.slipNumber}
+                                        onChange={(e) => setEditForm({ ...editForm, slipNumber: e.target.value })}
+                                        placeholder="例: P250..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="form-label">費目カテゴリ</label>
+                                    <select
+                                        className="form-select"
+                                        value={editForm.category}
+                                        onChange={(e) => setEditForm({ ...editForm, category: e.target.value as ExpenseCategory })}
+                                    >
+                                        {ALL_CATEGORIES.map((cat) => (<option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="form-label">{isLabor ? "支払日 / 計上日" : "納品日"}</label>
+                                    <input
+                                        type="date"
+                                        className="form-input"
+                                        value={editForm.date}
+                                        onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="form-label">{isLabor ? "内容・期間" : "品名"}</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={editForm.itemName}
+                                        onChange={(e) => setEditForm({ ...editForm, itemName: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="form-label">{isLabor ? "対象者名" : "規格等"}</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={editForm.specification}
+                                        onChange={(e) => setEditForm({ ...editForm, specification: e.target.value })}
+                                    />
+                                </div>
+                                {!isLabor && (
+                                    <div>
+                                        <label className="form-label">支払先</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={editForm.payee}
+                                            onChange={(e) => setEditForm({ ...editForm, payee: e.target.value })}
+                                        />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="form-label">{isLabor ? "支給額 (単価)" : "単価"}</label>
+                                    <input
+                                        type="number"
+                                        className="form-input"
+                                        value={editForm.unitPrice || ""}
+                                        onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })}
+                                        min={0}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="form-label">{isLabor ? "支給回数 (数量)" : "数量"}</label>
+                                    <input
+                                        type="number"
+                                        className="form-input"
+                                        value={editForm.quantity}
+                                        onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })}
+                                        min={1}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="form-label">金額（円）</label>
+                                    <input
+                                        type="number"
+                                        className="form-input text-lg font-bold"
+                                        value={editForm.amount || ""}
+                                        onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })}
+                                        min={0}
+                                    />
+                                    {editForm.unitPrice > 0 && editForm.quantity > 1 && (
+                                        <p className="text-[11px] text-gray-400 mt-1">
+                                            単価 {editForm.unitPrice.toLocaleString()} × 数量 {editForm.quantity} = {(editForm.unitPrice * editForm.quantity).toLocaleString()}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+                            <button className="btn-secondary" onClick={handleCancelEdit}>キャンセル</button>
+                            <button className="btn-primary" onClick={handleSaveEdit}>保存する</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
