@@ -182,9 +182,9 @@ export default function BudgetsPage() {
                                                 </div>
                                             )}
 
-                                            {/* Edit Button */}
+                                            {/* Edit Button - Uses indigo/blue color to be distinctive */}
                                             <button
-                                                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-xs font-medium"
                                                 onClick={() => openEditModal(b)}
                                             >
                                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
