@@ -172,3 +172,13 @@ export interface Teacher {
     name: string;
     createdAt: string;
 }
+
+/** 添付ファイルメタデータ */
+export interface AttachmentMeta {
+    id: string;
+    transactionId: string;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    createdAt: string;
+}

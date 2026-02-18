@@ -10,7 +10,7 @@ import {
 import { extractFromOCRText } from "@/lib/extract";
 import { saveTransactionAction, getBudgetsAction } from "@/app/actions";
 import { getCurrentTeacherId } from "@/lib/storage";
-import { saveAttachment, fileToArrayBuffer } from "@/lib/attachments";
+// Removed unused imports
 import type { Budget } from "@/lib/types";
 
 type Mode = "ocr" | "manual";
@@ -196,18 +196,25 @@ export default function ImportPage() {
         const tid = getCurrentTeacherId();
         const teacherId = tid === "default" ? undefined : tid;
 
-        // Save attachments to IndexedDB
+        // Save attachments to Server
         for (const est of estimates) {
-            const buffer = await fileToArrayBuffer(est.file);
-            await saveAttachment({
-                id: uuidv4(),
-                transactionId: txId,
-                fileName: est.file.name,
-                mimeType: est.file.type,
-                size: est.file.size,
-                data: buffer,
-                createdAt: new Date().toISOString(),
-            });
+            const formData = new FormData();
+            formData.append("file", est.file);
+            formData.append("transactionId", txId);
+
+            try {
+                const res = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (!res.ok) {
+                    console.error("Upload failed", await res.text());
+                    alert(`ファイルのアップロードに失敗しました: ${est.file.name}`);
+                }
+            } catch (e) {
+                console.error("Upload error", e);
+                alert(`ファイルのアップロードに失敗しました: ${est.file.name}`);
+            }
         }
 
         await saveTransactionAction({

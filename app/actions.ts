@@ -3,12 +3,14 @@
 import fs from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { Teacher, Budget, Transaction } from "@/lib/types";
+import { Teacher, Budget, Transaction, AttachmentMeta } from "@/lib/types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const TEACHERS_FILE = path.join(DATA_DIR, "teachers.json");
 const BUDGETS_FILE = path.join(DATA_DIR, "budgets.json");
 const TRANSACTIONS_FILE = path.join(DATA_DIR, "transactions.json");
+const ATTACHMENTS_FILE = path.join(DATA_DIR, "attachments.json");
+const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 
 // Ensure data directory exists
 async function ensureDir() {
@@ -111,7 +113,32 @@ export async function saveTransactionAction(tx: Transaction): Promise<void> {
 }
 
 export async function deleteTransactionAction(id: string): Promise<void> {
+    // Delete attachments
+    const attachments = await readData<AttachmentMeta>(ATTACHMENTS_FILE);
+    const toDelete = attachments.filter((a) => a.transactionId === id);
+
+    // Delete files
+    for (const att of toDelete) {
+        try {
+            await fs.unlink(path.join(UPLOADS_DIR, att.id));
+        } catch { }
+    }
+
+    // Update attachments.json
+    const newAttachments = attachments.filter((a) => a.transactionId !== id);
+    await writeData(ATTACHMENTS_FILE, newAttachments);
+
+    // Delete transaction
     const all = await readData<Transaction>(TRANSACTIONS_FILE);
     const filtered = all.filter((t) => t.id !== id);
     await writeData(TRANSACTIONS_FILE, filtered);
+}
+
+// --------------------------------------------------------
+// Attachments
+// --------------------------------------------------------
+
+export async function getAttachmentsAction(transactionId: string): Promise<AttachmentMeta[]> {
+    const all = await readData<AttachmentMeta>(ATTACHMENTS_FILE);
+    return all.filter((a) => a.transactionId === transactionId);
 }

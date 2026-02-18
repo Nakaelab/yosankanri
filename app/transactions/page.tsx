@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget } from "@/lib/types";
-import { getTransactionsAction, deleteTransactionAction, getBudgetsAction } from "../actions";
+import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta } from "@/lib/types";
+import { getTransactionsAction, deleteTransactionAction, getBudgetsAction, getAttachmentsAction } from "../actions";
 import { getCurrentTeacherId } from "@/lib/storage";
-import {
-    getAttachmentsByTransaction, getAttachment, deleteAttachmentsByTransaction,
-    arrayBufferToUrl, formatFileSize,
-    type AttachmentMeta, type AttachmentRecord,
-} from "@/lib/attachments";
+import { formatFileSize } from "@/lib/attachments";
 
 export default function TransactionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -41,31 +37,25 @@ export default function TransactionsPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm("この執行データを削除しますか？\n添付ファイルも削除されます。")) return;
-        await deleteAttachmentsByTransaction(id);
         await deleteTransactionAction(id);
         reload();
     };
 
     const openAttachments = async (tx: Transaction) => {
         setPreviewTx(tx);
-        const metas = await getAttachmentsByTransaction(tx.id);
+        const metas = await getAttachmentsAction(tx.id);
         setPreviewAttachments(metas);
         if (metas.length > 0) {
-            await showAttachment(metas[0].id, metas[0].fileName);
+            showAttachment(metas[0]);
         }
     };
 
-    const showAttachment = async (id: string, fileName: string) => {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        const record = await getAttachment(id);
-        if (record) {
-            setPreviewUrl(arrayBufferToUrl(record.data, record.mimeType));
-            setPreviewName(fileName);
-        }
+    const showAttachment = (meta: AttachmentMeta) => {
+        setPreviewUrl(`/api/attachment/${meta.id}`);
+        setPreviewName(meta.fileName);
     };
 
     const closePreview = () => {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewTx(null);
         setPreviewAttachments([]);
         setPreviewUrl(null);
