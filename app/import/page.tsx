@@ -83,6 +83,7 @@ export default function ImportPage() {
     // Labor batch rows
     const [laborRows, setLaborRows] = useState<LaborRow[]>([emptyLaborRow()]);
     const [laborBudgetId, setLaborBudgetId] = useState("");
+    const [laborIncludeTax, setLaborIncludeTax] = useState(true);
     const [laborDate, setLaborDate] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -311,7 +312,7 @@ export default function ImportPage() {
     };
 
     const laborSubtotal = laborRows.reduce((s, r) => s + r.amount, 0);
-    const laborTax = Math.floor(laborSubtotal * TAX_RATE);
+    const laborTax = laborIncludeTax ? Math.floor(laborSubtotal * TAX_RATE) : 0;
     const laborTotal = laborSubtotal + laborTax;
 
     const handleSaveLabor = async () => {
@@ -673,14 +674,29 @@ export default function ImportPage() {
                                     <span className="font-bold tabular-nums">¥{laborSubtotal.toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-600 flex items-center gap-1">
-                                        消費税 (10%)
-                                        <span className="text-[10px] text-gray-400">※自動計算</span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setLaborIncludeTax(!laborIncludeTax)}
+                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${laborIncludeTax ? "bg-indigo-500" : "bg-gray-300"
+                                                }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${laborIncludeTax ? "translate-x-[18px]" : "translate-x-[3px]"
+                                                    }`}
+                                            />
+                                        </button>
+                                        <span className={laborIncludeTax ? "text-gray-600" : "text-gray-400"}>
+                                            消費税 (10%)
+                                        </span>
+                                        {!laborIncludeTax && <span className="text-[10px] text-gray-400">※非課税</span>}
+                                    </div>
+                                    <span className={`font-bold tabular-nums ${laborIncludeTax ? "text-amber-700" : "text-gray-300"}`}>
+                                        ¥{laborTax.toLocaleString()}
                                     </span>
-                                    <span className="font-bold tabular-nums text-amber-700">¥{laborTax.toLocaleString()}</span>
                                 </div>
                                 <div className="border-t border-indigo-200 pt-2 flex items-center justify-between">
-                                    <span className="text-sm font-bold text-indigo-800">合計（税込）</span>
+                                    <span className="text-sm font-bold text-indigo-800">合計{laborIncludeTax ? "（税込）" : ""}</span>
                                     <span className="text-lg font-bold tabular-nums text-indigo-800">¥{laborTotal.toLocaleString()}</span>
                                 </div>
                             </div>
