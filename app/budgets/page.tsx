@@ -227,12 +227,12 @@ export default function BudgetsPage() {
 
             {/* Create/Edit Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto" onClick={closeModal}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={closeModal}>
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 my-4 sm:my-8 animate-fade-in"
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100vh-2rem)] flex flex-col animate-fade-in"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
                             {/* Header */}
                             <div className="px-4 sm:px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-brand-600 to-brand-700 rounded-t-2xl">
                                 <div className="flex items-center gap-3">
@@ -257,8 +257,8 @@ export default function BudgetsPage() {
                                 </button>
                             </div>
 
-                            {/* Content */}
-                            <div className="p-4 sm:p-5 space-y-3">
+                            {/* Content - scrollable */}
+                            <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 min-h-0">
                                 {/* Basic Info */}
                                 <div>
                                     <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
