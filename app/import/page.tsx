@@ -567,98 +567,95 @@ export default function ImportPage() {
                             </div>
                         </div>
 
-                        {/* Spreadsheet-style Table */}
-                        <div className="overflow-x-auto border border-gray-200 rounded-xl">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-200">
-                                        <th className="px-3 py-2 text-left text-[11px] font-semibold text-gray-500 uppercase w-[280px]">品名（内容・期間）</th>
-                                        <th className="px-3 py-2 text-left text-[11px] font-semibold text-gray-500 uppercase w-[140px]">支払先</th>
-                                        <th className="px-3 py-2 text-right text-[11px] font-semibold text-gray-500 uppercase w-[120px]">単価</th>
-                                        <th className="px-3 py-2 text-center text-[11px] font-semibold text-gray-500 uppercase w-[60px]">数量</th>
-                                        <th className="px-3 py-2 text-right text-[11px] font-semibold text-gray-500 uppercase w-[120px]">金額</th>
-                                        <th className="px-3 py-2 text-center text-[11px] font-semibold text-gray-500 uppercase w-[70px]">ステータス</th>
-                                        <th className="px-2 py-2 w-[40px]"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {laborRows.map((row, idx) => (
-                                        <tr key={row.id} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors">
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="text"
-                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                    value={row.itemName}
-                                                    onChange={(e) => updateLaborRow(row.id, "itemName", e.target.value)}
-                                                    placeholder="例: 人件費試算額(4月～2月)"
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="text"
-                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                    value={row.payee}
-                                                    onChange={(e) => updateLaborRow(row.id, "payee", e.target.value)}
-                                                    placeholder="例: 岩田さん"
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm text-right tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                    value={row.unitPrice || ""}
-                                                    onChange={(e) => updateLaborRow(row.id, "unitPrice", parseInt(e.target.value, 10) || 0)}
-                                                    min={0}
-                                                    placeholder="0"
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <input
-                                                    type="number"
-                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm text-center tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                    value={row.quantity}
-                                                    onChange={(e) => updateLaborRow(row.id, "quantity", parseInt(e.target.value, 10) || 1)}
-                                                    min={1}
-                                                />
-                                            </td>
-                                            <td className="px-2 py-1.5">
-                                                <div className="text-right font-bold tabular-nums text-sm pr-1">
-                                                    {row.amount > 0 ? `¥${row.amount.toLocaleString()}` : "—"}
-                                                </div>
-                                            </td>
-                                            <td className="px-2 py-1.5 text-center">
-                                                <select
-                                                    className="rounded border border-gray-200 px-1.5 py-1 text-[11px] focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
-                                                    value={row.status}
-                                                    onChange={(e) => updateLaborRow(row.id, "status", e.target.value)}
-                                                >
-                                                    <option value="provisional">仮</option>
-                                                    <option value="confirmed">確</option>
-                                                </select>
-                                            </td>
-                                            <td className="px-1 py-1.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeLaborRow(row.id)}
-                                                    className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                                    title="行を削除"
-                                                >
-                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        {/* Labor Rows */}
+                        <div className="space-y-3">
+                            {laborRows.map((row, idx) => (
+                                <div key={row.id} className="border border-gray-200 rounded-xl p-3 sm:p-4 hover:border-indigo-200 transition-colors bg-white">
+                                    {/* Row header with index and delete */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[11px] font-semibold text-gray-400">#{idx + 1}</span>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                                                value={row.status}
+                                                onChange={(e) => updateLaborRow(row.id, "status", e.target.value)}
+                                            >
+                                                <option value="provisional">仮</option>
+                                                <option value="confirmed">確定</option>
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeLaborRow(row.id)}
+                                                className="w-7 h-7 rounded-md flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                title="行を削除"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {/* Fields */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                                        <div>
+                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">品名（内容・期間）</label>
+                                            <input
+                                                type="text"
+                                                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                value={row.itemName}
+                                                onChange={(e) => updateLaborRow(row.id, "itemName", e.target.value)}
+                                                placeholder="例: 人件費試算額(4月〜2月)"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">支払先</label>
+                                            <input
+                                                type="text"
+                                                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                value={row.payee}
+                                                onChange={(e) => updateLaborRow(row.id, "payee", e.target.value)}
+                                                placeholder="例: 岩田さん"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">単価</label>
+                                            <input
+                                                type="number"
+                                                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-right tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                value={row.unitPrice || ""}
+                                                onChange={(e) => updateLaborRow(row.id, "unitPrice", parseInt(e.target.value, 10) || 0)}
+                                                min={0}
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">数量</label>
+                                            <input
+                                                type="number"
+                                                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-center tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                value={row.quantity}
+                                                onChange={(e) => updateLaborRow(row.id, "quantity", parseInt(e.target.value, 10) || 1)}
+                                                min={1}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">金額</label>
+                                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5 text-sm text-right font-bold tabular-nums text-gray-800">
+                                                {row.amount > 0 ? `¥${row.amount.toLocaleString()}` : "—"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         {/* Add row button */}
                         <button
                             type="button"
                             onClick={addLaborRow}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 border border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
