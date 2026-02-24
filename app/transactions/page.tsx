@@ -329,13 +329,13 @@ export default function TransactionsPage() {
 
             {/* Edit Modal */}
             {editingTx && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={handleCancelEdit}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={handleCancelEdit}>
                     <div
-                        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-fade-in my-8"
+                        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-2rem)] flex flex-col animate-fade-in"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl shrink-0">
                             <h3 className="text-base font-bold text-gray-900">執行データの編集</h3>
                             <button onClick={handleCancelEdit} className="w-8 h-8 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
                                 <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -344,8 +344,8 @@ export default function TransactionsPage() {
                             </button>
                         </div>
 
-                        {/* Content */}
-                        <div className="p-6 space-y-4">
+                        {/* Content - scrollable */}
+                        <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
                             {/* Budget Selection */}
                             <div>
                                 <label className="form-label">予算（研究費）</label>
@@ -459,7 +459,7 @@ export default function TransactionsPage() {
                         </div>
 
                         {/* Footer */}
-                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 rounded-b-2xl shrink-0">
                             <button className="btn-secondary" onClick={handleCancelEdit}>キャンセル</button>
                             <button className="btn-primary" onClick={handleSaveEdit}>保存する</button>
                         </div>
