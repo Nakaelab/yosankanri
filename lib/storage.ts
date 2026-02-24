@@ -3,15 +3,22 @@ import {
     ALL_CATEGORIES, ExpenseCategory, CategoryAllocations,
     Teacher,
 } from "./types";
+import { pushToCloud, deleteFromCloud } from "./cloud-sync";
 
 // ==========================================
-// LocalStorage データ永続化
+// LocalStorage + Cloud Sync データ永続化
 // ==========================================
 
 const TRANSACTIONS_KEY = "budget_app_transactions_v2";
 const BUDGETS_KEY = "budget_app_budgets_v2";
 const TEACHERS_KEY = "budget_app_teachers";
 const CURRENT_TEACHER_KEY = "budget_app_current_teacher";
+
+// ヘルパー: localStorage に書き込み + クラウドへ非同期プッシュ
+function setAndSync(key: string, value: string): void {
+    localStorage.setItem(key, value);
+    pushToCloud(key, value);
+}
 
 // ---------- Teachers ----------
 
@@ -28,15 +35,19 @@ export function getTeachers(): Teacher[] {
 export function saveTeacher(teacher: Teacher): void {
     const list = getTeachers();
     list.push(teacher);
-    localStorage.setItem(TEACHERS_KEY, JSON.stringify(list));
+    setAndSync(TEACHERS_KEY, JSON.stringify(list));
 }
 
 export function deleteTeacher(id: string): void {
     const list = getTeachers().filter((t) => t.id !== id);
-    localStorage.setItem(TEACHERS_KEY, JSON.stringify(list));
-    // 関連データの削除も行う（オプション）
-    localStorage.removeItem(`${TRANSACTIONS_KEY}_${id}`);
-    localStorage.removeItem(`${BUDGETS_KEY}_${id}`);
+    setAndSync(TEACHERS_KEY, JSON.stringify(list));
+    // 関連データの削除も行う
+    const txKey = `${TRANSACTIONS_KEY}_${id}`;
+    const bgKey = `${BUDGETS_KEY}_${id}`;
+    localStorage.removeItem(txKey);
+    localStorage.removeItem(bgKey);
+    deleteFromCloud(txKey);
+    deleteFromCloud(bgKey);
 }
 
 export function getCurrentTeacherId(): string | null {
@@ -46,9 +57,10 @@ export function getCurrentTeacherId(): string | null {
 
 export function setCurrentTeacherId(id: string | null): void {
     if (id) {
-        localStorage.setItem(CURRENT_TEACHER_KEY, id);
+        setAndSync(CURRENT_TEACHER_KEY, id);
     } else {
         localStorage.removeItem(CURRENT_TEACHER_KEY);
+        deleteFromCloud(CURRENT_TEACHER_KEY);
     }
 }
 
@@ -91,13 +103,13 @@ export function saveTransaction(tx: Transaction): void {
         list.push(tx);
     }
     const key = getStorageKey(TRANSACTIONS_KEY);
-    localStorage.setItem(key, JSON.stringify(list));
+    setAndSync(key, JSON.stringify(list));
 }
 
 export function deleteTransaction(id: string): void {
     const list = getTransactions().filter((t) => t.id !== id);
     const key = getStorageKey(TRANSACTIONS_KEY);
-    localStorage.setItem(key, JSON.stringify(list));
+    setAndSync(key, JSON.stringify(list));
 }
 
 export function getTransactionsByBudget(budgetId: string): Transaction[] {
@@ -128,7 +140,7 @@ export function saveBudget(budget: Budget): void {
         list.push(budget);
     }
     const key = getStorageKey(BUDGETS_KEY);
-    localStorage.setItem(key, JSON.stringify(list));
+    setAndSync(key, JSON.stringify(list));
 }
 
 export function updateBudget(budget: Budget): void {
@@ -138,7 +150,7 @@ export function updateBudget(budget: Budget): void {
 export function deleteBudget(id: string): void {
     const list = getBudgets().filter((b) => b.id !== id);
     const key = getStorageKey(BUDGETS_KEY);
-    localStorage.setItem(key, JSON.stringify(list));
+    setAndSync(key, JSON.stringify(list));
 }
 
 export function getBudgetById(id: string): Budget | undefined {

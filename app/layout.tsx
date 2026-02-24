@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getCurrentTeacher, setCurrentTeacherId } from "@/lib/storage";
 import { Teacher } from "@/lib/types";
+import { initSync } from "@/lib/cloud-sync";
 
 const NAV_ITEMS = [
     {
@@ -51,15 +52,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
+    const [syncStatus, setSyncStatus] = useState<"syncing" | "done" | "error">("syncing");
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
         window.addEventListener("resize", checkMobile);
 
-        // Fetch current teacher
-        const t = getCurrentTeacher();
-        setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+        // Cloud sync → then load teacher
+        initSync()
+            .then(() => {
+                setSyncStatus("done");
+                const t = getCurrentTeacher();
+                setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+            })
+            .catch(() => {
+                setSyncStatus("error");
+                // オフラインでもローカルデータで動作
+                const t = getCurrentTeacher();
+                setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+            });
 
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
@@ -170,8 +182,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         </button>
                     </div>
 
-                    <div className="px-5 py-3 border-t border-slate-700/50 text-[10px] text-slate-500 text-center">
-                        LocalStorage保存
+                    <div className="px-5 py-3 border-t border-slate-700/50 text-[10px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+                        {syncStatus === "syncing" ? (
+                            <>
+                                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                同期中...
+                            </>
+                        ) : syncStatus === "done" ? (
+                            <>
+                                <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                                </svg>
+                                クラウド同期済
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                </svg>
+                                オフライン (ローカル保存)
+                            </>
+                        )}
                     </div>
                 </aside>
 
