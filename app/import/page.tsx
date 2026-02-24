@@ -13,6 +13,32 @@ import type { Budget } from "@/lib/types";
 
 type Mode = "ocr" | "manual" | "labor";
 type OCRStatus = "idle" | "loading" | "processing" | "done" | "error";
+type LaborStatus = "provisional" | "confirmed";
+
+/** 人件費バッチ入力行 */
+interface LaborRow {
+    id: string;
+    itemName: string;      // 品名（内容・期間）
+    payee: string;         // 支払先（対象者名）
+    unitPrice: number;     // 単価
+    quantity: number;      // 数量
+    amount: number;        // 金額
+    status: LaborStatus;   // 仮/確
+}
+
+const TAX_RATE = 0.10; // 消費税率 10%
+
+function emptyLaborRow(): LaborRow {
+    return {
+        id: uuidv4(),
+        itemName: "",
+        payee: "",
+        unitPrice: 0,
+        quantity: 1,
+        amount: 0,
+        status: "provisional",
+    };
+}
 
 /** 見積書プレビュー用 */
 interface EstimateFile {
@@ -53,6 +79,14 @@ export default function ImportPage() {
 
     // Estimates (見積書)
     const [estimates, setEstimates] = useState<EstimateFile[]>([]);
+
+    // Labor batch rows
+    const [laborRows, setLaborRows] = useState<LaborRow[]>([emptyLaborRow()]);
+    const [laborBudgetId, setLaborBudgetId] = useState("");
+    const [laborDate, setLaborDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    });
 
     // Validation
     const [errors, setErrors] = useState<{ field: string; message: string }[]>([]);
@@ -253,14 +287,88 @@ export default function ImportPage() {
         router.push("/transactions");
     };
 
-    // ---- Reset ----
-    // ... existing imports ...
+    // ---- Labor batch helpers ----
+    const updateLaborRow = (id: string, field: keyof LaborRow, value: string | number) => {
+        setLaborRows(prev => prev.map(row => {
+            if (row.id !== id) return row;
+            const updated = { ...row, [field]: value };
+            // Auto-calc amount when unitPrice or quantity changes
+            if (field === "unitPrice" || field === "quantity") {
+                const up = field === "unitPrice" ? (value as number) : updated.unitPrice;
+                const q = field === "quantity" ? (value as number) : updated.quantity;
+                updated.amount = up * q;
+            }
+            return updated;
+        }));
+    };
 
+    const addLaborRow = () => {
+        setLaborRows(prev => [...prev, emptyLaborRow()]);
+    };
+
+    const removeLaborRow = (id: string) => {
+        setLaborRows(prev => prev.length <= 1 ? prev : prev.filter(r => r.id !== id));
+    };
+
+    const laborSubtotal = laborRows.reduce((s, r) => s + r.amount, 0);
+    const laborTax = Math.floor(laborSubtotal * TAX_RATE);
+    const laborTotal = laborSubtotal + laborTax;
+
+    const handleSaveLabor = async () => {
+        if (!laborBudgetId) { alert("予算（研究費）を選択してください"); return; }
+        const validRows = laborRows.filter(r => r.itemName.trim() && r.amount > 0);
+        if (validRows.length === 0) { alert("少なくとも1行のデータを入力してください"); return; }
+
+        const tid = getCurrentTeacherId();
+        const teacherId = tid === "default" ? undefined : tid;
+
+        for (const row of validRows) {
+            saveTransaction({
+                id: uuidv4(),
+                budgetId: laborBudgetId,
+                slipNumber: "",
+                date: laborDate,
+                itemName: row.itemName,
+                specification: row.payee, // 支払先を規格等フィールドに格納
+                payee: row.payee,
+                unitPrice: row.unitPrice,
+                quantity: row.quantity,
+                amount: row.amount,
+                category: "labor",
+                attachmentCount: 0,
+                createdAt: new Date().toISOString(),
+            });
+        }
+
+        // 消費税分も別取引として登録
+        if (laborTax > 0) {
+            saveTransaction({
+                id: uuidv4(),
+                budgetId: laborBudgetId,
+                slipNumber: "",
+                date: laborDate,
+                itemName: "人件費 消費税 (10%)",
+                specification: "",
+                payee: "",
+                unitPrice: laborTax,
+                quantity: 1,
+                amount: laborTax,
+                category: "labor",
+                attachmentCount: 0,
+                createdAt: new Date().toISOString(),
+            });
+        }
+
+        router.push("/transactions");
+    };
+
+    // ---- Reset ----
     const resetForm = () => {
         setSlipNumber(""); setItemName(""); setSpecification(""); setPayee("");
         setUnitPrice(0); setQuantity(1); setAmount(0); setCategory(mode === "labor" ? "labor" : "goods");
         setEstimates([]); setErrors([]);
         setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText("");
+        setLaborRows([emptyLaborRow()]);
         const d = new Date();
         setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
     };
@@ -428,12 +536,180 @@ export default function ImportPage() {
                     </div>
                 )}
 
+                {/* Labor Batch Form */}
+                {mode === "labor" && (
+                    <div className="section-card p-5 space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                </svg>
+                                人件費の一括登録
+                            </h2>
+                            <span className="text-[11px] text-gray-400">消費税 10% 自動計算</span>
+                        </div>
+
+                        {/* Budget & Date */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-brand-50 border border-brand-200 rounded-lg p-3">
+                                <label className="form-label text-brand-700">予算（研究費）*</label>
+                                <select className="form-select mt-1" value={laborBudgetId} onChange={(e) => setLaborBudgetId(e.target.value)}>
+                                    <option value="">-- 選択してください --</option>
+                                    {budgets.map((b) => (
+                                        <option key={b.id} value={b.id}>{b.name} {b.jCode ? `(${b.jCode})` : ""}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label">計上日</label>
+                                <input type="date" className="form-input mt-1" value={laborDate} onChange={(e) => setLaborDate(e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* Spreadsheet-style Table */}
+                        <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="px-3 py-2 text-left text-[11px] font-semibold text-gray-500 uppercase w-[280px]">品名（内容・期間）</th>
+                                        <th className="px-3 py-2 text-left text-[11px] font-semibold text-gray-500 uppercase w-[140px]">支払先</th>
+                                        <th className="px-3 py-2 text-right text-[11px] font-semibold text-gray-500 uppercase w-[120px]">単価</th>
+                                        <th className="px-3 py-2 text-center text-[11px] font-semibold text-gray-500 uppercase w-[60px]">数量</th>
+                                        <th className="px-3 py-2 text-right text-[11px] font-semibold text-gray-500 uppercase w-[120px]">金額</th>
+                                        <th className="px-3 py-2 text-center text-[11px] font-semibold text-gray-500 uppercase w-[70px]">ステータス</th>
+                                        <th className="px-2 py-2 w-[40px]"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {laborRows.map((row, idx) => (
+                                        <tr key={row.id} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors">
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="text"
+                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                    value={row.itemName}
+                                                    onChange={(e) => updateLaborRow(row.id, "itemName", e.target.value)}
+                                                    placeholder="例: 人件費試算額(4月～2月)"
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="text"
+                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                    value={row.payee}
+                                                    onChange={(e) => updateLaborRow(row.id, "payee", e.target.value)}
+                                                    placeholder="例: 岩田さん"
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="number"
+                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm text-right tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                    value={row.unitPrice || ""}
+                                                    onChange={(e) => updateLaborRow(row.id, "unitPrice", parseInt(e.target.value, 10) || 0)}
+                                                    min={0}
+                                                    placeholder="0"
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <input
+                                                    type="number"
+                                                    className="w-full rounded border border-gray-200 px-2.5 py-1.5 text-sm text-center tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                    value={row.quantity}
+                                                    onChange={(e) => updateLaborRow(row.id, "quantity", parseInt(e.target.value, 10) || 1)}
+                                                    min={1}
+                                                />
+                                            </td>
+                                            <td className="px-2 py-1.5">
+                                                <div className="text-right font-bold tabular-nums text-sm pr-1">
+                                                    {row.amount > 0 ? `¥${row.amount.toLocaleString()}` : "—"}
+                                                </div>
+                                            </td>
+                                            <td className="px-2 py-1.5 text-center">
+                                                <select
+                                                    className="rounded border border-gray-200 px-1.5 py-1 text-[11px] focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
+                                                    value={row.status}
+                                                    onChange={(e) => updateLaborRow(row.id, "status", e.target.value)}
+                                                >
+                                                    <option value="provisional">仮</option>
+                                                    <option value="confirmed">確</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-1 py-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeLaborRow(row.id)}
+                                                    className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                    title="行を削除"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Add row button */}
+                        <button
+                            type="button"
+                            onClick={addLaborRow}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            行を追加
+                        </button>
+
+                        {/* Tax & Total Summary */}
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-4">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-600">人件費 小計</span>
+                                    <span className="font-bold tabular-nums">¥{laborSubtotal.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-600 flex items-center gap-1">
+                                        消費税 (10%)
+                                        <span className="text-[10px] text-gray-400">※自動計算</span>
+                                    </span>
+                                    <span className="font-bold tabular-nums text-amber-700">¥{laborTax.toLocaleString()}</span>
+                                </div>
+                                <div className="border-t border-indigo-200 pt-2 flex items-center justify-between">
+                                    <span className="text-sm font-bold text-indigo-800">合計（税込）</span>
+                                    <span className="text-lg font-bold tabular-nums text-indigo-800">¥{laborTotal.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                            <button className="btn-primary" onClick={handleSaveLabor}>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3" />
+                                </svg>
+                                一括登録して執行一覧へ
+                            </button>
+                            <button className="btn-secondary" onClick={() => { setLaborRows([emptyLaborRow()]); }}>
+                                クリア
+                            </button>
+                            <span className="text-[11px] text-gray-400 ml-auto">
+                                {laborRows.filter(r => r.itemName.trim() && r.amount > 0).length} 件のデータ
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Form (Manual or after OCR) */}
-                {showForm && (
+                {showForm && mode !== "labor" && (
                     <div className="section-card p-5 space-y-5">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-bold text-gray-900">
-                                {mode === "ocr" ? "抽出結果の確認・修正" : mode === "labor" ? "人件費情報の入力" : "執行情報の入力"}
+                                {mode === "ocr" ? "抽出結果の確認・修正" : "執行情報の入力"}
                             </h2>
                             {errors.length > 0 && <span className="badge-error">{errors.length}件の確認事項</span>}
                         </div>
@@ -461,49 +737,46 @@ export default function ImportPage() {
                                     className="form-select"
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                                    disabled={mode === "labor"} // Lock in labor mode
                                 >
                                     {ALL_CATEGORIES.map((cat) => (<option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>))}
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label">{mode === "labor" ? "支払日 / 計上日" : "納品日"}</label>
+                                <label className="form-label">納品日</label>
                                 <input type="date" className={`form-input ${hasError("date") ? "field-error" : ""}`} value={date} onChange={(e) => setDate(e.target.value)} />
                                 {hasError("date") && <p className="field-error-text">{getError("date")}</p>}
                             </div>
                             <div>
-                                <label className="form-label">{mode === "labor" ? "内容・期間 *" : "品名 *"}</label>
+                                <label className="form-label">品名 *</label>
                                 <input
                                     type="text"
                                     className={`form-input ${hasError("itemName") ? "field-error" : ""}`}
                                     value={itemName}
                                     onChange={(e) => setItemName(e.target.value)}
-                                    placeholder={mode === "labor" ? "例: 人件費試算額(6月～3月)" : "例: 電源タップ"}
+                                    placeholder="例: 電源タップ"
                                 />
                                 {hasError("itemName") && <p className="field-error-text">{getError("itemName")}</p>}
                             </div>
                             <div>
-                                <label className="form-label">{mode === "labor" ? "対象者名" : "規格等"}</label>
+                                <label className="form-label">規格等</label>
                                 <input
                                     type="text"
                                     className="form-input"
                                     value={specification}
                                     onChange={(e) => setSpecification(e.target.value)}
-                                    placeholder={mode === "labor" ? "例: 山田 太郎" : "例: エレコム 10個口 2m"}
+                                    placeholder="例: エレコム 10個口 2m"
                                 />
                             </div>
-                            {mode !== "labor" && (
-                                <div>
-                                    <label className="form-label">支払先</label>
-                                    <input type="text" className="form-input" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="例: 法人カード / Amazon" />
-                                </div>
-                            )}
                             <div>
-                                <label className="form-label">{mode === "labor" ? "支給額 (単価)" : "単価"}</label>
+                                <label className="form-label">支払先</label>
+                                <input type="text" className="form-input" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="例: 法人カード / Amazon" />
+                            </div>
+                            <div>
+                                <label className="form-label">単価</label>
                                 <input type="number" className="form-input" value={unitPrice || ""} onChange={(e) => setUnitPrice(parseInt(e.target.value, 10) || 0)} min={0} placeholder="0" />
                             </div>
                             <div>
-                                <label className="form-label">{mode === "labor" ? "支給回数 (数量)" : "数量"}</label>
+                                <label className="form-label">数量</label>
                                 <input type="number" className="form-input" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)} min={1} />
                             </div>
                             <div className="md:col-span-2">
@@ -531,10 +804,10 @@ export default function ImportPage() {
                                         <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
                                         </svg>
-                                        {mode === "labor" ? "関連書類・メモ" : "見積書・添付ファイル"}
+                                        見積書・添付ファイル
                                     </h3>
                                     <p className="text-[11px] text-gray-400 mt-0.5">
-                                        {mode === "labor" ? "雇用契約書や計算メモなどを添付できます（任意）" : "見積書や関連書類の画像を添付できます（任意）"}
+                                        見積書や関連書類の画像を添付できます（任意）
                                     </p>
                                 </div>
                                 <button
