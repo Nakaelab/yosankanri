@@ -6,8 +6,7 @@ import {
     Budget, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES,
     CategoryAllocations, emptyAllocations, ExpenseCategory,
 } from "@/lib/types";
-import { getCurrentTeacherId } from "@/lib/storage";
-import { getBudgetsAction, saveBudgetAction, deleteBudgetAction, getTransactionsAction } from "../actions";
+import { getCurrentTeacherId, getBudgets, saveBudget, deleteBudget, getTransactions } from "@/lib/storage";
 import type { BudgetSummary } from "@/lib/types";
 
 export default function BudgetsPage() {
@@ -26,14 +25,9 @@ export default function BudgetsPage() {
     const [allocations, setAllocations] = useState<CategoryAllocations>(emptyAllocations());
     const [createdAt, setCreatedAt] = useState<string>("");
 
-    const reload = async () => {
-        const tid = getCurrentTeacherId();
-        const currentTeacherId = tid === "default" ? undefined : tid;
-
-        const [bData, tData] = await Promise.all([
-            getBudgetsAction(currentTeacherId || undefined),
-            getTransactionsAction(currentTeacherId || undefined)
-        ]);
+    const reload = () => {
+        const bData = getBudgets();
+        const tData = getTransactions();
 
         const bSorted = bData.sort((a, b) => a.name.localeCompare(b.name, "ja"));
         setBudgets(bSorted);
@@ -87,16 +81,12 @@ export default function BudgetsPage() {
         setEditingBudget(null);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) { alert("研究費名を入力してください"); return; }
 
-        const tid = getCurrentTeacherId();
-        const teacherId = tid === "default" ? undefined : tid;
-
-        await saveBudgetAction({
+        saveBudget({
             id: editingBudget ? editingBudget.id : uuidv4(),
-            teacherId: teacherId || undefined,
             name: name.trim(),
             jCode: jCode.trim(),
             fiscalYear,
@@ -108,9 +98,9 @@ export default function BudgetsPage() {
         reload();
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = (id: string) => {
         if (!confirm("この予算を削除しますか？\n紐づく執行データは削除されません。")) return;
-        await deleteBudgetAction(id);
+        deleteBudget(id);
         reload();
     };
 

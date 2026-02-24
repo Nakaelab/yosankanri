@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta, ALL_CATEGORIES, ExpenseCategory } from "@/lib/types";
-import { getTransactionsAction, deleteTransactionAction, getBudgetsAction, getAttachmentsAction, saveTransactionAction } from "../actions";
+import { getTransactions, deleteTransaction, getBudgets, saveTransaction } from "@/lib/storage";
 import { getCurrentTeacherId } from "@/lib/storage";
 import { formatFileSize } from "@/lib/attachments";
 
@@ -33,14 +33,9 @@ export default function TransactionsPage() {
         budgetId: "",
     });
 
-    const reload = async () => {
-        const tid = getCurrentTeacherId();
-        const currentTeacherId = tid === "default" ? undefined : tid;
-
-        const [txData, bData] = await Promise.all([
-            getTransactionsAction(currentTeacherId || undefined),
-            getBudgetsAction(currentTeacherId || undefined)
-        ]);
+    const reload = () => {
+        const txData = getTransactions();
+        const bData = getBudgets();
 
         setTransactions(
             txData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -50,9 +45,9 @@ export default function TransactionsPage() {
 
     useEffect(() => { setMounted(true); reload(); }, []);
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = (id: string) => {
         if (!confirm("この執行データを削除しますか？\n添付ファイルも削除されます。")) return;
-        await deleteTransactionAction(id);
+        deleteTransaction(id);
         reload();
     };
 
@@ -73,7 +68,7 @@ export default function TransactionsPage() {
         });
     };
 
-    const handleSaveEdit = async () => {
+    const handleSaveEdit = () => {
         if (!editingTx) return;
         if (!editForm.budgetId) { alert("予算を選択してください"); return; }
         if (!editForm.itemName.trim()) { alert("品名を入力してください"); return; }
@@ -84,7 +79,7 @@ export default function TransactionsPage() {
             ...editForm,
         };
 
-        await saveTransactionAction(updated);
+        saveTransaction(updated);
         setEditingTx(null);
         reload();
     };
@@ -103,13 +98,10 @@ export default function TransactionsPage() {
     }, [editForm.unitPrice, editForm.quantity]);
 
 
-    const openAttachments = async (tx: Transaction) => {
+    const openAttachments = (tx: Transaction) => {
         setPreviewTx(tx);
-        const metas = await getAttachmentsAction(tx.id);
-        setPreviewAttachments(metas);
-        if (metas.length > 0) {
-            showAttachment(metas[0]);
-        }
+        // Attachments via API - may not be available on Vercel
+        setPreviewAttachments([]);
     };
 
     const showAttachment = (meta: AttachmentMeta) => {

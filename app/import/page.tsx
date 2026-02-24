@@ -8,8 +8,7 @@ import {
     DOC_TYPE_LABELS, DocType, validateExtracted, Transaction,
 } from "@/lib/types";
 import { extractFromOCRText } from "@/lib/extract";
-import { saveTransactionAction, getBudgetsAction, getTransactionsAction } from "@/app/actions";
-import { getCurrentTeacherId } from "@/lib/storage";
+import { getCurrentTeacherId, saveTransaction, getBudgets, getTransactions } from "@/lib/storage";
 import type { Budget } from "@/lib/types";
 
 type Mode = "ocr" | "manual" | "labor";
@@ -76,13 +75,9 @@ export default function ImportPage() {
     });
 
     useEffect(() => {
-        const load = async () => {
-            const tid = getCurrentTeacherId();
-            const currentTeacherId = tid === "default" ? undefined : (tid || undefined);
-            const [bData, txData] = await Promise.all([
-                getBudgetsAction(currentTeacherId),
-                getTransactionsAction(currentTeacherId),
-            ]);
+        const load = () => {
+            const bData = getBudgets();
+            const txData = getTransactions();
             setBudgets(bData);
             setExistingTransactions(
                 txData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -238,9 +233,8 @@ export default function ImportPage() {
             }
         }
 
-        await saveTransactionAction({
+        saveTransaction({
             id: txId,
-            teacherId: teacherId || undefined,
             budgetId: selectedBudgetId,
             slipNumber,
             date,
@@ -312,12 +306,10 @@ export default function ImportPage() {
             ...editForm,
         };
 
-        await saveTransactionAction(updated);
+        saveTransaction(updated);
         setEditingTx(null);
         // Refresh existing transactions
-        const tid = getCurrentTeacherId();
-        const currentTeacherId = tid === "default" ? undefined : (tid || undefined);
-        const txData = await getTransactionsAction(currentTeacherId);
+        const txData = getTransactions();
         setExistingTransactions(
             txData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         );

@@ -84,7 +84,12 @@ export function getTransactions(): Transaction[] {
 
 export function saveTransaction(tx: Transaction): void {
     const list = getTransactions();
-    list.push(tx);
+    const index = list.findIndex((t) => t.id === tx.id);
+    if (index >= 0) {
+        list[index] = tx;
+    } else {
+        list.push(tx);
+    }
     const key = getStorageKey(TRANSACTIONS_KEY);
     localStorage.setItem(key, JSON.stringify(list));
 }
@@ -116,15 +121,18 @@ export function getBudgets(): Budget[] {
 
 export function saveBudget(budget: Budget): void {
     const list = getBudgets();
-    list.push(budget);
+    const index = list.findIndex((b) => b.id === budget.id);
+    if (index >= 0) {
+        list[index] = budget;
+    } else {
+        list.push(budget);
+    }
     const key = getStorageKey(BUDGETS_KEY);
     localStorage.setItem(key, JSON.stringify(list));
 }
 
 export function updateBudget(budget: Budget): void {
-    const list = getBudgets().map((b) => (b.id === budget.id ? budget : b));
-    const key = getStorageKey(BUDGETS_KEY);
-    localStorage.setItem(key, JSON.stringify(list));
+    saveBudget(budget); // updateBudget is now an alias for saveBudget
 }
 
 export function deleteBudget(id: string): void {

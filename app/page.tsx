@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction, ExpenseCategory } from "@/lib/types";
-import { getCurrentTeacherId, setCurrentTeacherId } from "@/lib/storage";
-import { getTeachersAction, saveTeacherAction, getBudgetsAction, getTransactionsAction, saveTransactionAction } from "@/app/actions";
+import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions, saveTransaction } from "@/lib/storage";
 
 // ===============================================
 // Teacher Selection
@@ -21,9 +20,9 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         loadTeachers();
     }, []);
 
-    const loadTeachers = async () => {
+    const loadTeachers = () => {
         setLoading(true);
-        const list = await getTeachersAction();
+        const list = getTeachers();
         setTeachers(list);
         setLoading(false);
     };
@@ -33,7 +32,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         onSelected();
     };
 
-    const handleCreate = async (e: React.FormEvent) => {
+    const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newName.trim()) return;
         const newTeacher: Teacher = {
@@ -41,7 +40,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
             name: newName.trim(),
             createdAt: new Date().toISOString(),
         };
-        await saveTeacherAction(newTeacher);
+        saveTeacher(newTeacher);
         setCurrentTeacherId(newTeacher.id);
         onSelected();
     };
@@ -183,14 +182,9 @@ function Dashboard() {
     useEffect(() => {
         setMounted(true);
 
-        const load = async () => {
-            const tid = getCurrentTeacherId();
-            const teacherId = tid === "default" ? undefined : (tid || undefined);
-
-            const [budgets, transactions] = await Promise.all([
-                getBudgetsAction(teacherId),
-                getTransactionsAction(teacherId)
-            ]);
+        const load = () => {
+            const budgets = getBudgets();
+            const transactions = getTransactions();
 
             // Calculate summaries
             const s: BudgetSummary[] = budgets.map(b => {
@@ -242,7 +236,7 @@ function Dashboard() {
         });
     };
 
-    const handleSaveEdit = async () => {
+    const handleSaveEdit = () => {
         if (!editingTx) return;
         if (!editForm.budgetId) { alert("予算を選択してください"); return; }
         if (!editForm.itemName.trim()) { alert("品名を入力してください"); return; }
@@ -253,7 +247,7 @@ function Dashboard() {
             ...editForm,
         };
 
-        await saveTransactionAction(updated);
+        saveTransaction(updated);
         setEditingTx(null);
         // Reload data
         window.location.reload();
