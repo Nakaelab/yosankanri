@@ -1,15 +1,25 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-let supabase: SupabaseClient | null = null;
+// ブラウザ環境かつ環境変数が揃っている場合のみクライアントを作成する関数
+const createSupabaseClient = (): SupabaseClient | null => {
+    // サーバーサイド（ビルド時など）では null を返す
+    if (typeof window === "undefined") return null;
 
-// クライアントサイドでのみ初期化 (SSR/SSGビルド時はスキップ)
-if (typeof window !== "undefined") {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    if (supabaseUrl && supabaseKey) {
-        supabase = createClient(supabaseUrl, supabaseKey);
+    // 環境変数が1つでも欠けている場合は null を返す
+    if (!url || !key || url === "" || key === "") {
+        console.warn("Supabase credentials missing. Sync will be disabled.");
+        return null;
     }
-}
 
-export { supabase };
+    try {
+        return createClient(url, key);
+    } catch (e) {
+        console.error("Failed to initialize Supabase client:", e);
+        return null;
+    }
+};
+
+export const supabase = createSupabaseClient();
