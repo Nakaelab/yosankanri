@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "aa9acd43-d752-49ff-a1dd-099e95577fe2",
+    "name": "a",
+    "jCode": "a",
+    "fiscalYear": 2026,
+    "allocations": {
+      "goods": 200,
+      "travel": 0,
+      "honorarium": 0,
+      "labor": 0,
+      "other": 0,
+      "subcontract": 0,
+      "refund": 0
+    },
+    "createdAt": "2026-02-24T02:24:37.232Z"
+  }
+]
