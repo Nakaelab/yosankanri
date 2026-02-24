@@ -18,6 +18,7 @@ const pendingPushes: Map<string, ReturnType<typeof setTimeout>> = new Map();
  * @returns true if cloud had data
  */
 export async function pullFromCloud(): Promise<boolean> {
+    if (!supabase) return false;
     try {
         const { data, error } = await supabase
             .from("app_data")
@@ -47,7 +48,7 @@ export async function pullFromCloud(): Promise<boolean> {
  * 1 つのキーをクラウドにプッシュ (デバウンス付き)
  */
 export async function pushToCloud(key: string, value: string): Promise<void> {
-    if (!syncReady) return; // 初期同期完了前はプッシュしない
+    if (!supabase || !syncReady) return;
 
     // デバウンス: 同じキーへの連続書き込みをまとめる (500ms)
     const existing = pendingPushes.get(key);
@@ -58,7 +59,7 @@ export async function pushToCloud(key: string, value: string): Promise<void> {
         setTimeout(async () => {
             pendingPushes.delete(key);
             try {
-                const { error } = await supabase.from("app_data").upsert({
+                const { error } = await supabase!.from("app_data").upsert({
                     key,
                     value,
                     updated_at: new Date().toISOString(),
@@ -79,7 +80,7 @@ export async function pushToCloud(key: string, value: string): Promise<void> {
  * クラウドからキーを削除
  */
 export async function deleteFromCloud(key: string): Promise<void> {
-    if (!syncReady) return;
+    if (!supabase || !syncReady) return;
     try {
         const { error } = await supabase.from("app_data").delete().eq("key", key);
         if (error) console.error(`[Sync] Delete error for ${key}:`, error.message);
@@ -92,6 +93,7 @@ export async function deleteFromCloud(key: string): Promise<void> {
  * localStorage の budget_app_* キーをすべてクラウドにプッシュ
  */
 async function pushAllToCloud(): Promise<void> {
+    if (!supabase) return;
     const rows: { key: string; value: string; updated_at: string }[] = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -127,6 +129,11 @@ async function pushAllToCloud(): Promise<void> {
  * 2. クラウドが空で localStorage にデータがあれば → クラウドにアップロード
  */
 export async function initSync(): Promise<void> {
+    if (!supabase) {
+        console.log("[Sync] Supabase not configured, skipping sync");
+        syncReady = true;
+        return;
+    }
     try {
         const hasCloud = await pullFromCloud();
         if (!hasCloud) {
