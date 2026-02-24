@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    turbopack: {},
     webpack: (config) => {
         // tesseract.js WASM support
         config.resolve.fallback = {
