@@ -581,14 +581,18 @@ export default function ImportPage() {
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-[11px] font-semibold text-gray-400">#{idx + 1}</span>
                                         <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => updateLaborRow(row.id, "status", row.status === "provisional" ? "confirmed" : "provisional")}
-                                                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${row.status === "confirmed" ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200"}`}
-                                                title="クリックで切り替え"
-                                            >
-                                                {row.status === "confirmed" ? "確定" : "仮"}
-                                            </button>
+                                            <div className="flex rounded-md overflow-hidden border border-gray-200 text-xs font-semibold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateLaborRow(row.id, "status", "provisional")}
+                                                    className={`px-2.5 py-1 transition-colors ${row.status === "provisional" ? "bg-amber-400 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                                >仮</button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateLaborRow(row.id, "status", "confirmed")}
+                                                    className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${row.status === "confirmed" ? "bg-green-500 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                                >確定</button>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => removeLaborRow(row.id)}
