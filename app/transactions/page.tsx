@@ -27,6 +27,7 @@ export default function TransactionsPage() {
         category: "goods" as ExpenseCategory, budgetId: "",
     });
     const [editNewFiles, setEditNewFiles] = useState<File[]>([]);
+    const [editRemovedIds, setEditRemovedIds] = useState<string[]>([]);
     const [editUploading, setEditUploading] = useState(false);
     const editFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +44,7 @@ export default function TransactionsPage() {
     };
 
     const handleEdit = (tx: Transaction) => {
-        setEditingTx(tx); setEditNewFiles([]);
+        setEditingTx(tx); setEditNewFiles([]); setEditRemovedIds([]);
         setEditForm({ slipNumber: tx.slipNumber, date: tx.date, itemName: tx.itemName, specification: tx.specification, payee: tx.payee, unitPrice: tx.unitPrice, quantity: tx.quantity, amount: tx.amount, category: tx.category, budgetId: tx.budgetId });
     };
 
@@ -63,12 +64,13 @@ export default function TransactionsPage() {
                 else alert(`アップロード失敗: ${file.name}`);
             } catch { alert(`アップロードエラー: ${file.name}`); }
         }
-        const allAttachments = [...(editingTx.attachments || []), ...newMetas];
+        const keptAttachments = (editingTx.attachments || []).filter(a => !editRemovedIds.includes(a.id));
+        const allAttachments = [...keptAttachments, ...newMetas];
         saveTransaction({ ...editingTx, ...editForm, attachments: allAttachments.length > 0 ? allAttachments : undefined, attachmentCount: allAttachments.length });
-        setEditUploading(false); setEditingTx(null); setEditNewFiles([]); reload();
+        setEditUploading(false); setEditingTx(null); setEditNewFiles([]); setEditRemovedIds([]); reload();
     };
 
-    const handleCancelEdit = () => { setEditingTx(null); setEditNewFiles([]); };
+    const handleCancelEdit = () => { setEditingTx(null); setEditNewFiles([]); setEditRemovedIds([]); };
 
     const handleEditFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
@@ -342,7 +344,8 @@ export default function TransactionsPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] font-semibold text-gray-600">📎 見積書・添付</span>
-                                        {(editingTx.attachmentCount || 0) > 0 && <span className="text-[10px] text-blue-400">既存 {editingTx.attachmentCount}件</span>}
+                                        {(editingTx.attachmentCount || 0) > 0 && <span className="text-[10px] text-blue-400">既存 {(editingTx.attachmentCount || 0) - editRemovedIds.length}件</span>}
+                                        {editRemovedIds.length > 0 && <span className="text-[10px] text-red-400">-{editRemovedIds.length}件削除</span>}
                                         {editNewFiles.length > 0 && <span className="text-[10px] text-green-500">+{editNewFiles.length}件</span>}
                                     </div>
                                     <button type="button" onClick={() => editFileInputRef.current?.click()} className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] rounded-lg flex items-center gap-1">
@@ -353,12 +356,22 @@ export default function TransactionsPage() {
                                 </div>
                                 {((editingTx.attachments || []).length > 0 || editNewFiles.length > 0) && (
                                     <div className="mt-1.5 space-y-1 max-h-16 overflow-y-auto">
-                                        {(editingTx.attachments || []).map((att) => (
-                                            <div key={att.id} className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded text-[10px]">
-                                                <span className="text-blue-600 truncate flex-1">{att.fileName}</span>
-                                                <span className="text-blue-300 shrink-0">{formatFileSize(att.size)}</span>
-                                            </div>
-                                        ))}
+                                        {(editingTx.attachments || []).map((att) => {
+                                            const isRemoved = editRemovedIds.includes(att.id);
+                                            return (
+                                                <div key={att.id} className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] ${isRemoved ? "bg-red-50" : "bg-blue-50"}`}>
+                                                    <span className={`truncate flex-1 ${isRemoved ? "text-red-400 line-through" : "text-blue-600"}`}>{att.fileName}</span>
+                                                    <span className={`shrink-0 ${isRemoved ? "text-red-300" : "text-blue-300"}`}>{formatFileSize(att.size)}</span>
+                                                    <button
+                                                        onClick={() => setEditRemovedIds(prev => isRemoved ? prev.filter(id => id !== att.id) : [...prev, att.id])}
+                                                        className={`shrink-0 ml-0.5 ${isRemoved ? "text-blue-400 hover:text-blue-600" : "text-gray-300 hover:text-red-500"}`}
+                                                        title={isRemoved ? "削除を取り消す" : "削除"}
+                                                    >
+                                                        {isRemoved ? "↩" : "✕"}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                         {editNewFiles.map((file, idx) => (
                                             <div key={idx} className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded text-[10px]">
                                                 <span className="text-green-600 truncate flex-1">{file.name}</span>
