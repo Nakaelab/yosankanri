@@ -581,14 +581,16 @@ export default function ImportPage() {
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-[11px] font-semibold text-gray-400">#{idx + 1}</span>
                                         <div className="flex items-center gap-2">
-                                            <select
-                                                className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200"
-                                                value={row.status}
-                                                onChange={(e) => updateLaborRow(row.id, "status", e.target.value)}
+                                            <button
+                                                type="button"
+                                                onClick={() => updateLaborRow(row.id, "status", row.status === "provisional" ? "confirmed" : "provisional")}
+                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors ${row.status === "confirmed"
+                                                        ? "bg-green-50 text-green-700 border-green-200"
+                                                        : "bg-amber-50 text-amber-700 border-amber-200"
+                                                    }`}
                                             >
-                                                <option value="provisional">仮</option>
-                                                <option value="confirmed">確定</option>
-                                            </select>
+                                                {row.status === "confirmed" ? "確定" : "仮"}
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => removeLaborRow(row.id)}
