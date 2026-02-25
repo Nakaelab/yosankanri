@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta, ALL_CATEGORIES, ExpenseCategory } from "@/lib/types";
 import { getTransactions, deleteTransaction, getBudgets, saveTransaction } from "@/lib/storage";
 import { getCurrentTeacherId } from "@/lib/storage";
@@ -188,9 +189,9 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
-            {/* ===== Attachment Preview Modal ===== */}
-            {previewTx && (
-                <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" onClick={closePreview}>
+            {/* ===== Attachment Preview Modal (portal to body) ===== */}
+            {previewTx && createPortal(
+                <div className="fixed inset-0 flex flex-col bg-black/95" style={{ zIndex: 9999 }} onClick={closePreview}>
                     <div className="flex items-center justify-between px-5 py-3 bg-gray-900 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <div className="min-w-0">
                             <p className="text-white text-sm font-semibold truncate">{previewName || "添付ファイル"}</p>
@@ -225,11 +226,7 @@ export default function TransactionsPage() {
                         </div>
                     )}
                     <div className="flex-1 relative" style={{ minHeight: 0 }} onClick={(e) => e.stopPropagation()}>
-                        {previewAttachments.length === 0 ? (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <p className="text-gray-400 text-sm">添付ファイルのURLが見つかりません</p>
-                            </div>
-                        ) : previewUrl ? (
+                        {previewUrl ? (
                             previewName.toLowerCase().endsWith(".pdf") ? (
                                 <iframe src={previewUrl} title={previewName} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
                             ) : (
@@ -243,154 +240,155 @@ export default function TransactionsPage() {
                             </div>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {/* ===== Edit Modal ===== */}
-            {editingTx && (
-                <>
-                    {/* Backdrop — always covers full viewport */}
-                    <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm" onClick={handleCancelEdit} />
-
-                    {/* Modal scroller — above backdrop, pointer-events only on card */}
-                    <div className="fixed inset-0 z-[101] overflow-y-auto flex justify-center items-start py-4 px-3 pointer-events-none">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col animate-fade-in pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-
-                            {/* Header */}
-                            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-brand-50 to-indigo-50 rounded-t-2xl">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
-                                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-900">執行データの編集</h3>
-                                        <p className="text-[10px] text-gray-400 truncate max-w-xs">{editingTx.itemName || "—"} — {editingTx.date}</p>
-                                    </div>
+            {/* ===== Edit Modal (portal to body — avoids overflow-x:hidden stacking issue) ===== */}
+            {editingTx && createPortal(
+                <div
+                    style={{ position: "fixed", inset: 0, zIndex: 9999, backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "1rem" }}
+                    onClick={handleCancelEdit}
+                >
+                    <div
+                        style={{ background: "white", borderRadius: "1rem", boxShadow: "0 25px 50px rgba(0,0,0,0.3)", width: "100%", maxWidth: "36rem", flexShrink: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-brand-50 to-indigo-50 rounded-t-2xl">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
+                                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                                 </div>
-                                <button onClick={handleCancelEdit} className="w-7 h-7 rounded-lg hover:bg-white/60 flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-
-                            {/* Body */}
-                            <div className="px-4 py-3 space-y-2">
-                                {/* 予算 + 費目 */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">予算</label>
-                                        <select className="form-select text-xs py-1" value={editForm.budgetId} onChange={(e) => setEditForm({ ...editForm, budgetId: e.target.value })}>
-                                            <option value="">-- 選択 --</option>
-                                            {budgets.map((b) => <option key={b.id} value={b.id}>{b.name}{b.jCode ? ` (${b.jCode})` : ""}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">費目</label>
-                                        <select className="form-select text-xs py-1" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value as ExpenseCategory })}>
-                                            {ALL_CATEGORIES.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* 伝票 + 日付 */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">伝票番号</label>
-                                        <input type="text" className="form-input font-mono text-xs py-1" value={editForm.slipNumber} onChange={(e) => setEditForm({ ...editForm, slipNumber: e.target.value })} placeholder="例: P250..." />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "支払日" : "納品日"}</label>
-                                        <input type="date" className="form-input text-xs py-1" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
-                                    </div>
-                                </div>
-
-                                {/* 品名 */}
                                 <div>
-                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "内容・期間" : "品名"}</label>
-                                    <input type="text" className="form-input text-xs py-1" value={editForm.itemName} onChange={(e) => setEditForm({ ...editForm, itemName: e.target.value })} />
+                                    <h3 className="text-sm font-bold text-gray-900">執行データの編集</h3>
+                                    <p className="text-[10px] text-gray-400 truncate max-w-xs">{editingTx.itemName || "—"} — {editingTx.date}</p>
                                 </div>
+                            </div>
+                            <button onClick={handleCancelEdit} className="w-7 h-7 rounded-lg hover:bg-white/60 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
 
-                                {/* 規格 + 支払先 */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "対象者名" : "規格等"}</label>
-                                        <input type="text" className="form-input text-xs py-1" value={editForm.specification} onChange={(e) => setEditForm({ ...editForm, specification: e.target.value })} />
-                                    </div>
-                                    {!isLabor && (
-                                        <div>
-                                            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">支払先</label>
-                                            <input type="text" className="form-input text-xs py-1" value={editForm.payee} onChange={(e) => setEditForm({ ...editForm, payee: e.target.value })} />
-                                        </div>
-                                    )}
+                        {/* Body */}
+                        <div className="px-4 py-3 space-y-2">
+                            {/* 予算 + 費目 */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">予算</label>
+                                    <select className="form-select text-xs py-1" value={editForm.budgetId} onChange={(e) => setEditForm({ ...editForm, budgetId: e.target.value })}>
+                                        <option value="">-- 選択 --</option>
+                                        {budgets.map((b) => <option key={b.id} value={b.id}>{b.name}{b.jCode ? ` (${b.jCode})` : ""}</option>)}
+                                    </select>
                                 </div>
-
-                                {/* 単価 + 数量 + 金額 */}
-                                <div className="grid grid-cols-3 gap-2 bg-brand-50/60 rounded-xl px-3 py-2">
-                                    <div>
-                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">{isLabor ? "支給額" : "単価"}</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editForm.unitPrice || ""} onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">{isLabor ? "回数" : "数量"}</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（円）</label>
-                                        <input type="number" className="form-input text-xs py-1 font-bold" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })} min={0} />
-                                    </div>
-                                </div>
-
-                                {/* 添付ファイル */}
-                                <div className="border border-dashed border-gray-200 rounded-xl px-3 py-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-semibold text-gray-600">📎 見積書・添付</span>
-                                            {(editingTx.attachmentCount || 0) > 0 && <span className="text-[10px] text-blue-400">既存 {editingTx.attachmentCount}件</span>}
-                                            {editNewFiles.length > 0 && <span className="text-[10px] text-green-500">+{editNewFiles.length}件</span>}
-                                        </div>
-                                        <button type="button" onClick={() => editFileInputRef.current?.click()} className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] rounded-lg flex items-center gap-1">
-                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                                            追加
-                                        </button>
-                                        <input ref={editFileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleEditFileAdd} />
-                                    </div>
-                                    {((editingTx.attachments || []).length > 0 || editNewFiles.length > 0) && (
-                                        <div className="mt-1.5 space-y-1 max-h-16 overflow-y-auto">
-                                            {(editingTx.attachments || []).map((att) => (
-                                                <div key={att.id} className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded text-[10px]">
-                                                    <span className="text-blue-600 truncate flex-1">{att.fileName}</span>
-                                                    <span className="text-blue-300 shrink-0">{formatFileSize(att.size)}</span>
-                                                </div>
-                                            ))}
-                                            {editNewFiles.map((file, idx) => (
-                                                <div key={idx} className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded text-[10px]">
-                                                    <span className="text-green-600 truncate flex-1">{file.name}</span>
-                                                    <span className="text-green-300 shrink-0">{formatFileSize(file.size)}</span>
-                                                    <button onClick={() => removeEditNewFile(idx)} className="text-green-400 hover:text-red-500 ml-1">✕</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">費目</label>
+                                    <select className="form-select text-xs py-1" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value as ExpenseCategory })}>
+                                        {ALL_CATEGORIES.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
+                                    </select>
                                 </div>
                             </div>
 
-                            {/* Footer */}
-                            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-end gap-2 rounded-b-2xl">
-                                <button className="btn-secondary text-xs py-1.5 px-4" onClick={handleCancelEdit} disabled={editUploading}>キャンセル</button>
-                                <button className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5" onClick={handleSaveEdit} disabled={editUploading}>
-                                    {editUploading ? (
-                                        <>
-                                            <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                            </svg>
-                                            アップロード中...
-                                        </>
-                                    ) : "保存する"}
-                                </button>
+                            {/* 伝票 + 日付 */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">伝票番号</label>
+                                    <input type="text" className="form-input font-mono text-xs py-1" value={editForm.slipNumber} onChange={(e) => setEditForm({ ...editForm, slipNumber: e.target.value })} placeholder="例: P250..." />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "支払日" : "納品日"}</label>
+                                    <input type="date" className="form-input text-xs py-1" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                                </div>
+                            </div>
+
+                            {/* 品名 */}
+                            <div>
+                                <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "内容・期間" : "品名"}</label>
+                                <input type="text" className="form-input text-xs py-1" value={editForm.itemName} onChange={(e) => setEditForm({ ...editForm, itemName: e.target.value })} />
+                            </div>
+
+                            {/* 規格 + 支払先 */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "対象者名" : "規格等"}</label>
+                                    <input type="text" className="form-input text-xs py-1" value={editForm.specification} onChange={(e) => setEditForm({ ...editForm, specification: e.target.value })} />
+                                </div>
+                                {!isLabor && (
+                                    <div>
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">支払先</label>
+                                        <input type="text" className="form-input text-xs py-1" value={editForm.payee} onChange={(e) => setEditForm({ ...editForm, payee: e.target.value })} />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 単価 + 数量 + 金額 */}
+                            <div className="grid grid-cols-3 gap-2 bg-brand-50/60 rounded-xl px-3 py-2">
+                                <div>
+                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">{isLabor ? "支給額" : "単価"}</label>
+                                    <input type="number" className="form-input text-xs py-1" value={editForm.unitPrice || ""} onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">{isLabor ? "回数" : "数量"}</label>
+                                    <input type="number" className="form-input text-xs py-1" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（円）</label>
+                                    <input type="number" className="form-input text-xs py-1 font-bold" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                </div>
+                            </div>
+
+                            {/* 添付ファイル */}
+                            <div className="border border-dashed border-gray-200 rounded-xl px-3 py-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-semibold text-gray-600">📎 見積書・添付</span>
+                                        {(editingTx.attachmentCount || 0) > 0 && <span className="text-[10px] text-blue-400">既存 {editingTx.attachmentCount}件</span>}
+                                        {editNewFiles.length > 0 && <span className="text-[10px] text-green-500">+{editNewFiles.length}件</span>}
+                                    </div>
+                                    <button type="button" onClick={() => editFileInputRef.current?.click()} className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] rounded-lg flex items-center gap-1">
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                        追加
+                                    </button>
+                                    <input ref={editFileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleEditFileAdd} />
+                                </div>
+                                {((editingTx.attachments || []).length > 0 || editNewFiles.length > 0) && (
+                                    <div className="mt-1.5 space-y-1 max-h-16 overflow-y-auto">
+                                        {(editingTx.attachments || []).map((att) => (
+                                            <div key={att.id} className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded text-[10px]">
+                                                <span className="text-blue-600 truncate flex-1">{att.fileName}</span>
+                                                <span className="text-blue-300 shrink-0">{formatFileSize(att.size)}</span>
+                                            </div>
+                                        ))}
+                                        {editNewFiles.map((file, idx) => (
+                                            <div key={idx} className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded text-[10px]">
+                                                <span className="text-green-600 truncate flex-1">{file.name}</span>
+                                                <span className="text-green-300 shrink-0">{formatFileSize(file.size)}</span>
+                                                <button onClick={() => removeEditNewFile(idx)} className="text-green-400 hover:text-red-500 ml-1">✕</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
+
+                        {/* Footer */}
+                        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-end gap-2 rounded-b-2xl">
+                            <button className="btn-secondary text-xs py-1.5 px-4" onClick={handleCancelEdit} disabled={editUploading}>キャンセル</button>
+                            <button className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5" onClick={handleSaveEdit} disabled={editUploading}>
+                                {editUploading ? (
+                                    <>
+                                        <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        アップロード中...
+                                    </>
+                                ) : "保存する"}
+                            </button>
+                        </div>
                     </div>
-                </>
+                </div>,
+                document.body
             )}
         </div>
     );
