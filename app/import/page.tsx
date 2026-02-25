@@ -584,7 +584,8 @@ export default function ImportPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => updateLaborRow(row.id, "status", row.status === "provisional" ? "confirmed" : "provisional")}
-                                                className={`text-xs font-semibold transition-colors ${row.status === "confirmed" ? "text-green-600 hover:text-green-800" : "text-amber-500 hover:text-amber-700"}`}
+                                                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${row.status === "confirmed" ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200"}`}
+                                                title="クリックで切り替え"
                                             >
                                                 {row.status === "confirmed" ? "確定" : "仮"}
                                             </button>
