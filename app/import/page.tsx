@@ -258,10 +258,7 @@ export default function ImportPage() {
 
             for (const est of estimates) {
                 try {
-                    const { v4: id } = await import("uuid");
-                    const fileId = id();
-                    const ext = est.file.name.split(".").pop() || "bin";
-                    // ファイル名をサニタイズ（スペースや特殊文字を除去）
+                    const fileId = uuidv4(); // すでにインポート済みの uuidv4 を使用
                     const safeName = est.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
                     const storagePath = `${txId}/${fileId}_${safeName}`;
 
@@ -273,8 +270,8 @@ export default function ImportPage() {
                         });
 
                     if (error) {
-                        console.error("Upload error:", error);
-                        alert(`ファイルのアップロードに失敗しました: ${est.file.name}\n${error.message}`);
+                        console.error("Supabase upload error:", error);
+                        alert(`ファイルのアップロードに失敗しました: ${est.file.name}\nエラー: ${error.message}`);
                     } else {
                         const { data: urlData } = supabase.storage
                             .from("attachments")
@@ -291,11 +288,12 @@ export default function ImportPage() {
                         });
                     }
                 } catch (e) {
-                    console.error("Upload failed:", e);
-                    alert(`ファイルのアップロードに失敗しました: ${est.file.name}`);
+                    console.error("Upload exception:", e);
+                    alert(`ファイルのアップロードに失敗しました: ${est.file.name}\n${String(e)}`);
                 }
             }
         }
+
 
         saveTransaction({
             id: txId,
