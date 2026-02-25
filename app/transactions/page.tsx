@@ -271,13 +271,13 @@ export default function TransactionsPage() {
             {/* Attachment Preview Modal */}
             {
                 previewTx && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={closePreview}>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3" onClick={closePreview}>
                         <div
-                            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col animate-fade-in"
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] flex flex-col animate-fade-in"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Modal Header */}
-                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                                 <div>
                                     <h3 className="text-sm font-bold text-gray-900">添付ファイル</h3>
                                     <p className="text-[11px] text-gray-400 mt-0.5">
@@ -291,9 +291,9 @@ export default function TransactionsPage() {
                                 </button>
                             </div>
 
-                            {/* File List */}
+                            {/* File List (複数ファイルの場合) */}
                             {previewAttachments.length > 1 && (
-                                <div className="px-6 py-2 border-b border-gray-50 flex gap-2 overflow-x-auto">
+                                <div className="px-6 py-2 border-b border-gray-50 flex gap-2 overflow-x-auto shrink-0">
                                     {previewAttachments.map((att) => (
                                         <button
                                             key={att.id}
@@ -311,27 +311,64 @@ export default function TransactionsPage() {
                             )}
 
                             {/* Preview */}
-                            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-gray-50/50">
+                            <div className="flex-1 overflow-auto bg-gray-50 min-h-0">
                                 {previewAttachments.length === 0 ? (
-                                    <div className="text-center">
+                                    <div className="h-full flex flex-col items-center justify-center">
                                         <p className="text-gray-400 text-sm">添付ファイルのURLが見つかりません</p>
                                         <p className="text-gray-300 text-xs mt-1">この執行を削除して再登録してください</p>
                                     </div>
                                 ) : previewUrl ? (
                                     previewName.toLowerCase().endsWith(".pdf") ? (
-                                        <iframe src={previewUrl} className="w-full h-[60vh] rounded-lg border border-gray-200" />
+                                        <iframe
+                                            src={previewUrl}
+                                            className="w-full h-full border-0"
+                                            title={previewName}
+                                        />
                                     ) : (
-                                        <img src={previewUrl} alt={previewName} className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />
+                                        <div className="h-full flex items-center justify-center p-4">
+                                            <img src={previewUrl} alt={previewName} className="max-w-full max-h-full object-contain rounded-lg shadow-lg" />
+                                        </div>
                                     )
                                 ) : (
-                                    <p className="text-gray-400 text-sm">ファイルを読み込み中...</p>
+                                    <div className="h-full flex items-center justify-center">
+                                        <p className="text-gray-400 text-sm">ファイルを読み込み中...</p>
+                                    </div>
                                 )}
                             </div>
 
                             {/* Footer */}
-                            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between">
-                                <span className="text-[11px] text-gray-400">{previewName}</span>
-                                <button className="btn-secondary text-xs" onClick={closePreview}>閉じる</button>
+                            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between shrink-0">
+                                <span className="text-[11px] text-gray-400 truncate max-w-[50%]">{previewName}</span>
+                                <div className="flex items-center gap-2">
+                                    {previewUrl && (
+                                        <>
+                                            {/* 別タブで開く */}
+                                            <a
+                                                href={previewUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn-secondary text-xs flex items-center gap-1"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                </svg>
+                                                別タブで開く
+                                            </a>
+                                            {/* ダウンロード */}
+                                            <a
+                                                href={previewUrl}
+                                                download={previewName}
+                                                className="btn-primary text-xs flex items-center gap-1"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                </svg>
+                                                ダウンロード
+                                            </a>
+                                        </>
+                                    )}
+                                    <button className="btn-secondary text-xs" onClick={closePreview}>閉じる</button>
+                                </div>
                             </div>
                         </div>
                     </div>
