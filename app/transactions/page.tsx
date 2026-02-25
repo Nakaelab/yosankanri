@@ -302,7 +302,7 @@ export default function TransactionsPage() {
 
             {/* ========== Attachment Preview Modal (フルスクリーン) ========== */}
             {previewTx && (
-                <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm" onClick={closePreview}>
+                <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" onClick={closePreview}>
                     {/* Header bar */}
                     <div
                         className="flex items-center justify-between px-5 py-3 bg-gray-900/80 shrink-0"
@@ -371,7 +371,7 @@ export default function TransactionsPage() {
                     )}
 
                     {/* Preview area */}
-                    <div className="flex-1 min-h-0 overflow-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex-1 relative" style={{ minHeight: 0 }} onClick={(e) => e.stopPropagation()}>
                         {previewAttachments.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center">
                                 <p className="text-gray-400 text-sm">添付ファイルのURLが見つかりません</p>
@@ -379,7 +379,7 @@ export default function TransactionsPage() {
                             </div>
                         ) : previewUrl ? (
                             previewName.toLowerCase().endsWith(".pdf") ? (
-                                <iframe src={previewUrl} className="w-full h-full border-0" title={previewName} />
+                                <iframe src={previewUrl} title={previewName} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
                             ) : (
                                 <div className="h-full flex items-center justify-center p-4">
                                     <img src={previewUrl} alt={previewName} className="max-w-full max-h-full object-contain" />
@@ -396,9 +396,9 @@ export default function TransactionsPage() {
 
             {/* ========== Edit Modal ========== */}
             {editingTx && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={handleCancelEdit}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4" onClick={handleCancelEdit}>
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-4 flex flex-col animate-fade-in"
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-fade-in overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
@@ -422,7 +422,7 @@ export default function TransactionsPage() {
                         </div>
 
                         {/* Body */}
-                        <div className="p-6 space-y-5">
+                        <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
                             {/* 予算・費目 */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
