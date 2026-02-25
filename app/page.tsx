@@ -385,49 +385,43 @@ function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {/* Category breakdown table (like spreadsheet right panel) */}
+                                    {/* Category breakdown — card layout */}
                                     {activeCats.length > 0 && (
-                                        <div className="px-3 md:px-5 pb-4 overflow-x-auto">
-                                            <table className="cat-table w-full">
-                                                <thead>
-                                                    <tr>
-                                                        <th>費目</th>
-                                                        <th className="text-right">配分額</th>
-                                                        <th className="text-right">執行額</th>
-                                                        <th className="text-right">残額</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {activeCats.map((c) => {
-                                                        const colors = CATEGORY_COLORS[c.category];
-                                                        return (
-                                                            <tr key={c.category}>
-                                                                <td>
-                                                                    <span className={`inline-flex items-center gap-1.5 ${colors.text}`}>
-                                                                        <span className={`w-1.5 h-1.5 rounded-full ${colors.bar}`} />
-                                                                        {CATEGORY_LABELS[c.category]}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="text-right text-gray-600">{fmt(c.allocated)}</td>
-                                                                <td className="text-right text-gray-900 font-medium">{fmt(c.spent)}</td>
-                                                                <td className={`text-right font-medium ${c.remaining < 0 ? "text-red-600" : "text-gray-600"}`}>
-                                                                    {fmt(c.remaining)}
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                                <tfoot>
-                                                    <tr>
-                                                        <td className="text-gray-900">合計</td>
-                                                        <td className="text-right text-gray-900">{fmt(s.totalAllocated)}</td>
-                                                        <td className="text-right text-gray-900">{fmt(s.totalSpent)}</td>
-                                                        <td className={`text-right ${s.totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}>
-                                                            {fmt(s.totalRemaining)}
-                                                        </td>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
+                                        <div className="px-3 md:px-5 pb-4 space-y-1.5">
+                                            {activeCats.map((c) => {
+                                                const colors = CATEGORY_COLORS[c.category];
+                                                const catPct = c.allocated > 0 ? Math.min(Math.round((c.spent / c.allocated) * 100), 100) : 0;
+                                                const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : "bg-brand-400";
+                                                return (
+                                                    <div key={c.category} className="rounded-lg bg-gray-50 px-3 py-2">
+                                                        {/* Row top */}
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className={`flex items-center gap-1.5 text-xs font-semibold ${colors.text}`}>
+                                                                <span className={`w-2 h-2 rounded-full ${colors.bar}`} />
+                                                                {CATEGORY_LABELS[c.category]}
+                                                            </span>
+                                                            <div className="flex items-center gap-3 text-xs tabular-nums">
+                                                                <span className="text-gray-400">配分 <span className="text-gray-600 font-medium">¥{fmt(c.allocated)}</span></span>
+                                                                <span className="text-gray-400">執行 <span className="text-gray-800 font-bold">¥{fmt(c.spent)}</span></span>
+                                                                <span className={`font-bold ${c.remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(c.remaining)}</span>
+                                                            </div>
+                                                        </div>
+                                                        {/* Mini progress bar */}
+                                                        <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
+                                                            <div className={`h-full rounded-full transition-all ${barCol}`} style={{ width: `${catPct}%` }} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {/* Total row */}
+                                            <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 flex items-center justify-between mt-2">
+                                                <span className="text-xs font-bold text-gray-700">合計</span>
+                                                <div className="flex items-center gap-3 text-xs tabular-nums">
+                                                    <span className="text-gray-500">配分 <span className="font-semibold text-gray-700">¥{fmt(s.totalAllocated)}</span></span>
+                                                    <span className="text-gray-500">執行 <span className="font-bold text-gray-900">¥{fmt(s.totalSpent)}</span></span>
+                                                    <span className={`font-bold text-sm ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(s.totalRemaining)}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
