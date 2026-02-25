@@ -247,50 +247,27 @@ export default function ImportPage() {
         const tid = getCurrentTeacherId();
         const teacherId = tid === "default" ? undefined : tid;
 
-        // ブラウザから直接 Supabase Storage にアップロード
+        // サーバーAPIを介して Supabase Storage にアップロード（サービスロールキー使用）
         const uploadedMeta: import("@/lib/types").AttachmentMeta[] = [];
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-        if (estimates.length > 0 && supabaseUrl && supabaseKey) {
-            const { createClient } = await import("@supabase/supabase-js");
-            const supabase = createClient(supabaseUrl, supabaseKey);
-
-            for (const est of estimates) {
-                try {
-                    const fileId = uuidv4(); // すでにインポート済みの uuidv4 を使用
-                    const safeName = est.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-                    const storagePath = `${txId}/${fileId}_${safeName}`;
-
-                    const { error } = await supabase.storage
-                        .from("attachments")
-                        .upload(storagePath, est.file, {
-                            contentType: est.file.type || "application/octet-stream",
-                            upsert: true,
-                        });
-
-                    if (error) {
-                        console.error("Supabase upload error:", error);
-                        alert(`ファイルのアップロードに失敗しました: ${est.file.name}\nエラー: ${error.message}`);
-                    } else {
-                        const { data: urlData } = supabase.storage
-                            .from("attachments")
-                            .getPublicUrl(storagePath);
-
-                        uploadedMeta.push({
-                            id: fileId,
-                            transactionId: txId,
-                            fileName: est.file.name,
-                            mimeType: est.file.type,
-                            size: est.file.size,
-                            storageUrl: urlData.publicUrl,
-                            createdAt: new Date().toISOString(),
-                        });
-                    }
-                } catch (e) {
-                    console.error("Upload exception:", e);
-                    alert(`ファイルのアップロードに失敗しました: ${est.file.name}\n${String(e)}`);
+        for (const est of estimates) {
+            const fd = new FormData();
+            fd.append("file", est.file);
+            fd.append("transactionId", txId);
+            try {
+                const res = await fetch("/api/upload", { method: "POST", body: fd });
+                if (res.ok) {
+                    const meta = await res.json();
+                    uploadedMeta.push(meta);
+                } else {
+                    const errJson = await res.json().catch(() => ({}));
+                    const errMsg = errJson.error || res.statusText;
+                    console.error("Upload failed:", errMsg);
+                    alert(`ファイルのアップロードに失敗しました: ${est.file.name}\n${errMsg}`);
                 }
+            } catch (e) {
+                console.error("Upload exception:", e);
+                alert(`ファイルのアップロードに失敗しました: ${est.file.name}\n${String(e)}`);
             }
         }
 
