@@ -523,9 +523,15 @@ export default function ImportPage() {
                         >
                             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                             {imagePreview ? (
-                                <div className="space-y-3">
-                                    <img src={imagePreview} alt="preview" className="max-h-48 mx-auto rounded-lg shadow" />
-                                    <p className="text-xs text-gray-400">{imageFile?.name} — クリックで変更</p>
+                                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                    <img src={imagePreview} alt="preview" className="max-h-96 w-full object-contain rounded-lg shadow-md" />
+                                    <button
+                                        type="button"
+                                        onClick={() => { setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText(""); }}
+                                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-lg leading-none transition-colors"
+                                        title="画像を削除"
+                                    >✕</button>
+                                    <p className="text-xs text-gray-400 mt-2 text-center">{imageFile?.name} — <button type="button" className="underline" onClick={() => fileInputRef.current?.click()}>クリックで変更</button></p>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
