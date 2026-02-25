@@ -774,7 +774,7 @@ export default function ImportPage() {
                                     </label>
                                 </div>
                                 {dateUnknown ? (
-                                    <div className="form-input flex items-center text-gray-400 text-sm bg-gray-50">未定（山入後に編集可能）</div>
+                                    <div className="form-input flex items-center text-gray-400 text-sm bg-gray-50">未定（登録後に編集可能）</div>
                                 ) : (
                                     <input type="date" className={`form-input ${hasError("date") ? "field-error" : ""}`} value={date} onChange={(e) => setDate(e.target.value)} />
                                 )}
