@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { getSupabaseClient } from "./supabase";
 
 // ==========================================
 // クラウド同期モジュール
@@ -18,6 +18,7 @@ const pendingPushes: Map<string, ReturnType<typeof setTimeout>> = new Map();
  * @returns true if cloud had data
  */
 export async function pullFromCloud(): Promise<boolean> {
+    const supabase = getSupabaseClient();
     if (!supabase) return false;
     try {
         const { data, error } = await supabase
@@ -48,6 +49,7 @@ export async function pullFromCloud(): Promise<boolean> {
  * 1 つのキーをクラウドにプッシュ (デバウンス付き)
  */
 export async function pushToCloud(key: string, value: string): Promise<void> {
+    const supabase = getSupabaseClient();
     if (!supabase || !syncReady) return;
 
     // デバウンス: 同じキーへの連続書き込みをまとめる (500ms)
@@ -59,7 +61,9 @@ export async function pushToCloud(key: string, value: string): Promise<void> {
         setTimeout(async () => {
             pendingPushes.delete(key);
             try {
-                const { error } = await supabase!.from("app_data").upsert({
+                const client = getSupabaseClient();
+                if (!client) return;
+                const { error } = await client.from("app_data").upsert({
                     key,
                     value,
                     updated_at: new Date().toISOString(),
@@ -80,6 +84,7 @@ export async function pushToCloud(key: string, value: string): Promise<void> {
  * クラウドからキーを削除
  */
 export async function deleteFromCloud(key: string): Promise<void> {
+    const supabase = getSupabaseClient();
     if (!supabase || !syncReady) return;
     try {
         const { error } = await supabase.from("app_data").delete().eq("key", key);
@@ -93,6 +98,7 @@ export async function deleteFromCloud(key: string): Promise<void> {
  * localStorage の budget_app_* キーをすべてクラウドにプッシュ
  */
 async function pushAllToCloud(): Promise<void> {
+    const supabase = getSupabaseClient();
     if (!supabase) return;
     const rows: { key: string; value: string; updated_at: string }[] = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -129,6 +135,7 @@ async function pushAllToCloud(): Promise<void> {
  * 2. クラウドが空で localStorage にデータがあれば → クラウドにアップロード
  */
 export async function initSync(): Promise<void> {
+    const supabase = getSupabaseClient();
     if (!supabase) {
         console.log("[Sync] Supabase not configured, skipping sync");
         syncReady = true;
