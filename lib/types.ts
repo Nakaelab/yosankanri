@@ -111,6 +111,7 @@ export interface Transaction {
     amount: number;         // 金額
     category: ExpenseCategory; // 費目カテゴリ
     attachmentCount: number;  // 添付ファイル数（見積書等）
+    attachments?: AttachmentMeta[]; // 添付ファイルメタデータ
     ocrRawText?: string;    // OCR全文（デバッグ用）
     createdAt: string;
 }
@@ -180,5 +181,6 @@ export interface AttachmentMeta {
     fileName: string;
     mimeType: string;
     size: number;
+    storageUrl?: string;  // Supabase Storage の公開URL
     createdAt: string;
 }

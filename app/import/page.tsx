@@ -247,7 +247,8 @@ export default function ImportPage() {
         const tid = getCurrentTeacherId();
         const teacherId = tid === "default" ? undefined : tid;
 
-        // Save attachments to Server
+        // Save attachments to Supabase Storage
+        const uploadedMeta: import("@/lib/types").AttachmentMeta[] = [];
         for (const est of estimates) {
             const formData = new FormData();
             formData.append("file", est.file);
@@ -258,7 +259,10 @@ export default function ImportPage() {
                     method: "POST",
                     body: formData,
                 });
-                if (!res.ok) {
+                if (res.ok) {
+                    const meta = await res.json();
+                    uploadedMeta.push(meta);
+                } else {
                     console.error("Upload failed", await res.text());
                     alert(`ファイルのアップロードに失敗しました: ${est.file.name}`);
                 }
@@ -280,7 +284,8 @@ export default function ImportPage() {
             quantity,
             amount,
             category,
-            attachmentCount: estimates.length,
+            attachmentCount: uploadedMeta.length,
+            attachments: uploadedMeta.length > 0 ? uploadedMeta : undefined,
             ocrRawText: mode === "ocr" ? ocrRawText : undefined,
             createdAt: new Date().toISOString(),
         });

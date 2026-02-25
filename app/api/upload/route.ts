@@ -1,35 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { AttachmentMeta } from "@/lib/types";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
-const ATTACHMENTS_FILE = path.join(DATA_DIR, "attachments.json");
-
-async function ensureDir() {
-    try {
-        await fs.mkdir(UPLOADS_DIR, { recursive: true });
-    } catch (e) {
-        // ignore
-    }
-}
-
-async function readAttachments(): Promise<AttachmentMeta[]> {
-    try {
-        await ensureDir();
-        const data = await fs.readFile(ATTACHMENTS_FILE, "utf-8");
-        return JSON.parse(data);
-    } catch {
-        return [];
-    }
-}
-
-async function writeAttachments(data: AttachmentMeta[]): Promise<void> {
-    await ensureDir();
-    await fs.writeFile(ATTACHMENTS_FILE, JSON.stringify(data, null, 2), "utf-8");
-}
 
 export async function POST(request: NextRequest) {
     try {
@@ -41,31 +12,49 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing file or transactionId" }, { status: 400 });
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+        }
+
         const id = uuidv4();
-        const fileName = file.name;
-        const mimeType = file.type;
-        const size = file.size;
-        const createdAt = new Date().toISOString();
+        const ext = file.name.split(".").pop() || "bin";
+        const storagePath = `${transactionId}/${id}.${ext}`;
 
-        // Save file
-        await ensureDir();
-        const filePath = path.join(UPLOADS_DIR, id);
-        await fs.writeFile(filePath, buffer);
+        // Supabase Storage へアップロード
+        const arrayBuffer = await file.arrayBuffer();
+        const uploadRes = await fetch(
+            `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${supabaseKey}`,
+                    "Content-Type": file.type || "application/octet-stream",
+                    "x-upsert": "true",
+                },
+                body: arrayBuffer,
+            }
+        );
 
-        // Save metadata
+        if (!uploadRes.ok) {
+            const errText = await uploadRes.text();
+            console.error("Supabase Storage upload error:", errText);
+            return NextResponse.json({ error: "Storage upload failed" }, { status: 500 });
+        }
+
+        const publicUrl = `${supabaseUrl}/storage/v1/object/public/attachments/${storagePath}`;
+
         const meta: AttachmentMeta = {
             id,
             transactionId,
-            fileName,
-            mimeType,
-            size,
-            createdAt,
+            fileName: file.name,
+            mimeType: file.type,
+            size: file.size,
+            storageUrl: publicUrl,
+            createdAt: new Date().toISOString(),
         };
-
-        const list = await readAttachments();
-        list.push(meta);
-        await writeAttachments(list);
 
         return NextResponse.json(meta);
     } catch (e) {
