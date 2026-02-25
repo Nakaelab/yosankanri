@@ -247,28 +247,53 @@ export default function ImportPage() {
         const tid = getCurrentTeacherId();
         const teacherId = tid === "default" ? undefined : tid;
 
-        // Save attachments to Supabase Storage
+        // ブラウザから直接 Supabase Storage にアップロード
         const uploadedMeta: import("@/lib/types").AttachmentMeta[] = [];
-        for (const est of estimates) {
-            const formData = new FormData();
-            formData.append("file", est.file);
-            formData.append("transactionId", txId);
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-            try {
-                const res = await fetch("/api/upload", {
-                    method: "POST",
-                    body: formData,
-                });
-                if (res.ok) {
-                    const meta = await res.json();
-                    uploadedMeta.push(meta);
-                } else {
-                    console.error("Upload failed", await res.text());
+        if (estimates.length > 0 && supabaseUrl && supabaseKey) {
+            const { createClient } = await import("@supabase/supabase-js");
+            const supabase = createClient(supabaseUrl, supabaseKey);
+
+            for (const est of estimates) {
+                try {
+                    const { v4: id } = await import("uuid");
+                    const fileId = id();
+                    const ext = est.file.name.split(".").pop() || "bin";
+                    // ファイル名をサニタイズ（スペースや特殊文字を除去）
+                    const safeName = est.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+                    const storagePath = `${txId}/${fileId}_${safeName}`;
+
+                    const { error } = await supabase.storage
+                        .from("attachments")
+                        .upload(storagePath, est.file, {
+                            contentType: est.file.type || "application/octet-stream",
+                            upsert: true,
+                        });
+
+                    if (error) {
+                        console.error("Upload error:", error);
+                        alert(`ファイルのアップロードに失敗しました: ${est.file.name}\n${error.message}`);
+                    } else {
+                        const { data: urlData } = supabase.storage
+                            .from("attachments")
+                            .getPublicUrl(storagePath);
+
+                        uploadedMeta.push({
+                            id: fileId,
+                            transactionId: txId,
+                            fileName: est.file.name,
+                            mimeType: est.file.type,
+                            size: est.file.size,
+                            storageUrl: urlData.publicUrl,
+                            createdAt: new Date().toISOString(),
+                        });
+                    }
+                } catch (e) {
+                    console.error("Upload failed:", e);
                     alert(`ファイルのアップロードに失敗しました: ${est.file.name}`);
                 }
-            } catch (e) {
-                console.error("Upload error", e);
-                alert(`ファイルのアップロードに失敗しました: ${est.file.name}`);
             }
         }
 
