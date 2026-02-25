@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { createClient } from "@supabase/supabase-js";
 import { AttachmentMeta } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -13,43 +14,46 @@ export async function POST(request: NextRequest) {
         }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        // サーバー側はサービスロールキーを使用（RLSを問わずアップロード可能）
+        // サービスロールキー（新形式 sb_secret_... / 旧形式 eyJ...）どちらでも対応
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         const uploadKey = serviceRoleKey || anonKey;
 
         if (!supabaseUrl || !uploadKey) {
-            return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+            return NextResponse.json(
+                { error: `Supabase not configured (url=${!!supabaseUrl}, key=${!!uploadKey})` },
+                { status: 500 }
+            );
         }
+
+        // Supabase JS SDK を使用（新旧キー形式に両対応）
+        const supabase = createClient(supabaseUrl, uploadKey);
 
         const fileId = uuidv4();
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const storagePath = `${transactionId}/${fileId}_${safeName}`;
 
-        // Supabase Storage REST API でアップロード
         const arrayBuffer = await file.arrayBuffer();
-        const uploadUrl = `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`;
+        const uint8Array = new Uint8Array(arrayBuffer);
 
-        const uploadRes = await fetch(uploadUrl, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${uploadKey}`,
-                "Content-Type": file.type || "application/octet-stream",
-                "x-upsert": "true",
-            },
-            body: arrayBuffer,
-        });
+        const { error: uploadError } = await supabase.storage
+            .from("attachments")
+            .upload(storagePath, uint8Array, {
+                contentType: file.type || "application/octet-stream",
+                upsert: true,
+            });
 
-        if (!uploadRes.ok) {
-            const errText = await uploadRes.text();
-            console.error("Supabase Storage upload error:", uploadRes.status, errText);
+        if (uploadError) {
+            console.error("Supabase Storage upload error:", uploadError);
             return NextResponse.json(
-                { error: `Storage upload failed: ${uploadRes.status} ${errText}` },
+                { error: `Storage upload failed: ${uploadError.message}` },
                 { status: 500 }
             );
         }
 
-        const publicUrl = `${supabaseUrl}/storage/v1/object/public/attachments/${storagePath}`;
+        const { data: urlData } = supabase.storage
+            .from("attachments")
+            .getPublicUrl(storagePath);
 
         const meta: AttachmentMeta = {
             id: fileId,
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
             fileName: file.name,
             mimeType: file.type,
             size: file.size,
-            storageUrl: publicUrl,
+            storageUrl: urlData.publicUrl,
             createdAt: new Date().toISOString(),
         };
 
