@@ -76,6 +76,7 @@ export default function ImportPage() {
     const [quantity, setQuantity] = useState(1);
     const [amount, setAmount] = useState(0);
     const [category, setCategory] = useState<ExpenseCategory>("goods");
+    const [dateUnknown, setDateUnknown] = useState(false);
 
     // Estimates (見積書)
     const [estimates, setEstimates] = useState<EstimateFile[]>([]);
@@ -132,7 +133,7 @@ export default function ImportPage() {
         const errs: { field: string; message: string }[] = [];
         if (!itemName.trim()) errs.push({ field: "itemName", message: "品名が空です" });
         if (amount <= 0) errs.push({ field: "amount", message: "金額が0以下です" });
-        if (!date) errs.push({ field: "date", message: "日付が空です" });
+        if (!date && !dateUnknown) errs.push({ field: "date", message: "日付が空です" });
         setErrors(errs);
         return errs;
     };
@@ -276,7 +277,7 @@ export default function ImportPage() {
             id: txId,
             budgetId: selectedBudgetId,
             slipNumber,
-            date,
+            date: dateUnknown ? "未定" : date,
             itemName,
             specification,
             payee,
@@ -372,7 +373,7 @@ export default function ImportPage() {
     const resetForm = () => {
         setSlipNumber(""); setItemName(""); setSpecification(""); setPayee("");
         setUnitPrice(0); setQuantity(1); setAmount(0); setCategory(mode === "labor" ? "labor" : "goods");
-        setEstimates([]); setErrors([]);
+        setEstimates([]); setErrors([]); setDateUnknown(false);
         setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText("");
         setLaborRows([emptyLaborRow()]);
         const d = new Date();
@@ -760,8 +761,23 @@ export default function ImportPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="form-label">納品日</label>
-                                <input type="date" className={`form-input ${hasError("date") ? "field-error" : ""}`} value={date} onChange={(e) => setDate(e.target.value)} />
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="form-label mb-0">納品日</label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                            checked={dateUnknown}
+                                            onChange={(e) => setDateUnknown(e.target.checked)}
+                                        />
+                                        <span className="text-xs text-gray-500">未定</span>
+                                    </label>
+                                </div>
+                                {dateUnknown ? (
+                                    <div className="form-input flex items-center text-gray-400 text-sm bg-gray-50">未定（山入後に編集可能）</div>
+                                ) : (
+                                    <input type="date" className={`form-input ${hasError("date") ? "field-error" : ""}`} value={date} onChange={(e) => setDate(e.target.value)} />
+                                )}
                                 {hasError("date") && <p className="field-error-text">{getError("date")}</p>}
                             </div>
                             <div>
