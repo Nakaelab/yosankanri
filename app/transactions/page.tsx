@@ -312,7 +312,12 @@ export default function TransactionsPage() {
 
                             {/* Preview */}
                             <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-gray-50/50">
-                                {previewUrl ? (
+                                {previewAttachments.length === 0 ? (
+                                    <div className="text-center">
+                                        <p className="text-gray-400 text-sm">添付ファイルのURLが見つかりません</p>
+                                        <p className="text-gray-300 text-xs mt-1">この執行を削除して再登録してください</p>
+                                    </div>
+                                ) : previewUrl ? (
                                     previewName.toLowerCase().endsWith(".pdf") ? (
                                         <iframe src={previewUrl} className="w-full h-[60vh] rounded-lg border border-gray-200" />
                                     ) : (
