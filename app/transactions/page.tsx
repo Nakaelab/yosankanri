@@ -100,12 +100,18 @@ export default function TransactionsPage() {
 
     const openAttachments = (tx: Transaction) => {
         setPreviewTx(tx);
-        // Attachments via API - may not be available on Vercel
-        setPreviewAttachments([]);
+        // トランザクションに保存されている添付メタデータを使用
+        const metas = tx.attachments || [];
+        setPreviewAttachments(metas);
+        // 最初のファイルを自動表示
+        if (metas.length > 0) {
+            showAttachment(metas[0]);
+        }
     };
 
     const showAttachment = (meta: AttachmentMeta) => {
-        setPreviewUrl(`/api/attachment/${meta.id}`);
+        // Supabase Storage の公開URLを直接使用
+        setPreviewUrl(meta.storageUrl || null);
         setPreviewName(meta.fileName);
     };
 
