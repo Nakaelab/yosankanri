@@ -353,7 +353,7 @@ export default function TransactionsPage() {
 
             {/* ========== Edit Modal (コンパクト・スクロールなし) ========== */}
             {editingTx && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3" onClick={handleCancelEdit}>
+                <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/75 backdrop-blur-sm py-4 px-3 overflow-y-auto" onClick={handleCancelEdit}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col animate-fade-in" onClick={(e) => e.stopPropagation()}>
 
                         {/* Header */}
