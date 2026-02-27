@@ -580,36 +580,40 @@ function Dashboard() {
                                         />
                                     </div>
                                 )}
-                                <div>
-                                    <label className="form-label">{editForm.category === "labor" ? "支給額 (単価)" : "単価"}</label>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        value={editForm.unitPrice || ""}
-                                        onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })}
-                                        min={0}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="form-label">{editForm.category === "labor" ? "支給回数 (数量)" : "数量"}</label>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        value={editForm.quantity}
-                                        onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })}
-                                        min={1}
-                                    />
-                                </div>
+                                {editForm.category !== "labor" && (
+                                    <>
+                                        <div>
+                                            <label className="form-label">単価</label>
+                                            <input
+                                                type="number"
+                                                className="form-input"
+                                                value={editForm.unitPrice || ""}
+                                                onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })}
+                                                min={0}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="form-label">数量</label>
+                                            <input
+                                                type="number"
+                                                className="form-input"
+                                                value={editForm.quantity}
+                                                onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })}
+                                                min={1}
+                                            />
+                                        </div>
+                                    </>
+                                )}
                                 <div className="md:col-span-2">
-                                    <label className="form-label">金額（円）</label>
+                                    <label className="form-label">{editForm.category === "labor" ? "金額（総額）" : "金額（円）"}</label>
                                     <input
                                         type="number"
                                         className="form-input text-lg font-bold"
                                         value={editForm.amount || ""}
-                                        onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })}
+                                        onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0, ...(editForm.category === "labor" ? { unitPrice: parseInt(e.target.value, 10) || 0, quantity: 1 } : {}) })}
                                         min={0}
                                     />
-                                    {editForm.unitPrice > 0 && editForm.quantity > 1 && (
+                                    {editForm.category !== "labor" && editForm.unitPrice > 0 && editForm.quantity > 1 && (
                                         <p className="text-[11px] text-gray-400 mt-1">
                                             単価 {editForm.unitPrice.toLocaleString()} × 数量 {editForm.quantity} = {(editForm.unitPrice * editForm.quantity).toLocaleString()}
                                         </p>

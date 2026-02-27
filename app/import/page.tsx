@@ -313,14 +313,7 @@ export default function ImportPage() {
     const updateLaborRow = (id: string, field: keyof LaborRow, value: string | number) => {
         setLaborRows(prev => prev.map(row => {
             if (row.id !== id) return row;
-            const updated = { ...row, [field]: value };
-            // Auto-calc amount when unitPrice or quantity changes
-            if (field === "unitPrice" || field === "quantity") {
-                const up = field === "unitPrice" ? (value as number) : updated.unitPrice;
-                const q = field === "quantity" ? (value as number) : updated.quantity;
-                updated.amount = up * q;
-            }
-            return updated;
+            return { ...row, [field]: value };
         }));
     };
 
@@ -353,8 +346,8 @@ export default function ImportPage() {
                 itemName: row.itemName,
                 specification: row.payee, // 支払先を規格等フィールドに格納
                 payee: row.payee,
-                unitPrice: row.unitPrice,
-                quantity: row.quantity,
+                unitPrice: row.amount,
+                quantity: 1,
                 amount: row.amount,
                 category: "labor",
                 attachmentCount: 0,
@@ -649,32 +642,19 @@ export default function ImportPage() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-1 gap-2">
                                         <div>
-                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">単価</label>
-                                            <input
-                                                type="number"
-                                                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-right tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                value={row.unitPrice || ""}
-                                                onChange={(e) => updateLaborRow(row.id, "unitPrice", parseInt(e.target.value, 10) || 0)}
-                                                min={0}
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">数量</label>
-                                            <input
-                                                type="number"
-                                                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-center tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                value={row.quantity}
-                                                onChange={(e) => updateLaborRow(row.id, "quantity", parseInt(e.target.value, 10) || 1)}
-                                                min={1}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">金額</label>
-                                            <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-1.5 text-sm text-right font-bold tabular-nums text-gray-800">
-                                                {row.amount > 0 ? `¥${row.amount.toLocaleString()}` : "—"}
+                                            <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">金額（総額）</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">¥</span>
+                                                <input
+                                                    type="number"
+                                                    className="w-full rounded-lg border border-gray-200 pl-7 pr-2.5 py-1.5 text-sm font-bold text-gray-800 tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
+                                                    value={row.amount || ""}
+                                                    onChange={(e) => updateLaborRow(row.id, "amount", parseInt(e.target.value, 10) || 0)}
+                                                    min={0}
+                                                    placeholder="0"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -830,26 +810,37 @@ export default function ImportPage() {
                                 <label className="form-label">支払先</label>
                                 <input type="text" className="form-input" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="例: 法人カード / Amazon" />
                             </div>
-                            <div>
-                                <label className="form-label">単価</label>
-                                <input type="number" className="form-input" value={unitPrice || ""} onChange={(e) => setUnitPrice(parseInt(e.target.value, 10) || 0)} min={0} placeholder="0" />
-                            </div>
-                            <div>
-                                <label className="form-label">数量</label>
-                                <input type="number" className="form-input" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)} min={1} />
-                            </div>
+                            {category !== "labor" && (
+                                <>
+                                    <div>
+                                        <label className="form-label">単価</label>
+                                        <input type="number" className="form-input" value={unitPrice || ""} onChange={(e) => setUnitPrice(parseInt(e.target.value, 10) || 0)} min={0} placeholder="0" />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">数量</label>
+                                        <input type="number" className="form-input" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)} min={1} />
+                                    </div>
+                                </>
+                            )}
                             <div className="md:col-span-2">
-                                <label className="form-label">金額（円）*</label>
+                                <label className="form-label">{category === "labor" ? "金額（総額）*" : "金額（円）*"}</label>
                                 <input
                                     type="number"
                                     className={`form-input text-lg font-bold ${hasError("amount") ? "field-error" : ""}`}
                                     value={amount || ""}
-                                    onChange={(e) => setAmount(parseInt(e.target.value, 10) || 0)}
+                                    onChange={(e) => {
+                                        const parsedAmount = parseInt(e.target.value, 10) || 0;
+                                        setAmount(parsedAmount);
+                                        if (category === "labor") {
+                                            setUnitPrice(parsedAmount);
+                                            setQuantity(1);
+                                        }
+                                    }}
                                     min={0}
                                     placeholder="0"
                                 />
                                 {hasError("amount") && <p className="field-error-text">{getError("amount")}</p>}
-                                {unitPrice > 0 && quantity > 1 && (
+                                {category !== "labor" && unitPrice > 0 && quantity > 1 && (
                                     <p className="text-[11px] text-gray-400 mt-1">単価 {unitPrice.toLocaleString()} × 数量 {quantity} = {(unitPrice * quantity).toLocaleString()}</p>
                                 )}
                             </div>

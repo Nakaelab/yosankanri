@@ -351,20 +351,27 @@ export default function TransactionsPage() {
                             </div>
 
                             {/* 単価 + 数量 + 金額 */}
-                            <div className="grid grid-cols-3 gap-2 bg-brand-50/60 rounded-xl px-3 py-2">
-                                <div>
-                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">{isLabor ? "支給額" : "単価"}</label>
-                                    <input type="number" className="form-input text-xs py-1" value={editForm.unitPrice || ""} onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
+                            {isLabor ? (
+                                <div className="bg-brand-50/60 rounded-xl px-3 py-2">
+                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（総額）</label>
+                                    <input type="number" className="form-input text-xs py-1 font-bold w-full" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0, unitPrice: parseInt(e.target.value, 10) || 0, quantity: 1 })} min={0} />
                                 </div>
-                                <div>
-                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">{isLabor ? "回数" : "数量"}</label>
-                                    <input type="number" className="form-input text-xs py-1" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
+                            ) : (
+                                <div className="grid grid-cols-3 gap-2 bg-brand-50/60 rounded-xl px-3 py-2">
+                                    <div>
+                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">単価</label>
+                                        <input type="number" className="form-input text-xs py-1" value={editForm.unitPrice || ""} onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">数量</label>
+                                        <input type="number" className="form-input text-xs py-1" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（円）</label>
+                                        <input type="number" className="form-input text-xs py-1 font-bold" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（円）</label>
-                                    <input type="number" className="form-input text-xs py-1 font-bold" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })} min={0} />
-                                </div>
-                            </div>
+                            )}
 
                             {/* 添付ファイル */}
                             <div className="border border-dashed border-gray-200 rounded-xl px-3 py-2">
