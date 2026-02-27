@@ -100,6 +100,14 @@ export default function TransactionsPage() {
     const filtered = filterBudgetId === "all" ? transactions : transactions.filter((t) => t.budgetId === filterBudgetId);
     const filteredTotal = filtered.reduce((s, t) => s + t.amount, 0);
 
+    const selectedBudget = filterBudgetId === "all" ? null : budgets.find((b) => b.id === filterBudgetId);
+    let budgetAllocated = 0;
+    let budgetRemaining = 0;
+    if (selectedBudget) {
+        budgetAllocated = ALL_CATEGORIES.reduce((s, cat) => s + (selectedBudget.allocations[cat] || 0), 0);
+        budgetRemaining = budgetAllocated - filteredTotal;
+    }
+
     if (!mounted) return <div className="flex items-center justify-center h-screen"><div className="text-gray-400 text-sm">読み込み中...</div></div>;
 
     return (
@@ -112,10 +120,29 @@ export default function TransactionsPage() {
                         <p className="page-subtitle">全支出明細</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        <div className="text-left sm:text-right">
-                            <div className="text-[10px] text-gray-400 uppercase">表示中の合計</div>
-                            <div className="text-sm font-bold tabular-nums">{fmt(filteredTotal)}</div>
-                        </div>
+                        {selectedBudget ? (
+                            <div className="flex gap-4 text-right sm:pr-4 sm:border-r border-gray-200">
+                                <div>
+                                    <div className="text-[10px] text-gray-400 uppercase">配分総額</div>
+                                    <div className="text-sm font-bold tabular-nums text-gray-900">{fmt(budgetAllocated)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-gray-400 uppercase">執行済</div>
+                                    <div className="text-sm font-bold tabular-nums text-brand-700">{fmt(filteredTotal)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] text-gray-400 uppercase">残額</div>
+                                    <div className={`text-sm font-bold tabular-nums ${budgetRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                                        {fmt(budgetRemaining)}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-left sm:text-right">
+                                <div className="text-[10px] text-gray-400 uppercase">表示中の合計</div>
+                                <div className="text-sm font-bold tabular-nums">{fmt(filteredTotal)}</div>
+                            </div>
+                        )}
                         <select className="form-select text-xs py-1.5 w-full sm:w-52" value={filterBudgetId} onChange={(e) => setFilterBudgetId(e.target.value)}>
                             <option value="all">すべての予算 ({transactions.length}件)</option>
                             {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({transactions.filter((t) => t.budgetId === b.id).length}件)</option>)}
