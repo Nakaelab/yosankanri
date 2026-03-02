@@ -103,9 +103,19 @@ export default function TransactionsPage() {
     const selectedBudget = filterBudgetId === "all" ? null : budgets.find((b) => b.id === filterBudgetId);
     let budgetAllocated = 0;
     let budgetRemaining = 0;
+    const activeStats: { category: ExpenseCategory; allocated: number; spent: number; remaining: number }[] = [];
     if (selectedBudget) {
         budgetAllocated = ALL_CATEGORIES.reduce((s, cat) => s + (selectedBudget.allocations[cat] || 0), 0);
         budgetRemaining = budgetAllocated - filteredTotal;
+
+        ALL_CATEGORIES.forEach(cat => {
+            const allocated = selectedBudget.allocations[cat] || 0;
+            const spent = filtered.filter(t => t.category === cat).reduce((s, t) => s + t.amount, 0);
+            const remaining = allocated - spent;
+            if (allocated > 0 || spent > 0) {
+                activeStats.push({ category: cat, allocated, spent, remaining });
+            }
+        });
     }
 
     if (!mounted) return <div className="flex items-center justify-center h-screen"><div className="text-gray-400 text-sm">読み込み中...</div></div>;
@@ -149,6 +159,33 @@ export default function TransactionsPage() {
                         </select>
                     </div>
                 </div>
+
+                {/* Category Breakdown */}
+                {selectedBudget && activeStats.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-gray-100 overflow-x-auto -mb-2">
+                        <div className="flex gap-3 min-w-max pb-2">
+                            {activeStats.map(s => {
+                                const colors = CATEGORY_COLORS[s.category];
+                                return (
+                                    <div key={s.category} className="flex flex-col min-w-[140px] bg-slate-50/70 rounded-lg p-2.5 border border-slate-100 shadow-sm">
+                                        <div className={`flex items-center gap-1.5 text-[11px] font-bold mb-2 ${colors.text}`}>
+                                            <span className={`w-2 h-2 rounded-full ${colors.bar}`} />
+                                            {CATEGORY_LABELS[s.category]}
+                                        </div>
+                                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[11px] tabular-nums">
+                                            <span className="text-gray-400">配分</span>
+                                            <span className="text-right text-gray-700">{fmt(s.allocated)}</span>
+                                            <span className="text-gray-400">執行</span>
+                                            <span className="text-right text-gray-700 font-medium">{fmt(s.spent)}</span>
+                                            <span className="text-gray-400">残額</span>
+                                            <span className={`text-right font-bold ${s.remaining < 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s.remaining)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Table */}
