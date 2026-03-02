@@ -15,7 +15,7 @@ body {
 
 /* ===== Mobile Hamburger Button ===== */
 .mobile-menu-btn {
-  @apply fixed top-3 left-3 z-50 w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg;
+  @apply fixed top-3 right-3 z-50 w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg;
   @apply transition-all duration-300;
 }
 
@@ -318,9 +318,11 @@ body {
    MOBILE RESPONSIVE (max-width: 768px)
    ======================================== */
 @media (max-width: 768px) {
+
   /* Hide sidebar off-screen by default on mobile */
   .sidebar {
-    transform: translateX(-100%);
+    @apply left-auto right-0;
+    transform: translateX(100%);
   }
 
   .sidebar.open {
@@ -335,7 +337,9 @@ body {
   /* Page header adjustments */
   .page-header {
     @apply px-4 py-4;
-    padding-top: 3.5rem; /* Make room for hamburger button */
+    padding-top: 1rem;
+    padding-right: 3.5rem;
+    /* Make room for hamburger button on the right */
   }
 
   .page-header.flex {
@@ -364,7 +368,7 @@ body {
     @apply px-3 py-3 flex-col items-start gap-2;
   }
 
-  .budget-card-header > .text-right {
+  .budget-card-header>.text-right {
     @apply text-left;
   }
 
@@ -399,7 +403,8 @@ body {
     @apply text-base;
   }
 
-  .btn-primary, .btn-secondary {
+  .btn-primary,
+  .btn-secondary {
     @apply text-xs px-3 py-1.5;
   }
 }
