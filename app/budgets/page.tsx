@@ -227,139 +227,141 @@ export default function BudgetsPage() {
 
             {/* Create/Edit Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={closeModal}>
-                    <form
-                        onSubmit={handleSubmit}
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden animate-fade-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="px-4 sm:px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-brand-600 to-brand-700 rounded-t-2xl">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-white">
-                                        {editingBudget ? "予算の編集" : "新規予算登録"}
-                                    </h3>
-                                    <p className="text-xs text-white/70">
-                                        {editingBudget ? "予算情報を変更してください" : "研究費の予算を登録します"}
-                                    </p>
-                                </div>
-                            </div>
-                            <button type="button" onClick={closeModal} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Content - scrollable */}
-                        <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 min-h-0">
-                            {/* Basic Info */}
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                                    </svg>
-                                    基本情報
-                                </h4>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                            研究費名 <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            placeholder="例: AMED脳神経チーム代表"
-                                            autoFocus
-                                        />
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto p-4" onClick={closeModal}>
+                    <div className="min-h-[calc(100vh-2rem)] flex items-center justify-center">
+                        <form
+                            onSubmit={handleSubmit}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto flex flex-col overflow-hidden animate-fade-in my-8 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="px-4 sm:px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-brand-600 to-brand-700 rounded-t-2xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                        </svg>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <h3 className="text-base font-bold text-white">
+                                            {editingBudget ? "予算の編集" : "新規予算登録"}
+                                        </h3>
+                                        <p className="text-xs text-white/70">
+                                            {editingBudget ? "予算情報を変更してください" : "研究費の予算を登録します"}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button type="button" onClick={closeModal} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Content - scrollable */}
+                            <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 min-h-0">
+                                {/* Basic Info */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                        </svg>
+                                        基本情報
+                                    </h4>
+                                    <div className="space-y-3">
                                         <div>
                                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                                Jコード
+                                                研究費名 <span className="text-red-500">*</span>
                                             </label>
                                             <input
                                                 type="text"
-                                                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm font-mono focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
-                                                value={jCode}
-                                                onChange={(e) => setJCode(e.target.value)}
-                                                placeholder="例: J250000252"
+                                                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                placeholder="例: AMED脳神経チーム代表"
+                                                autoFocus
                                             />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                                                年度
-                                            </label>
-                                            <input
-                                                type="number"
-                                                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
-                                                value={fiscalYear}
-                                                onChange={(e) => setFiscalYear(parseInt(e.target.value, 10) || 0)}
-                                            />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                                    Jコード
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm font-mono focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                                                    value={jCode}
+                                                    onChange={(e) => setJCode(e.target.value)}
+                                                    placeholder="例: J250000252"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                                    年度
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                                                    value={fiscalYear}
+                                                    onChange={(e) => setFiscalYear(parseInt(e.target.value, 10) || 0)}
+                                                />
+                                            </div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Divider */}
+                                <div className="border-t border-gray-100" />
+
+                                {/* Category allocations */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" />
+                                        </svg>
+                                        費目別配分額
+                                    </h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {ALL_CATEGORIES.map((cat) => {
+                                            const colors = CATEGORY_COLORS[cat];
+                                            return (
+                                                <div key={cat} className={`rounded-lg p-2.5 ${colors.bg} border border-gray-100`}>
+                                                    <label className={`block text-[11px] font-bold mb-1 ${colors.text}`}>
+                                                        {CATEGORY_LABELS[cat]}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                                                        value={allocations[cat] || ""}
+                                                        onChange={(e) => updateAlloc(cat, parseInt(e.target.value, 10) || 0)}
+                                                        min={0}
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="mt-2.5 flex items-center justify-end gap-2">
+                                        <span className="text-xs text-gray-500">配分合計:</span>
+                                        <span className="text-base font-bold text-gray-900 tabular-nums">{fmt(totalAlloc)}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Divider */}
-                            <div className="border-t border-gray-100" />
-
-                            {/* Category allocations */}
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" />
+                            {/* Footer - Inside form so submit works */}
+                            <div className="px-4 sm:px-5 py-3 border-t border-gray-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 bg-gray-50 rounded-b-2xl">
+                                <button type="button" className="btn-secondary justify-center" onClick={closeModal}>
+                                    キャンセル
+                                </button>
+                                <button type="submit" className="btn-primary justify-center py-2 px-5">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                     </svg>
-                                    費目別配分額
-                                </h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    {ALL_CATEGORIES.map((cat) => {
-                                        const colors = CATEGORY_COLORS[cat];
-                                        return (
-                                            <div key={cat} className={`rounded-lg p-2.5 ${colors.bg} border border-gray-100`}>
-                                                <label className={`block text-[11px] font-bold mb-1 ${colors.text}`}>
-                                                    {CATEGORY_LABELS[cat]}
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
-                                                    value={allocations[cat] || ""}
-                                                    onChange={(e) => updateAlloc(cat, parseInt(e.target.value, 10) || 0)}
-                                                    min={0}
-                                                    placeholder="0"
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="mt-2.5 flex items-center justify-end gap-2">
-                                    <span className="text-xs text-gray-500">配分合計:</span>
-                                    <span className="text-base font-bold text-gray-900 tabular-nums">{fmt(totalAlloc)}</span>
-                                </div>
+                                    {editingBudget ? "更新する" : "登録する"}
+                                </button>
                             </div>
-                        </div>
-
-                        {/* Footer - Inside form so submit works */}
-                        <div className="px-4 sm:px-5 py-3 border-t border-gray-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 bg-gray-50 rounded-b-2xl">
-                            <button type="button" className="btn-secondary justify-center" onClick={closeModal}>
-                                キャンセル
-                            </button>
-                            <button type="submit" className="btn-primary justify-center py-2 px-5">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                                {editingBudget ? "更新する" : "登録する"}
-                            </button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>
