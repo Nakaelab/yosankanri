@@ -430,61 +430,7 @@ function Dashboard() {
                     </div>
                 )}
 
-                {/* Recent Transactions with Edit */}
-                {recentTransactions.length > 0 && (
-                    <div className="section-card">
-                        <div className="section-header">
-                            <div className="section-title">最近の執行データ</div>
-                            <Link href="/transactions" className="text-[11px] text-brand-600 hover:text-brand-700 font-medium">
-                                すべて表示 →
-                            </Link>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>納品日</th>
-                                        <th>品名</th>
-                                        <th className="text-right">金額</th>
-                                        <th>費目</th>
-                                        <th>予算</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentTransactions.map((tx) => {
-                                        const colors = CATEGORY_COLORS[tx.category];
-                                        return (
-                                            <tr key={tx.id}>
-                                                <td className="whitespace-nowrap text-[12px]">{tx.date}</td>
-                                                <td className="font-medium max-w-[180px] truncate">{tx.itemName || "—"}</td>
-                                                <td className="text-right font-medium tabular-nums whitespace-nowrap">{fmtYen(tx.amount)}</td>
-                                                <td>
-                                                    <span className={`badge ${colors.bg} ${colors.text}`}>
-                                                        {CATEGORY_LABELS[tx.category]}
-                                                    </span>
-                                                </td>
-                                                <td className="text-[11px] text-gray-400 max-w-[100px] truncate">{getBudgetName(tx.budgetId)}</td>
-                                                <td>
-                                                    <button
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-[11px] font-medium"
-                                                        onClick={() => handleEditTx(tx)}
-                                                        title="編集"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                                                        </svg>
-                                                        編集
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+
             </div>
 
             {/* Transaction Edit Modal */}
