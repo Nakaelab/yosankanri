@@ -209,9 +209,6 @@ export default function BudgetsPage() {
                                                             <div className="text-[10px] text-gray-500 tabular-nums">
                                                                 執行: {c.spent.toLocaleString()}
                                                             </div>
-                                                            <div className={`text-[10px] font-semibold tabular-nums ${c.remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
-                                                                残: {c.remaining.toLocaleString()}
-                                                            </div>
                                                         </div>
                                                     );
                                                 })}
