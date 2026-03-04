@@ -292,7 +292,7 @@ function Dashboard() {
 
             <div className="p-4 md:p-6 space-y-6">
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <div className="stat-card">
                         <div className="stat-card-label">配分総額</div>
                         <div className="stat-card-value text-gray-900">{fmtYen(totalAllocated)}</div>
@@ -329,41 +329,40 @@ function Dashboard() {
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {summaries.map((s) => {
                             const usageRate = pct(s.totalSpent, s.totalAllocated);
                             const barColor = usageRate > 100 ? "bg-red-500" : usageRate > 80 ? "bg-amber-500" : "bg-brand-500";
                             const activeCats = s.categories.filter((c) => c.allocated > 0 || c.spent > 0);
 
                             return (
-                                <div key={s.budget.id} className="budget-card">
-                                    {/* Header */}
-                                    <div className="budget-card-header">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2 h-2 rounded-full bg-brand-500" />
-                                            <div>
-                                                <div className="budget-card-title">{s.budget.name}</div>
-                                                <div className="text-[11px] text-gray-400 mt-0.5">
-                                                    {s.budget.fiscalYear}年度
+                                <div key={s.budget.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                    {/* ===== 予算ヘッダー ===== */}
+                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-white">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
+                                            <div className="min-w-0">
+                                                <div className="text-base font-bold text-gray-900 truncate">{s.budget.name}</div>
+                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                    <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
                                                     {s.budget.jCode && (
-                                                        <span className="ml-2 font-mono">{s.budget.jCode}</span>
+                                                        <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 flex-shrink-0">
                                             <div className="text-right">
-                                                <div className="text-xs text-gray-400">残額</div>
-                                                <div className={`text-base font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}>
+                                                <div className="text-[10px] text-gray-400 font-medium">残額</div>
+                                                <div className={`text-xl font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}>
                                                     {fmtYen(s.totalRemaining)}
                                                 </div>
                                             </div>
                                             <Link
                                                 href="/budgets"
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-[11px] font-medium"
-                                                title="予算を編集"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-xs font-medium flex-shrink-0"
                                             >
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                                                 </svg>
                                                 編集
@@ -371,55 +370,69 @@ function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {/* Utilization bar */}
-                                    <div className="px-3 md:px-5 py-2">
-                                        <div className="flex items-center justify-between text-[10px] md:text-[11px] text-gray-400 mb-1 flex-wrap gap-1">
-                                            <span>執行率 {usageRate}%</span>
-                                            <span>{fmtYen(s.totalSpent)} / {fmtYen(s.totalAllocated)}</span>
+                                    {/* ===== 全体進捗バー ===== */}
+                                    <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-xs font-semibold text-gray-500">執行率 <span className={`text-sm font-bold ${usageRate > 100 ? "text-red-600" : usageRate > 80 ? "text-amber-600" : "text-brand-600"}`}>{usageRate}%</span></span>
+                                            <span className="text-xs text-gray-400 tabular-nums">{fmtYen(s.totalSpent)} <span className="text-gray-300">/ {fmtYen(s.totalAllocated)}</span></span>
                                         </div>
-                                        <div className="utilization-bar">
+                                        <div className="h-2.5 rounded-full bg-gray-200 overflow-hidden">
                                             <div
-                                                className={`utilization-fill ${barColor}`}
+                                                className={`h-full rounded-full transition-all ${barColor}`}
                                                 style={{ width: `${Math.min(usageRate, 100)}%` }}
                                             />
                                         </div>
                                     </div>
 
-                                    {/* Category breakdown — card layout */}
+                                    {/* ===== 費目タイル ===== */}
                                     {activeCats.length > 0 && (
-                                        <div className="px-3 md:px-5 pb-4 space-y-1.5">
-                                            {activeCats.map((c) => {
-                                                const colors = CATEGORY_COLORS[c.category];
-                                                const catPct = c.allocated > 0 ? Math.min(Math.round((c.spent / c.allocated) * 100), 100) : 0;
-                                                const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : "bg-brand-400";
-                                                return (
-                                                    <div key={c.category} className="rounded-lg bg-gray-50 px-3 py-2">
-                                                        {/* Row top */}
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className={`flex items-center gap-1.5 text-xs font-semibold ${colors.text}`}>
-                                                                <span className={`w-2 h-2 rounded-full ${colors.bar}`} />
-                                                                {CATEGORY_LABELS[c.category]}
-                                                            </span>
-                                                            <div className="flex items-center gap-3 text-xs tabular-nums">
-                                                                <span className="text-gray-400">配分 <span className="text-gray-600 font-medium">¥{fmt(c.allocated)}</span></span>
-                                                                <span className="text-gray-400">執行 <span className="text-gray-800 font-bold">¥{fmt(c.spent)}</span></span>
-                                                                <span className={`font-bold ${c.remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(c.remaining)}</span>
+                                        <div className="p-4">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                                                {activeCats.map((c) => {
+                                                    const colors = CATEGORY_COLORS[c.category];
+                                                    const catPct = c.allocated > 0 ? Math.min(Math.round((c.spent / c.allocated) * 100), 100) : 0;
+                                                    const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
+                                                    const isOver = c.remaining < 0;
+                                                    return (
+                                                        <div key={c.category} className={`rounded-xl border p-3 flex flex-col gap-2 ${colors.bg}`}>
+                                                            {/* カテゴリ名 */}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors.bar}`} />
+                                                                <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</span>
                                                             </div>
+                                                            {/* 残額（大きく） */}
+                                                            <div className={`text-base font-bold tabular-nums leading-none ${isOver ? "text-red-600" : "text-gray-800"}`}>
+                                                                {isOver ? "▲" : ""}{fmtYen(Math.abs(c.remaining))}
+                                                                <span className="text-[10px] font-normal text-gray-400 ml-1">残</span>
+                                                            </div>
+                                                            {/* 配分・執行 */}
+                                                            <div className="space-y-0.5">
+                                                                <div className="flex justify-between text-[10px] text-gray-500">
+                                                                    <span>配分</span>
+                                                                    <span className="font-medium tabular-nums">¥{fmt(c.allocated)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-[10px] text-gray-500">
+                                                                    <span>執行</span>
+                                                                    <span className="font-bold tabular-nums text-gray-700">¥{fmt(c.spent)}</span>
+                                                                </div>
+                                                            </div>
+                                                            {/* ミニ進捗バー */}
+                                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden">
+                                                                <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                                            </div>
+                                                            <div className="text-[9px] text-gray-400 tabular-nums">{catPct}%</div>
                                                         </div>
-                                                        {/* Mini progress bar */}
-                                                        <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
-                                                            <div className={`h-full rounded-full transition-all ${barCol}`} style={{ width: `${catPct}%` }} />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                            {/* Total row */}
-                                            <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 flex items-center justify-between mt-2">
-                                                <span className="text-xs font-bold text-gray-700">合計</span>
-                                                <div className="flex items-center gap-3 text-xs tabular-nums">
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* 合計行 */}
+                                            <div className="mt-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
+                                                <span className="text-xs font-bold text-gray-600">合計</span>
+                                                <div className="flex items-center gap-4 text-sm tabular-nums flex-wrap">
                                                     <span className="text-gray-500">配分 <span className="font-semibold text-gray-700">¥{fmt(s.totalAllocated)}</span></span>
                                                     <span className="text-gray-500">執行 <span className="font-bold text-gray-900">¥{fmt(s.totalSpent)}</span></span>
-                                                    <span className={`font-bold text-sm ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(s.totalRemaining)}</span>
+                                                    <span className={`font-bold ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(s.totalRemaining)}</span>
                                                 </div>
                                             </div>
                                         </div>
