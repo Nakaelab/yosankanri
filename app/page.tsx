@@ -163,6 +163,10 @@ function Dashboard() {
     const [mounted, setMounted] = useState(false);
     const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
     const [allBudgets, setAllBudgets] = useState<{ id: string; name: string; jCode: string }[]>([]);
+    const [txByBudget, setTxByBudget] = useState<Record<string, Transaction[]>>({});
+    const [expandedBudgets, setExpandedBudgets] = useState<Record<string, boolean>>({});
+    const toggleExpand = (budgetId: string) =>
+        setExpandedBudgets(prev => ({ ...prev, [budgetId]: !prev[budgetId] }));
 
     // Edit transaction modal
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -215,6 +219,14 @@ function Dashboard() {
             // Recent transactions (newest 5)
             const sorted = [...transactions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setRecentTransactions(sorted.slice(0, 5));
+
+            // Group transactions by budgetId (sorted by date desc)
+            const byBudget: Record<string, Transaction[]> = {};
+            for (const tx of sorted) {
+                if (!byBudget[tx.budgetId]) byBudget[tx.budgetId] = [];
+                byBudget[tx.budgetId].push(tx);
+            }
+            setTxByBudget(byBudget);
         };
         load();
     }, []);
@@ -437,6 +449,97 @@ function Dashboard() {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* ===== 執行明細アコーディオン ===== */}
+                                    {(() => {
+                                        const bTxs = txByBudget[s.budget.id] || [];
+                                        if (bTxs.length === 0) return null;
+                                        const isOpen = expandedBudgets[s.budget.id] ?? false;
+                                        // 累積残額（日付降順なので逆順で計算）
+                                        let running = s.totalAllocated;
+                                        const rowsAsc = [...bTxs].reverse();
+                                        const accumulated: { tx: Transaction; remaining: number }[] = [];
+                                        for (const tx of rowsAsc) {
+                                            running -= tx.amount;
+                                            accumulated.push({ tx, remaining: running });
+                                        }
+                                        const rowsDesc = accumulated.reverse();
+
+                                        return (
+                                            <div className="border-t border-gray-100">
+                                                {/* トグルボタン */}
+                                                <button
+                                                    onClick={() => toggleExpand(s.budget.id)}
+                                                    className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                                                        </svg>
+                                                        執行明細 ({bTxs.length}件)
+                                                    </span>
+                                                    <svg
+                                                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                                                        fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"
+                                                    >
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                                    </svg>
+                                                </button>
+
+                                                {/* 明細テーブル */}
+                                                {isOpen && (
+                                                    <div className="px-4 pb-4 overflow-x-auto">
+                                                        <table className="w-full text-xs border-collapse">
+                                                            <thead>
+                                                                <tr className="border-b border-gray-100">
+                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold">日付</th>
+                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold">品名</th>
+                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold hidden sm:table-cell">費目</th>
+                                                                    <th className="text-right py-2 px-2 text-gray-400 font-semibold">金額</th>
+                                                                    <th className="text-right py-2 px-2 text-gray-400 font-semibold">残額</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {rowsDesc.map(({ tx, remaining }) => {
+                                                                    const catColor = CATEGORY_COLORS[tx.category];
+                                                                    return (
+                                                                        <tr key={tx.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                                                            <td className="py-2 px-2 text-gray-400 whitespace-nowrap font-mono">
+                                                                                {tx.date === "未定" ? "未定" : tx.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$2/$3")}
+                                                                            </td>
+                                                                            <td className="py-2 px-2 text-gray-700 max-w-[140px]">
+                                                                                <div className="truncate font-medium">{tx.itemName}</div>
+                                                                                {tx.specification && (
+                                                                                    <div className="text-[10px] text-gray-400 truncate">{tx.specification}</div>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="py-2 px-2 hidden sm:table-cell">
+                                                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${catColor.bg} ${catColor.text}`}>
+                                                                                    <span className={`w-1.5 h-1.5 rounded-full ${catColor.bar}`} />
+                                                                                    {CATEGORY_LABELS[tx.category]}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="py-2 px-2 text-right tabular-nums font-bold text-gray-800 whitespace-nowrap">
+                                                                                ¥{fmt(tx.amount)}
+                                                                            </td>
+                                                                            <td className={`py-2 px-2 text-right tabular-nums font-bold whitespace-nowrap ${remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                                                                                {remaining < 0 ? "▲" : ""}¥{fmt(Math.abs(remaining))}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                        <div className="mt-2 text-right">
+                                                            <Link href="/transactions" className="text-[11px] text-brand-600 hover:underline font-medium">
+                                                                執行一覧で全件見る →
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             );
                         })}
@@ -447,148 +550,150 @@ function Dashboard() {
             </div>
 
             {/* Transaction Edit Modal */}
-            {editingTx && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={handleCancelEdit}>
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-fade-in my-8"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
-                            <h3 className="text-base font-bold text-gray-900">執行データの編集</h3>
-                            <button onClick={handleCancelEdit} className="w-8 h-8 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
-                                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-6 space-y-4">
-                            {/* Budget Selection */}
-                            <div>
-                                <label className="form-label">予算（研究費）</label>
-                                <select
-                                    className="form-select mt-1"
-                                    value={editForm.budgetId}
-                                    onChange={(e) => setEditForm({ ...editForm, budgetId: e.target.value })}
-                                >
-                                    <option value="">-- 選択してください --</option>
-                                    {allBudgets.map((b) => (
-                                        <option key={b.id} value={b.id}>{b.name} {b.jCode ? `(${b.jCode})` : ""}</option>
-                                    ))}
-                                </select>
+            {
+                editingTx && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={handleCancelEdit}>
+                        <div
+                            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-fade-in my-8"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
+                                <h3 className="text-base font-bold text-gray-900">執行データの編集</h3>
+                                <button onClick={handleCancelEdit} className="w-8 h-8 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Content */}
+                            <div className="p-6 space-y-4">
+                                {/* Budget Selection */}
                                 <div>
-                                    <label className="form-label">伝票番号</label>
-                                    <input
-                                        type="text"
-                                        className="form-input font-mono"
-                                        value={editForm.slipNumber}
-                                        onChange={(e) => setEditForm({ ...editForm, slipNumber: e.target.value })}
-                                        placeholder="例: P250..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="form-label">費目カテゴリ</label>
+                                    <label className="form-label">予算（研究費）</label>
                                     <select
-                                        className="form-select"
-                                        value={editForm.category}
-                                        onChange={(e) => setEditForm({ ...editForm, category: e.target.value as ExpenseCategory })}
+                                        className="form-select mt-1"
+                                        value={editForm.budgetId}
+                                        onChange={(e) => setEditForm({ ...editForm, budgetId: e.target.value })}
                                     >
-                                        {ALL_CATEGORIES.map((cat) => (<option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>))}
+                                        <option value="">-- 選択してください --</option>
+                                        {allBudgets.map((b) => (
+                                            <option key={b.id} value={b.id}>{b.name} {b.jCode ? `(${b.jCode})` : ""}</option>
+                                        ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="form-label">{editForm.category === "labor" ? "支払日 / 計上日" : "納品日"}</label>
-                                    <input
-                                        type="date"
-                                        className="form-input"
-                                        value={editForm.date}
-                                        onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="form-label">{editForm.category === "labor" ? "内容・期間" : "品名"}</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={editForm.itemName}
-                                        onChange={(e) => setEditForm({ ...editForm, itemName: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="form-label">{editForm.category === "labor" ? "対象者名" : "規格等"}</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={editForm.specification}
-                                        onChange={(e) => setEditForm({ ...editForm, specification: e.target.value })}
-                                    />
-                                </div>
-                                {editForm.category !== "labor" && (
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="form-label">支払先</label>
+                                        <label className="form-label">伝票番号</label>
+                                        <input
+                                            type="text"
+                                            className="form-input font-mono"
+                                            value={editForm.slipNumber}
+                                            onChange={(e) => setEditForm({ ...editForm, slipNumber: e.target.value })}
+                                            placeholder="例: P250..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">費目カテゴリ</label>
+                                        <select
+                                            className="form-select"
+                                            value={editForm.category}
+                                            onChange={(e) => setEditForm({ ...editForm, category: e.target.value as ExpenseCategory })}
+                                        >
+                                            {ALL_CATEGORIES.map((cat) => (<option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="form-label">{editForm.category === "labor" ? "支払日 / 計上日" : "納品日"}</label>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            value={editForm.date}
+                                            onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">{editForm.category === "labor" ? "内容・期間" : "品名"}</label>
                                         <input
                                             type="text"
                                             className="form-input"
-                                            value={editForm.payee}
-                                            onChange={(e) => setEditForm({ ...editForm, payee: e.target.value })}
+                                            value={editForm.itemName}
+                                            onChange={(e) => setEditForm({ ...editForm, itemName: e.target.value })}
                                         />
                                     </div>
-                                )}
-                                {editForm.category !== "labor" && (
-                                    <>
+                                    <div>
+                                        <label className="form-label">{editForm.category === "labor" ? "対象者名" : "規格等"}</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={editForm.specification}
+                                            onChange={(e) => setEditForm({ ...editForm, specification: e.target.value })}
+                                        />
+                                    </div>
+                                    {editForm.category !== "labor" && (
                                         <div>
-                                            <label className="form-label">単価</label>
+                                            <label className="form-label">支払先</label>
                                             <input
-                                                type="number"
+                                                type="text"
                                                 className="form-input"
-                                                value={editForm.unitPrice || ""}
-                                                onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })}
-                                                min={0}
+                                                value={editForm.payee}
+                                                onChange={(e) => setEditForm({ ...editForm, payee: e.target.value })}
                                             />
                                         </div>
-                                        <div>
-                                            <label className="form-label">数量</label>
-                                            <input
-                                                type="number"
-                                                className="form-input"
-                                                value={editForm.quantity}
-                                                onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })}
-                                                min={1}
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                                <div className="md:col-span-2">
-                                    <label className="form-label">{editForm.category === "labor" ? "金額（総額）" : "金額（円）"}</label>
-                                    <input
-                                        type="number"
-                                        className="form-input text-lg font-bold"
-                                        value={editForm.amount || ""}
-                                        onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0, ...(editForm.category === "labor" ? { unitPrice: parseInt(e.target.value, 10) || 0, quantity: 1 } : {}) })}
-                                        min={0}
-                                    />
-                                    {editForm.category !== "labor" && editForm.unitPrice > 0 && editForm.quantity > 1 && (
-                                        <p className="text-[11px] text-gray-400 mt-1">
-                                            単価 {editForm.unitPrice.toLocaleString()} × 数量 {editForm.quantity} = {(editForm.unitPrice * editForm.quantity).toLocaleString()}
-                                        </p>
                                     )}
+                                    {editForm.category !== "labor" && (
+                                        <>
+                                            <div>
+                                                <label className="form-label">単価</label>
+                                                <input
+                                                    type="number"
+                                                    className="form-input"
+                                                    value={editForm.unitPrice || ""}
+                                                    onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })}
+                                                    min={0}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="form-label">数量</label>
+                                                <input
+                                                    type="number"
+                                                    className="form-input"
+                                                    value={editForm.quantity}
+                                                    onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })}
+                                                    min={1}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="md:col-span-2">
+                                        <label className="form-label">{editForm.category === "labor" ? "金額（総額）" : "金額（円）"}</label>
+                                        <input
+                                            type="number"
+                                            className="form-input text-lg font-bold"
+                                            value={editForm.amount || ""}
+                                            onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0, ...(editForm.category === "labor" ? { unitPrice: parseInt(e.target.value, 10) || 0, quantity: 1 } : {}) })}
+                                            min={0}
+                                        />
+                                        {editForm.category !== "labor" && editForm.unitPrice > 0 && editForm.quantity > 1 && (
+                                            <p className="text-[11px] text-gray-400 mt-1">
+                                                単価 {editForm.unitPrice.toLocaleString()} × 数量 {editForm.quantity} = {(editForm.unitPrice * editForm.quantity).toLocaleString()}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Footer */}
-                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
-                            <button className="btn-secondary" onClick={handleCancelEdit}>キャンセル</button>
-                            <button className="btn-primary" onClick={handleSaveEdit}>保存する</button>
+                            {/* Footer */}
+                            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 rounded-b-2xl">
+                                <button className="btn-secondary" onClick={handleCancelEdit}>キャンセル</button>
+                                <button className="btn-primary" onClick={handleSaveEdit}>保存する</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div>
     );
 }
