@@ -417,7 +417,7 @@ function Dashboard() {
                                                                 {isOver ? "▲" : ""}{fmtYen(Math.abs(c.remaining))}
                                                                 <span className="text-[10px] font-normal text-gray-400 ml-1">残</span>
                                                             </div>
-                                                            {/* 配分・執行 */}
+                                                            {/* 配分・執行・残額 */}
                                                             <div className="space-y-0.5">
                                                                 <div className="flex justify-between text-[10px] text-gray-500">
                                                                     <span>配分</span>
@@ -426,6 +426,10 @@ function Dashboard() {
                                                                 <div className="flex justify-between text-[10px] text-gray-500">
                                                                     <span>執行</span>
                                                                     <span className="font-bold tabular-nums text-gray-700">¥{fmt(c.spent)}</span>
+                                                                </div>
+                                                                <div className={`flex justify-between text-[10px] font-bold pt-0.5 border-t border-white/50 ${isOver ? "text-red-600" : "text-emerald-600"}`}>
+                                                                    <span>残額</span>
+                                                                    <span className="tabular-nums">{isOver ? "▲" : ""}¥{fmt(Math.abs(c.remaining))}</span>
                                                                 </div>
                                                             </div>
                                                             {/* ミニ進捗バー */}
