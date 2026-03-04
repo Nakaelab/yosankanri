@@ -108,6 +108,7 @@ export interface Transaction {
     attachmentCount: number;  // 添付ファイル数（見積書等）
     attachments?: AttachmentMeta[]; // 添付ファイルメタデータ
     ocrRawText?: string;    // OCR全文（デバッグ用）
+    splitGroupId?: string;  // 複数予算に分割登録した場合のグループID（同じIDの分割分が同一物品）
     createdAt: string;
 }
 

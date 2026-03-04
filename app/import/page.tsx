@@ -15,6 +15,13 @@ type Mode = "ocr" | "manual" | "labor";
 type OCRStatus = "idle" | "loading" | "processing" | "done" | "error";
 type LaborStatus = "provisional" | "confirmed";
 
+/** 予算分割エントリ */
+interface BudgetSplit {
+    id: string;
+    budgetId: string;
+    amount: number; // この予算への割当金額
+}
+
 /** 人件費バッチ入力行 */
 interface LaborRow {
     id: string;
@@ -53,7 +60,8 @@ export default function ImportPage() {
 
     const [mode, setMode] = useState<Mode>("manual");
     const [budgets, setBudgets] = useState<Budget[]>([]);
-    const [selectedBudgetId, setSelectedBudgetId] = useState("");
+    const [selectedBudgetId, setSelectedBudgetId] = useState(""); // 後方互換 (laborモード用)
+    const [budgetSplits, setBudgetSplits] = useState<BudgetSplit[]>([{ id: uuidv4(), budgetId: "", amount: 0 }]);
 
     // OCR state
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -125,7 +133,10 @@ export default function ImportPage() {
     // ---- Auto-calc amount ----
     useEffect(() => {
         if (unitPrice > 0 && quantity > 0) {
-            setAmount(unitPrice * quantity);
+            const computed = unitPrice * quantity;
+            setAmount(computed);
+            // 分割が1件だけなら金額を自動同期
+            setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: computed }] : prev);
         }
     }, [unitPrice, quantity]);
 
@@ -134,9 +145,41 @@ export default function ImportPage() {
         if (!itemName.trim()) errs.push({ field: "itemName", message: "品名が空です" });
         if (amount <= 0) errs.push({ field: "amount", message: "金額が0以下です" });
         if (!date && !dateUnknown) errs.push({ field: "date", message: "日付が空です" });
+        const validSplits = budgetSplits.filter(s => s.budgetId);
+        if (validSplits.length === 0) errs.push({ field: "budgetSplits", message: "予算を1つ以上選択してください" });
+        const splitTotal = validSplits.reduce((s, v) => s + v.amount, 0);
+        if (amount > 0 && validSplits.length > 1 && splitTotal !== amount) {
+            errs.push({ field: "budgetSplits", message: `予算の合計金額（¥${splitTotal.toLocaleString()}）が物品金額（¥${amount.toLocaleString()}）と一致しません` });
+        }
         setErrors(errs);
         return errs;
     };
+
+    // ---- Budget Splits helpers ----
+    const addBudgetSplit = () => {
+        setBudgetSplits(prev => [...prev, { id: uuidv4(), budgetId: "", amount: 0 }]);
+    };
+
+    const removeBudgetSplit = (id: string) => {
+        setBudgetSplits(prev => prev.length <= 1 ? prev : prev.filter(s => s.id !== id));
+    };
+
+    const updateBudgetSplit = (id: string, field: keyof BudgetSplit, value: string | number) => {
+        setBudgetSplits(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+    };
+
+    /** 物品金額が入力されたとき、splitが1件だけなら金額を自動同期 */
+    const syncSingleSplitAmount = (newAmount: number) => {
+        setBudgetSplits(prev => {
+            if (prev.length === 1) {
+                return [{ ...prev[0], amount: newAmount }];
+            }
+            return prev;
+        });
+    };
+
+    const splitTotal = budgetSplits.filter(s => s.budgetId).reduce((s, v) => s + v.amount, 0);
+    const splitRemainder = amount - splitTotal;
 
     // ---- File upload (OCR) ----
     const handleFile = useCallback((file: File) => {
@@ -214,6 +257,8 @@ export default function ImportPage() {
             setUnitPrice(data.unitPrice);
             setQuantity(data.quantity);
             setAmount(data.amount);
+            // 分割が1件だけなら金額を自動同期
+            setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: data.amount }] : prev);
             setCategory(data.category);
             setOcrStatus("done");
         } catch (err) {
@@ -248,28 +293,38 @@ export default function ImportPage() {
     };
 
     // ---- Save ----
-    // ---- Save ----
     const handleSave = async () => {
-        if (!selectedBudgetId) { alert("予算（研究費）を選択してください"); return; }
         const errs = validate();
+        const validSplits = budgetSplits.filter(s => s.budgetId);
+        if (validSplits.length === 0) {
+            alert("予算（研究費）を選択してください");
+            return;
+        }
         if (errs.length > 0) {
+            const isSplitMismatch = errs.some(e => e.field === "budgetSplits" && e.message.includes("一致しません"));
             const proceed = confirm(
                 "以下の項目に問題があります：\n" + errs.map((v) => `• ${v.message}`).join("\n") + "\n\nこのまま保存しますか？"
             );
             if (!proceed) return;
+            if (isSplitMismatch) return; // 金額不一致は強制キャンセル
         }
 
-        const txId = uuidv4();
         const tid = getCurrentTeacherId();
         const teacherId = tid === "default" ? undefined : tid;
 
-        // サーバーAPIを介して Supabase Storage にアップロード（サービスロールキー使用）
+        // 分割グループID（複数予算分割時に同一物品を識別）
+        const splitGroupId = validSplits.length > 1 ? uuidv4() : undefined;
+
+        // 先に最初のtransactionIDを決定してアップロードに使う
+        const firstTxId = uuidv4();
+
+        // Supabase Storage にアップロード
         const uploadedMeta: import("@/lib/types").AttachmentMeta[] = [];
 
         for (const est of estimates) {
             const fd = new FormData();
             fd.append("file", est.file);
-            fd.append("transactionId", txId);
+            fd.append("transactionId", firstTxId);
             try {
                 const res = await fetch("/api/upload", { method: "POST", body: fd });
                 if (res.ok) {
@@ -287,23 +342,29 @@ export default function ImportPage() {
             }
         }
 
-
-        saveTransaction({
-            id: txId,
-            budgetId: selectedBudgetId,
-            slipNumber,
-            date: dateUnknown ? "未定" : date,
-            itemName,
-            specification,
-            payee,
-            unitPrice,
-            quantity,
-            amount,
-            category,
-            attachmentCount: uploadedMeta.length,
-            attachments: uploadedMeta.length > 0 ? uploadedMeta : undefined,
-            ocrRawText: mode === "ocr" ? ocrRawText : undefined,
-            createdAt: new Date().toISOString(),
+        // 各分割分を個別のTransactionとして保存
+        validSplits.forEach((split, idx) => {
+            const txId = idx === 0 ? firstTxId : uuidv4();
+            // 分割の場合は各分割の金額を使用、単一の場合は通常の金額
+            const txAmount = validSplits.length > 1 ? split.amount : amount;
+            saveTransaction({
+                id: txId,
+                budgetId: split.budgetId,
+                slipNumber,
+                date: dateUnknown ? "未定" : date,
+                itemName,
+                specification,
+                payee,
+                unitPrice: validSplits.length > 1 ? split.amount : unitPrice,
+                quantity: validSplits.length > 1 ? 1 : quantity,
+                amount: txAmount,
+                category,
+                attachmentCount: idx === 0 ? uploadedMeta.length : 0,
+                attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
+                ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
+                splitGroupId,
+                createdAt: new Date().toISOString(),
+            });
         });
 
         router.push("/transactions");
@@ -384,6 +445,7 @@ export default function ImportPage() {
         setEstimates([]); setErrors([]); setDateUnknown(false);
         setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText("");
         setLaborRows([emptyLaborRow()]);
+        setBudgetSplits([{ id: uuidv4(), budgetId: "", amount: 0 }]);
         const d = new Date();
         setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
     };
@@ -738,15 +800,92 @@ export default function ImportPage() {
                             {errors.length > 0 && <span className="badge-error">{errors.length}件の確認事項</span>}
                         </div>
 
-                        {/* Budget Selection */}
-                        <div className="bg-brand-50 border border-brand-200 rounded-lg p-4">
-                            <label className="form-label text-brand-700">予算（研究費）を選択 *</label>
-                            <select className="form-select mt-1" value={selectedBudgetId} onChange={(e) => setSelectedBudgetId(e.target.value)}>
-                                <option value="">-- 選択してください --</option>
-                                {budgets.map((b) => (
-                                    <option key={b.id} value={b.id}>{b.name} {b.jCode ? `(${b.jCode})` : ""}</option>
+                        {/* Budget Split Selection */}
+                        <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="form-label text-brand-700 mb-0">予算（研究費）*</label>
+                                {budgetSplits.length === 1 ? (
+                                    <button
+                                        type="button"
+                                        onClick={addBudgetSplit}
+                                        className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:text-brand-700 border border-dashed border-brand-300 hover:border-brand-500 hover:bg-brand-100 px-2.5 py-1 rounded-lg transition-colors"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                        </svg>
+                                        複数予算に分割
+                                    </button>
+                                ) : (
+                                    <span className={`text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-full ${splitRemainder === 0 ? "bg-green-100 text-green-700" :
+                                        splitRemainder > 0 ? "bg-amber-100 text-amber-700" :
+                                            "bg-red-100 text-red-700"
+                                        }`}>
+                                        {splitRemainder === 0 ? "✓ 合計一致" : splitRemainder > 0 ? `残り ¥${splitRemainder.toLocaleString()}` : `超過 ¥${Math.abs(splitRemainder).toLocaleString()}`}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                {budgetSplits.map((split, idx) => (
+                                    <div key={split.id} className="flex items-center gap-2">
+                                        {budgetSplits.length > 1 && (
+                                            <span className="text-[10px] font-bold text-brand-400 w-4 flex-shrink-0">#{idx + 1}</span>
+                                        )}
+                                        <select
+                                            className="form-select flex-1 min-w-0"
+                                            value={split.budgetId}
+                                            onChange={(e) => updateBudgetSplit(split.id, "budgetId", e.target.value)}
+                                        >
+                                            <option value="">-- 予算を選択 --</option>
+                                            {budgets.map((b) => (
+                                                <option key={b.id} value={b.id}>{b.name} {b.jCode ? `(${b.jCode})` : ""}</option>
+                                            ))}
+                                        </select>
+                                        {budgetSplits.length > 1 && (
+                                            <>
+                                                <div className="relative flex-shrink-0 w-36">
+                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-medium">¥</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full form-input pl-6 text-sm font-bold tabular-nums"
+                                                        value={split.amount || ""}
+                                                        onChange={(e) => updateBudgetSplit(split.id, "amount", parseInt(e.target.value, 10) || 0)}
+                                                        min={0}
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeBudgetSplit(split.id)}
+                                                    className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                    title="この予算を削除"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 ))}
-                            </select>
+                            </div>
+
+                            {budgetSplits.length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={addBudgetSplit}
+                                    className="w-full inline-flex items-center justify-center gap-1 text-[11px] font-medium text-brand-500 hover:text-brand-700 border border-dashed border-brand-200 hover:border-brand-400 hover:bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                    予算を追加
+                                </button>
+                            )}
+
+                            {hasError("budgetSplits") && (
+                                <p className="field-error-text">{getError("budgetSplits")}</p>
+                            )}
                         </div>
 
                         {/* Fields */}
@@ -831,6 +970,7 @@ export default function ImportPage() {
                                     onChange={(e) => {
                                         const parsedAmount = parseInt(e.target.value, 10) || 0;
                                         setAmount(parsedAmount);
+                                        syncSingleSplitAmount(parsedAmount);
                                         if (category === "labor") {
                                             setUnitPrice(parsedAmount);
                                             setQuantity(1);
@@ -842,6 +982,11 @@ export default function ImportPage() {
                                 {hasError("amount") && <p className="field-error-text">{getError("amount")}</p>}
                                 {category !== "labor" && unitPrice > 0 && quantity > 1 && (
                                     <p className="text-[11px] text-gray-400 mt-1">単価 {unitPrice.toLocaleString()} × 数量 {quantity} = {(unitPrice * quantity).toLocaleString()}</p>
+                                )}
+                                {budgetSplits.length > 1 && amount > 0 && (
+                                    <p className="text-[11px] text-brand-600 mt-1 font-medium">
+                                        ↓ 下記の予算分割で合計 ¥{splitTotal.toLocaleString()} を割り当て中
+                                    </p>
                                 )}
                             </div>
                         </div>
