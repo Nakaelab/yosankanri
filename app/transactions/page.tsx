@@ -2,10 +2,32 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { v4 as uuidv4 } from "uuid";
 import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta, ALL_CATEGORIES, ExpenseCategory } from "@/lib/types";
-import { getTransactions, deleteTransaction, getBudgets, saveTransaction } from "@/lib/storage";
+import { getTransactions, deleteTransaction, deleteTransactionsBySplitGroup, getBudgets, saveTransaction } from "@/lib/storage";
 import { getCurrentTeacherId } from "@/lib/storage";
 import { formatFileSize } from "@/lib/attachments";
+
+// ===== 型定義 =====
+
+/** 配分行（予算ID + 金額） */
+interface SplitRow {
+    key: string;       // UI用ユニークキー
+    budgetId: string;
+    amount: number;
+}
+
+/** 編集フォームの基本情報（予算・金額以外） */
+interface EditBase {
+    slipNumber: string;
+    date: string;
+    itemName: string;
+    specification: string;
+    payee: string;
+    unitPrice: number;
+    quantity: number;
+    category: ExpenseCategory;
+}
 
 export default function TransactionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -20,12 +42,14 @@ export default function TransactionsPage() {
     const [previewName, setPreviewName] = useState("");
 
     // Edit modal
-    const [editingTx, setEditingTx] = useState<Transaction | null>(null);
-    const [editForm, setEditForm] = useState({
+    const [editingTx, setEditingTx] = useState<Transaction | null>(null);  // 代表トランザクション
+    const [editBase, setEditBase] = useState<EditBase>({
         slipNumber: "", date: "", itemName: "", specification: "", payee: "",
-        unitPrice: 0, quantity: 1, amount: 0,
-        category: "goods" as ExpenseCategory, budgetId: "",
+        unitPrice: 0, quantity: 1, category: "goods",
     });
+    // 複数予算配分行
+    const [splitRows, setSplitRows] = useState<SplitRow[]>([]);
+    // 添付ファイル
     const [editNewFiles, setEditNewFiles] = useState<File[]>([]);
     const [editRemovedIds, setEditRemovedIds] = useState<string[]>([]);
     const [editUploading, setEditUploading] = useState(false);
@@ -38,26 +62,92 @@ export default function TransactionsPage() {
 
     useEffect(() => { setMounted(true); reload(); }, []);
 
-    const handleDelete = (id: string) => {
+    // ===== 削除 =====
+    const handleDelete = (tx: Transaction) => {
         if (!confirm("この執行データを削除しますか？\n添付ファイルも削除されます。")) return;
-        deleteTransaction(id); reload();
+        if (tx.splitGroupId) {
+            // グループ全体を削除
+            deleteTransactionsBySplitGroup(tx.splitGroupId);
+        } else {
+            deleteTransaction(tx.id);
+        }
+        reload();
     };
 
+    // ===== 編集を開く =====
     const handleEdit = (tx: Transaction) => {
-        setEditingTx(tx); setEditNewFiles([]); setEditRemovedIds([]);
-        setEditForm({ slipNumber: tx.slipNumber, date: tx.date, itemName: tx.itemName, specification: tx.specification, payee: tx.payee, unitPrice: tx.unitPrice, quantity: tx.quantity, amount: tx.amount, category: tx.category, budgetId: tx.budgetId });
+        // splitGroupId がある場合、グループ全件を取得して配分行を復元
+        const allTxs = getTransactions();
+        let groupTxs: Transaction[];
+        if (tx.splitGroupId) {
+            groupTxs = allTxs.filter(t => t.splitGroupId === tx.splitGroupId)
+                .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        } else {
+            groupTxs = [tx];
+        }
+        // 代表（最初の）トランザクション
+        const rep = groupTxs[0];
+        setEditingTx(rep);
+        setEditNewFiles([]);
+        setEditRemovedIds([]);
+        setEditBase({
+            slipNumber: rep.slipNumber,
+            date: rep.date,
+            itemName: rep.itemName,
+            specification: rep.specification,
+            payee: rep.payee,
+            unitPrice: rep.unitPrice,
+            quantity: rep.quantity,
+            category: rep.category,
+        });
+        setSplitRows(groupTxs.map(t => ({
+            key: uuidv4(),
+            budgetId: t.budgetId,
+            amount: t.amount,
+        })));
     };
 
+    // ===== 配分行操作 =====
+    const addSplitRow = () => setSplitRows(prev => [...prev, { key: uuidv4(), budgetId: "", amount: 0 }]);
+    const removeSplitRow = (key: string) => setSplitRows(prev => prev.filter(r => r.key !== key));
+    const updateSplitRow = (key: string, patch: Partial<SplitRow>) =>
+        setSplitRows(prev => prev.map(r => r.key === key ? { ...r, ...patch } : r));
+
+    // ===== 合計金額 =====
+    const totalSplitAmount = splitRows.reduce((s, r) => s + (r.amount || 0), 0);
+
+    // ===== 金額自動計算（非人件費） =====
+    useEffect(() => {
+        if (!editingTx) return;
+        if (editBase.category !== "labor" && editBase.unitPrice > 0 && editBase.quantity > 0) {
+            const auto = editBase.unitPrice * editBase.quantity;
+            // 配分が1行のみなら金額を自動反映
+            if (splitRows.length === 1) {
+                setSplitRows(prev => prev.map((r, i) => i === 0 ? { ...r, amount: auto } : r));
+            }
+        }
+    }, [editBase.unitPrice, editBase.quantity]);
+
+    // ===== 保存 =====
     const handleSaveEdit = async () => {
         if (!editingTx) return;
-        if (!editForm.budgetId) { alert("予算を選択してください"); return; }
-        if (!editForm.itemName.trim()) { alert("品名を入力してください"); return; }
-        if (editForm.amount <= 0) { alert("金額を確認してください"); return; }
+
+        // バリデーション
+        if (splitRows.length === 0) { alert("予算を1つ以上選択してください"); return; }
+        for (const r of splitRows) {
+            if (!r.budgetId) { alert("すべての予算行で予算を選択してください"); return; }
+            if (r.amount <= 0) { alert("すべての予算行で金額を入力してください"); return; }
+        }
+        if (!editBase.itemName.trim()) { alert("品名を入力してください"); return; }
+
         setEditUploading(true);
+
+        // 添付ファイルのアップロード（代表トランザクションに紐づける）
         const newMetas: AttachmentMeta[] = [];
         for (const file of editNewFiles) {
             const fd = new FormData();
-            fd.append("file", file); fd.append("transactionId", editingTx.id);
+            fd.append("file", file);
+            fd.append("transactionId", editingTx.id);
             try {
                 const res = await fetch("/api/upload", { method: "POST", body: fd });
                 if (res.ok) newMetas.push(await res.json());
@@ -66,8 +156,47 @@ export default function TransactionsPage() {
         }
         const keptAttachments = (editingTx.attachments || []).filter(a => !editRemovedIds.includes(a.id));
         const allAttachments = [...keptAttachments, ...newMetas];
-        saveTransaction({ ...editingTx, ...editForm, attachments: allAttachments.length > 0 ? allAttachments : undefined, attachmentCount: allAttachments.length });
-        setEditUploading(false); setEditingTx(null); setEditNewFiles([]); setEditRemovedIds([]); reload();
+
+        // 既存トランザクション（グループ）を削除してから再保存
+        if (editingTx.splitGroupId) {
+            deleteTransactionsBySplitGroup(editingTx.splitGroupId);
+        } else {
+            deleteTransaction(editingTx.id);
+        }
+
+        const teacherId = getCurrentTeacherId() || undefined;
+        const isMulti = splitRows.length > 1;
+        const groupId = isMulti ? (editingTx.splitGroupId || uuidv4()) : undefined;
+        const now = new Date().toISOString();
+
+        splitRows.forEach((row, idx) => {
+            const tx: Transaction = {
+                id: idx === 0 ? editingTx.id : uuidv4(),
+                teacherId,
+                budgetId: row.budgetId,
+                slipNumber: editBase.slipNumber,
+                date: editBase.date,
+                itemName: editBase.itemName,
+                specification: editBase.specification,
+                payee: editBase.payee,
+                unitPrice: editBase.category === "labor" ? row.amount : editBase.unitPrice,
+                quantity: editBase.category === "labor" ? 1 : editBase.quantity,
+                amount: row.amount,
+                category: editBase.category,
+                attachmentCount: idx === 0 ? allAttachments.length : 0,
+                attachments: idx === 0 && allAttachments.length > 0 ? allAttachments : undefined,
+                ocrRawText: editingTx.ocrRawText,
+                splitGroupId: groupId,
+                createdAt: idx === 0 ? editingTx.createdAt : now,
+            };
+            saveTransaction(tx);
+        });
+
+        setEditUploading(false);
+        setEditingTx(null);
+        setEditNewFiles([]);
+        setEditRemovedIds([]);
+        reload();
     };
 
     const handleCancelEdit = () => { setEditingTx(null); setEditNewFiles([]); setEditRemovedIds([]); };
@@ -79,11 +208,7 @@ export default function TransactionsPage() {
     };
     const removeEditNewFile = (idx: number) => setEditNewFiles(prev => prev.filter((_, i) => i !== idx));
 
-    useEffect(() => {
-        if (editingTx && editForm.unitPrice > 0 && editForm.quantity > 0)
-            setEditForm(prev => ({ ...prev, amount: prev.unitPrice * prev.quantity }));
-    }, [editForm.unitPrice, editForm.quantity]);
-
+    // ===== 添付プレビュー =====
     const openAttachments = (tx: Transaction) => {
         setPreviewTx(tx);
         const metas = tx.attachments || [];
@@ -93,12 +218,39 @@ export default function TransactionsPage() {
     const showAttachment = (meta: AttachmentMeta) => { setPreviewUrl(meta.storageUrl || null); setPreviewName(meta.fileName); };
     const closePreview = () => { setPreviewTx(null); setPreviewAttachments([]); setPreviewUrl(null); setPreviewName(""); };
 
+    // ===== ユーティリティ =====
     const fmt = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
     const getBudgetName = (id: string) => budgets.find((b) => b.id === id)?.name || "未割当";
-    const isLabor = editForm.category === "labor";
+    const isLabor = editBase.category === "labor";
 
-    const filtered = filterBudgetId === "all" ? transactions : transactions.filter((t) => t.budgetId === filterBudgetId);
-    const filteredTotal = filtered.reduce((s, t) => s + t.amount, 0);
+    // 一覧表示用: splitGroupを考慮した表示行（グループの最初の行のみを代表として表示）
+    const allTxs = transactions;
+    const displayedTxIds = new Set<string>();
+    const displayRows: Transaction[] = [];
+    for (const tx of allTxs) {
+        if (tx.splitGroupId) {
+            if (!displayedTxIds.has(tx.splitGroupId)) {
+                displayedTxIds.add(tx.splitGroupId);
+                displayRows.push(tx);
+            }
+        } else {
+            displayRows.push(tx);
+        }
+    }
+
+    const filtered = filterBudgetId === "all"
+        ? displayRows
+        : displayRows.filter((t) => {
+            if (t.splitGroupId) {
+                // グループ内にフィルタ対象の予算が含まれるか確認
+                return allTxs.some(at => at.splitGroupId === t.splitGroupId && at.budgetId === filterBudgetId);
+            }
+            return t.budgetId === filterBudgetId;
+        });
+
+    const filteredTotal = filterBudgetId === "all"
+        ? allTxs.reduce((s, t) => s + t.amount, 0)
+        : allTxs.filter(t => t.budgetId === filterBudgetId).reduce((s, t) => s + t.amount, 0);
 
     const selectedBudget = filterBudgetId === "all" ? null : budgets.find((b) => b.id === filterBudgetId);
     let budgetAllocated = 0;
@@ -110,13 +262,28 @@ export default function TransactionsPage() {
 
         ALL_CATEGORIES.forEach(cat => {
             const allocated = selectedBudget.allocations[cat] || 0;
-            const spent = filtered.filter(t => t.category === cat).reduce((s, t) => s + t.amount, 0);
+            const spent = allTxs.filter(t => t.budgetId === filterBudgetId && t.category === cat).reduce((s, t) => s + t.amount, 0);
             const remaining = allocated - spent;
             if (allocated > 0 || spent > 0) {
                 activeStats.push({ category: cat, allocated, spent, remaining });
             }
         });
     }
+
+    // トランザクションの予算名表示（複数の場合は「分割」と表示）
+    const getTxBudgetDisplay = (tx: Transaction) => {
+        if (!tx.splitGroupId) return getBudgetName(tx.budgetId);
+        const group = allTxs.filter(t => t.splitGroupId === tx.splitGroupId);
+        if (group.length <= 1) return getBudgetName(tx.budgetId);
+        const names = [...new Set(group.map(t => getBudgetName(t.budgetId)))];
+        return `${names[0]}他${names.length - 1}件`;
+    };
+
+    // トランザクションの合計金額（グループ全体）
+    const getTxTotalAmount = (tx: Transaction) => {
+        if (!tx.splitGroupId) return tx.amount;
+        return allTxs.filter(t => t.splitGroupId === tx.splitGroupId).reduce((s, t) => s + t.amount, 0);
+    };
 
     if (!mounted) return <div className="flex items-center justify-center h-screen"><div className="text-gray-400 text-sm">読み込み中...</div></div>;
 
@@ -154,8 +321,8 @@ export default function TransactionsPage() {
                             </div>
                         )}
                         <select className="form-select text-xs py-1.5 w-full sm:w-52" value={filterBudgetId} onChange={(e) => setFilterBudgetId(e.target.value)}>
-                            <option value="all">すべての予算 ({transactions.length}件)</option>
-                            {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({transactions.filter((t) => t.budgetId === b.id).length}件)</option>)}
+                            <option value="all">すべての予算 ({displayRows.length}件)</option>
+                            {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
                         </select>
                     </div>
                 </div>
@@ -215,6 +382,8 @@ export default function TransactionsPage() {
                                 <tbody>
                                     {filtered.map((tx) => {
                                         const colors = CATEGORY_COLORS[tx.category];
+                                        const isSplit = !!(tx.splitGroupId && allTxs.filter(t => t.splitGroupId === tx.splitGroupId).length > 1);
+                                        const totalAmt = getTxTotalAmount(tx);
                                         return (
                                             <tr key={tx.id}>
                                                 <td className="font-mono text-[11px] text-gray-500 whitespace-nowrap">{tx.slipNumber || "—"}</td>
@@ -224,9 +393,12 @@ export default function TransactionsPage() {
                                                 <td className="text-[12px] text-gray-500">{tx.payee || "—"}</td>
                                                 <td className="text-right tabular-nums text-[12px]">{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"}</td>
                                                 <td className="text-center tabular-nums text-[12px]">{tx.quantity}</td>
-                                                <td className="text-right font-medium tabular-nums whitespace-nowrap">{fmt(tx.amount)}</td>
+                                                <td className="text-right font-medium tabular-nums whitespace-nowrap">
+                                                    {fmt(totalAmt)}
+                                                    {isSplit && <span className="ml-1 text-[9px] text-indigo-400 font-bold">分割</span>}
+                                                </td>
                                                 <td><span className={`badge ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span></td>
-                                                <td className="text-[11px] text-gray-400 max-w-[100px] truncate">{getBudgetName(tx.budgetId)}</td>
+                                                <td className="text-[11px] text-gray-400 max-w-[120px] truncate">{getTxBudgetDisplay(tx)}</td>
                                                 <td className="text-center">
                                                     {(tx.attachmentCount || 0) > 0 ? (
                                                         <button className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-800 text-xs font-medium" onClick={() => openAttachments(tx)}>
@@ -238,9 +410,9 @@ export default function TransactionsPage() {
                                                 <td>
                                                     <div className="flex items-center gap-1">
                                                         <button className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded" onClick={() => handleEdit(tx)}>
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                                                         </button>
-                                                        <button className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" onClick={() => handleDelete(tx.id)}>
+                                                        <button className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" onClick={() => handleDelete(tx)}>
                                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
                                                         </button>
                                                     </div>
@@ -255,7 +427,7 @@ export default function TransactionsPage() {
                 </div>
             </div>
 
-            {/* ===== Attachment Preview Modal (portal to body) ===== */}
+            {/* ===== Attachment Preview Modal ===== */}
             {previewTx && createPortal(
                 <div className="fixed inset-0 flex flex-col bg-black/95" style={{ zIndex: 9999 }} onClick={closePreview}>
                     <div className="flex items-center justify-between px-5 py-3 bg-gray-900 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -310,14 +482,14 @@ export default function TransactionsPage() {
                 document.body
             )}
 
-            {/* ===== Edit Modal (portal to body — avoids overflow-x:hidden stacking issue) ===== */}
+            {/* ===== Edit Modal ===== */}
             {editingTx && createPortal(
                 <div
                     style={{ position: "fixed", inset: 0, zIndex: 9999, backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "1rem" }}
                     onClick={handleCancelEdit}
                 >
                     <div
-                        style={{ background: "white", borderRadius: "1rem", boxShadow: "0 25px 50px rgba(0,0,0,0.3)", width: "100%", maxWidth: "36rem", flexShrink: 0 }}
+                        style={{ background: "white", borderRadius: "1rem", boxShadow: "0 25px 50px rgba(0,0,0,0.3)", width: "100%", maxWidth: "40rem", flexShrink: 0, marginTop: "1rem", marginBottom: "1rem" }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
@@ -337,19 +509,13 @@ export default function TransactionsPage() {
                         </div>
 
                         {/* Body */}
-                        <div className="px-4 py-3 space-y-2">
-                            {/* 予算 + 費目 */}
+                        <div className="px-4 py-3 space-y-3">
+
+                            {/* 費目 */}
                             <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">予算</label>
-                                    <select className="form-select text-xs py-1" value={editForm.budgetId} onChange={(e) => setEditForm({ ...editForm, budgetId: e.target.value })}>
-                                        <option value="">-- 選択 --</option>
-                                        {budgets.map((b) => <option key={b.id} value={b.id}>{b.name}{b.jCode ? ` (${b.jCode})` : ""}</option>)}
-                                    </select>
-                                </div>
-                                <div>
+                                <div className="col-span-2 sm:col-span-1">
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">費目</label>
-                                    <select className="form-select text-xs py-1" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value as ExpenseCategory })}>
+                                    <select className="form-select text-xs py-1" value={editBase.category} onChange={(e) => setEditBase({ ...editBase, category: e.target.value as ExpenseCategory })}>
                                         {ALL_CATEGORIES.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
                                     </select>
                                 </div>
@@ -359,56 +525,106 @@ export default function TransactionsPage() {
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">伝票番号</label>
-                                    <input type="text" className="form-input font-mono text-xs py-1" value={editForm.slipNumber} onChange={(e) => setEditForm({ ...editForm, slipNumber: e.target.value })} placeholder="例: P250..." />
+                                    <input type="text" className="form-input font-mono text-xs py-1" value={editBase.slipNumber} onChange={(e) => setEditBase({ ...editBase, slipNumber: e.target.value })} placeholder="例: P250..." />
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "支払日" : "納品日"}</label>
-                                    <input type="date" className="form-input text-xs py-1" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                                    <input type="date" className="form-input text-xs py-1" value={editBase.date} onChange={(e) => setEditBase({ ...editBase, date: e.target.value })} />
                                 </div>
                             </div>
 
                             {/* 品名 */}
                             <div>
                                 <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "内容・期間" : "品名"}</label>
-                                <input type="text" className="form-input text-xs py-1" value={editForm.itemName} onChange={(e) => setEditForm({ ...editForm, itemName: e.target.value })} />
+                                <input type="text" className="form-input text-xs py-1" value={editBase.itemName} onChange={(e) => setEditBase({ ...editBase, itemName: e.target.value })} />
                             </div>
 
                             {/* 規格 + 支払先 */}
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "対象者名" : "規格等"}</label>
-                                    <input type="text" className="form-input text-xs py-1" value={editForm.specification} onChange={(e) => setEditForm({ ...editForm, specification: e.target.value })} />
+                                    <input type="text" className="form-input text-xs py-1" value={editBase.specification} onChange={(e) => setEditBase({ ...editBase, specification: e.target.value })} />
                                 </div>
                                 {!isLabor && (
                                     <div>
                                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">支払先</label>
-                                        <input type="text" className="form-input text-xs py-1" value={editForm.payee} onChange={(e) => setEditForm({ ...editForm, payee: e.target.value })} />
+                                        <input type="text" className="form-input text-xs py-1" value={editBase.payee} onChange={(e) => setEditBase({ ...editBase, payee: e.target.value })} />
                                     </div>
                                 )}
                             </div>
 
-                            {/* 単価 + 数量 + 金額 */}
-                            {isLabor ? (
-                                <div className="bg-brand-50/60 rounded-xl px-3 py-2">
-                                    <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（総額）</label>
-                                    <input type="number" className="form-input text-xs py-1 font-bold w-full" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0, unitPrice: parseInt(e.target.value, 10) || 0, quantity: 1 })} min={0} />
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-3 gap-2 bg-brand-50/60 rounded-xl px-3 py-2">
+                            {/* 単価 + 数量（非人件費） */}
+                            {!isLabor && (
+                                <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">単価</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editForm.unitPrice || ""} onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">単価</label>
+                                        <input type="number" className="form-input text-xs py-1" value={editBase.unitPrice || ""} onChange={(e) => setEditBase({ ...editBase, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">数量</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-brand-600 uppercase tracking-wide block mb-0.5">金額（円）</label>
-                                        <input type="number" className="form-input text-xs py-1 font-bold" value={editForm.amount || ""} onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">数量</label>
+                                        <input type="number" className="form-input text-xs py-1" value={editBase.quantity} onChange={(e) => setEditBase({ ...editBase, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
                                     </div>
                                 </div>
                             )}
+
+                            {/* ===== 予算配分セクション ===== */}
+                            <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2.5 space-y-2">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide">予算配分</span>
+                                    <button
+                                        type="button"
+                                        onClick={addSplitRow}
+                                        className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-bold rounded-lg transition-colors"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                        予算を追加
+                                    </button>
+                                </div>
+
+                                {splitRows.map((row, idx) => (
+                                    <div key={row.key} className="flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-indigo-200 text-indigo-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                            {idx + 1}
+                                        </div>
+                                        <select
+                                            className="form-select text-xs py-1 flex-1 min-w-0"
+                                            value={row.budgetId}
+                                            onChange={(e) => updateSplitRow(row.key, { budgetId: e.target.value })}
+                                        >
+                                            <option value="">-- 予算を選択 --</option>
+                                            {budgets.map((b) => <option key={b.id} value={b.id}>{b.name}{b.jCode ? ` (${b.jCode})` : ""}</option>)}
+                                        </select>
+                                        <div className="relative shrink-0 w-28">
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]">¥</span>
+                                            <input
+                                                type="number"
+                                                className="form-input text-xs py-1 pl-5 w-full font-bold"
+                                                value={row.amount || ""}
+                                                onChange={(e) => updateSplitRow(row.key, { amount: parseInt(e.target.value, 10) || 0 })}
+                                                min={0}
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                        {splitRows.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removeSplitRow(row.key)}
+                                                className="w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 text-red-500 flex items-center justify-center shrink-0 transition-colors"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* 合計 */}
+                                <div className="flex justify-between items-center pt-1.5 border-t border-indigo-100 mt-1">
+                                    <span className="text-[10px] text-indigo-600 font-bold">合計金額</span>
+                                    <span className="text-sm font-bold tabular-nums text-indigo-700">
+                                        {fmt(totalSplitAmount)}
+                                    </span>
+                                </div>
+                            </div>
 
                             {/* 添付ファイル */}
                             <div className="border border-dashed border-gray-200 rounded-xl px-3 py-2">

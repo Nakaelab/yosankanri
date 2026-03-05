@@ -112,6 +112,13 @@ export function deleteTransaction(id: string): void {
     setAndSync(key, JSON.stringify(list));
 }
 
+/** splitGroupId に属するトランザクションをすべて削除 */
+export function deleteTransactionsBySplitGroup(splitGroupId: string): void {
+    const list = getTransactions().filter((t) => t.splitGroupId !== splitGroupId);
+    const key = getStorageKey(TRANSACTIONS_KEY);
+    setAndSync(key, JSON.stringify(list));
+}
+
 export function getTransactionsByBudget(budgetId: string): Transaction[] {
     return getTransactions()
         .filter((t) => t.budgetId === budgetId)
