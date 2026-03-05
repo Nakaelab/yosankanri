@@ -418,14 +418,16 @@ export default function ImportPage() {
 
         // 消費税分も別取引として登録
         if (laborTax > 0) {
+            // 対象者名を連結して specification に入れる
+            const payeeNames = validRows.map(r => r.payee).filter(Boolean).join("、");
             saveTransaction({
                 id: uuidv4(),
                 budgetId: laborBudgetId,
                 slipNumber: "",
                 date: laborDate,
                 itemName: "人件費 消費税 (10%)",
-                specification: "",
-                payee: "",
+                specification: payeeNames,
+                payee: payeeNames,
                 unitPrice: laborTax,
                 quantity: 1,
                 amount: laborTax,
