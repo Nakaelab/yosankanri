@@ -73,6 +73,7 @@ export default function ImportPage() {
 
     // Form fields (shared by both modes)
     const [slipNumber, setSlipNumber] = useState("");
+    const [orderDate, setOrderDate] = useState("");
     const [date, setDate] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -107,6 +108,7 @@ export default function ImportPage() {
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);
     const [editForm, setEditForm] = useState({
         slipNumber: "",
+        orderDate: "",
         date: "",
         itemName: "",
         specification: "",
@@ -250,6 +252,7 @@ export default function ImportPage() {
             const data = extractFromOCRText(text);
             // Fill form fields from extraction
             setSlipNumber(data.slipNumber);
+            setOrderDate(data.orderDate || "");
             setDate(data.date);
             setItemName(data.itemName);
             setSpecification(data.specification);
@@ -351,6 +354,7 @@ export default function ImportPage() {
                 id: txId,
                 budgetId: split.budgetId,
                 slipNumber,
+                orderDate: orderDate || undefined,
                 date: dateUnknown ? "未定" : date,
                 itemName,
                 specification,
@@ -453,6 +457,7 @@ export default function ImportPage() {
         setBudgetSplits([{ id: uuidv4(), budgetId: "", amount: 0 }]);
         const d = new Date();
         setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+        setOrderDate("");
     };
 
     // Update category when mode changes
@@ -473,6 +478,7 @@ export default function ImportPage() {
         setEditingTx(tx);
         setEditForm({
             slipNumber: tx.slipNumber,
+            orderDate: tx.orderDate || "",
             date: tx.date,
             itemName: tx.itemName,
             specification: tx.specification,
@@ -910,6 +916,10 @@ export default function ImportPage() {
                                 </select>
                             </div>
                             <div>
+                                <label className="form-label">発注日</label>
+                                <input type="date" className="form-input" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+                            </div>
+                            <div>
                                 <div className="flex items-center justify-between mb-1">
                                     <label className="form-label mb-0">納品日</label>
                                     <label className="flex items-center gap-1.5 cursor-pointer select-none">
@@ -1205,6 +1215,15 @@ export default function ImportPage() {
                                     >
                                         {ALL_CATEGORIES.map((cat) => (<option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>))}
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="form-label">発注日</label>
+                                    <input
+                                        type="date"
+                                        className="form-input"
+                                        value={editForm.orderDate}
+                                        onChange={(e) => setEditForm({ ...editForm, orderDate: e.target.value })}
+                                    />
                                 </div>
                                 <div>
                                     <label className="form-label">{editForm.category === "labor" ? "支払日 / 計上日" : "納品日"}</label>

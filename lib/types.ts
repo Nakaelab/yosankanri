@@ -97,6 +97,7 @@ export interface Transaction {
     teacherId?: string;     // 所有者の先生ID
     budgetId: string;       // どの予算に紐づくか
     slipNumber: string;     // 伝票番号（例："P250000026-001"）
+    orderDate?: string;     // 発注日 (YYYY-MM-DD or empty)
     date: string;           // 納品日 YYYY-MM-DD
     itemName: string;       // 品名
     specification: string;  // 規格等
@@ -116,7 +117,8 @@ export interface Transaction {
 export interface ExtractedData {
     docType: DocType;
     slipNumber: string;
-    date: string;
+    orderDate?: string;     // 発注日
+    date: string;           // 納品日
     itemName: string;
     specification: string;
     payee: string;

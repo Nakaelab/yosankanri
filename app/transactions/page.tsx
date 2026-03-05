@@ -20,6 +20,7 @@ interface SplitRow {
 /** 編集フォームの基本情報（予算・金額以外） */
 interface EditBase {
     slipNumber: string;
+    orderDate: string;
     date: string;
     itemName: string;
     specification: string;
@@ -46,7 +47,7 @@ export default function TransactionsPage() {
     // Edit modal
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);  // 代表トランザクション
     const [editBase, setEditBase] = useState<EditBase>({
-        slipNumber: "", date: "", itemName: "", specification: "", payee: "",
+        slipNumber: "", orderDate: "", date: "", itemName: "", specification: "", payee: "",
         unitPrice: 0, quantity: 1, category: "goods",
     });
     // 複数予算配分行
@@ -120,6 +121,7 @@ export default function TransactionsPage() {
         setEditRemovedIds([]);
         setEditBase({
             slipNumber: rep.slipNumber,
+            orderDate: rep.orderDate || "",
             date: rep.date,
             itemName: rep.itemName,
             specification: rep.specification,
@@ -203,6 +205,7 @@ export default function TransactionsPage() {
                 teacherId,
                 budgetId: row.budgetId,
                 slipNumber: editBase.slipNumber,
+                orderDate: editBase.orderDate || undefined,
                 date: editBase.date,
                 itemName: editBase.itemName,
                 specification: editBase.specification,
@@ -479,7 +482,7 @@ export default function TransactionsPage() {
                             <table className="data-table">
                                 <thead>
                                     <tr>
-                                        <th>No.</th><th>納品日</th><th>品名</th><th>規格等</th><th>支払先</th>
+                                        <th>No.</th><th>発注日</th><th>納品日</th><th>品名</th><th>規格等</th><th>支払先</th>
                                         <th className="text-right">単価</th><th className="text-center">数量</th>
                                         <th className="text-right">金額</th><th>費目</th><th>予算</th>
                                         <th className="text-center">📎</th><th></th>
@@ -501,6 +504,7 @@ export default function TransactionsPage() {
                                         return (
                                             <tr key={tx.id} className={rowClass}>
                                                 <td className="font-mono text-[11px] text-gray-500 whitespace-nowrap">{tx.slipNumber || "—"}</td>
+                                                <td className="whitespace-nowrap text-[12px] text-gray-400">{tx.orderDate || "—"}</td>
                                                 <td className="whitespace-nowrap text-[12px]">{tx.date}</td>
                                                 <td className={`font-medium max-w-[180px] truncate ${isTax ? "text-gray-500 font-normal" : "text-gray-900"}`}>
                                                     {isTax && <span className="text-gray-400 mr-1.5 text-[10px]">↳</span>}
@@ -645,10 +649,14 @@ export default function TransactionsPage() {
                             </div>
 
                             {/* 伝票 + 日付 */}
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">伝票番号</label>
                                     <input type="text" className="form-input font-mono text-xs py-1" value={editBase.slipNumber} onChange={(e) => setEditBase({ ...editBase, slipNumber: e.target.value })} placeholder="例: P250..." />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">発注日</label>
+                                    <input type="date" className="form-input text-xs py-1" value={editBase.orderDate} onChange={(e) => setEditBase({ ...editBase, orderDate: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">{isLabor ? "支払日" : "納品日"}</label>
