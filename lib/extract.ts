@@ -93,7 +93,7 @@ function extractAmount(text: string, docType: DocType): number {
 /**
  * 日付抽出
  */
-function extractDate(text: string): string {
+export function extractDate(text: string): string {
     const normalized = text.replace(/[０-９]/g, (ch) =>
         String.fromCharCode(ch.charCodeAt(0) - 0xfee0)
     );
@@ -103,6 +103,13 @@ function extractDate(text: string): string {
     if (reiwaMatch) {
         const year = 2018 + parseInt(reiwaMatch[1], 10);
         return `${year}-${reiwaMatch[2].padStart(2, "0")}-${reiwaMatch[3].padStart(2, "0")}`;
+    }
+
+    const rPat = /[RＲ]\s*(\d{1,2})\s*[\/／]\s*(\d{1,2})\s*[\/／]\s*(\d{1,2})/;
+    const rMatch = normalized.match(rPat);
+    if (rMatch) {
+        const year = 2018 + parseInt(rMatch[1], 10);
+        return `${year}-${rMatch[2].padStart(2, "0")}-${rMatch[3].padStart(2, "0")}`;
     }
 
     const heiseiPat = /平成\s*(\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/;
@@ -157,10 +164,98 @@ function extractPayee(text: string): string {
 }
 
 /**
+ * 購入依頼書専用の抽出ロジック
+ */
+function extractPurchaseRequest(text: string): ExtractedData {
+    const normalized = text.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)).replace(/，/g, ",");
+    const lines = normalized.split(/[\r\n]+/).map(l => l.trim()).filter(l => l);
+
+    // 1. 起案日 (発注日)
+    let orderDate = "";
+    const kianPat = /起案日\s*[：:]?\s*([RＲ令和H平成S昭和\d\/\-年月日\s]+)/;
+    const kianMatch = normalized.match(kianPat);
+    if (kianMatch) {
+        orderDate = extractDate(kianMatch[1]);
+        if (orderDate === extractDate("")) {
+            orderDate = ""; // Fallbackした場合は空にする
+        }
+    }
+
+    // 2. 件名(品名)と規格
+    let itemName = "";
+    let specification = "";
+    const kenmeiMatch = text.match(/件\s*名\s*[：:]?\s*([^\n\r]+)/);
+    if (kenmeiMatch) {
+        itemName = kenmeiMatch[1].trim();
+    }
+    if (!itemName) {
+        itemName = extractItemName(text, "purchase_request");
+    }
+
+    // 規格はその下からとる
+    if (itemName) {
+        const safeItemName = itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const itemLineIdx = lines.findIndex(l => l.match(new RegExp(`^${safeItemName}$`)) || l === itemName);
+        if (itemLineIdx >= 0 && itemLineIdx + 1 < lines.length) {
+            const nextLine = lines[itemLineIdx + 1];
+            if (!nextLine.match(/^[\d,\.]+$/) && !nextLine.match(/^(数量|単価|金額|所\s*管)/)) {
+                specification = nextLine;
+            }
+        }
+    }
+
+    // 3. 金額・単価・数量
+    let amount = extractAmount(text, "purchase_request");
+    let unitPrice = amount;
+    let quantity = 1;
+
+    for (let i = 0; i < lines.length - 2; i++) {
+        if (lines[i].match(/^\d+$/)) {
+            const maybeQty = parseInt(lines[i], 10);
+            const maybeUp = parseInt(lines[i + 1].replace(/,/g, ""), 10);
+            const maybeAmt = parseInt(lines[i + 2].replace(/,/g, ""), 10);
+
+            if (maybeQty > 0 && maybeQty < 1000 && !isNaN(maybeUp) && !isNaN(maybeAmt)) {
+                if (maybeQty * maybeUp === maybeAmt || maybeUp === maybeAmt) {
+                    quantity = maybeQty;
+                    unitPrice = maybeUp;
+                    amount = maybeAmt;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 4. Jナンバーをメモに
+    const jCode = extractJCode(text);
+    const memo = jCode ? `J番号: ${jCode}` : "";
+
+    return {
+        docType: "purchase_request",
+        slipNumber: extractSlipNumber(text),
+        orderDate: orderDate || undefined,
+        date: "",
+        itemName: itemName,
+        specification: specification,
+        payee: extractPayee(text),
+        unitPrice: unitPrice,
+        quantity: quantity,
+        amount: amount,
+        category: "goods",
+        memo: memo
+    };
+}
+
+/**
  * OCRテキストから情報を抽出するメイン関数
  */
 export function extractFromOCRText(ocrText: string): ExtractedData {
     const docType = detectDocType(ocrText);
+
+    if (docType === "purchase_request") {
+        return extractPurchaseRequest(ocrText);
+    }
+
     const amount = extractAmount(ocrText, docType);
 
     return {
