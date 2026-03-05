@@ -29,6 +29,7 @@ interface EditBase {
     quantity: number;
     category: ExpenseCategory;
     status?: "provisional" | "confirmed";
+    memo?: string;
 }
 
 export default function TransactionsPage() {
@@ -49,7 +50,7 @@ export default function TransactionsPage() {
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);  // 代表トランザクション
     const [editBase, setEditBase] = useState<EditBase>({
         slipNumber: "", orderDate: "", date: "", itemName: "", specification: "", payee: "",
-        unitPrice: 0, quantity: 1, category: "goods",
+        unitPrice: 0, quantity: 1, category: "goods", memo: ""
     });
     // 複数予算配分行
     const [splitRows, setSplitRows] = useState<SplitRow[]>([]);
@@ -131,6 +132,7 @@ export default function TransactionsPage() {
             quantity: rep.quantity,
             category: rep.category,
             status: rep.status,
+            memo: rep.memo || "",
         });
         setSplitRows(groupTxs.map(t => ({
             key: uuidv4(),
@@ -217,6 +219,7 @@ export default function TransactionsPage() {
                 amount: row.amount,
                 category: editBase.category,
                 status: editBase.status,
+                memo: editBase.memo,
                 attachmentCount: idx === 0 ? allAttachments.length : 0,
                 attachments: idx === 0 && allAttachments.length > 0 ? allAttachments : undefined,
                 ocrRawText: editingTx.ocrRawText,
@@ -535,6 +538,11 @@ export default function TransactionsPage() {
                                                         <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-amber-200 align-text-bottom">仮</span>
                                                     )}
                                                     {tx.itemName || "—"}
+                                                    {tx.memo && (
+                                                        <p className="text-[10px] text-gray-400 font-normal mt-0.5 truncate" title={tx.memo}>
+                                                            📝 {tx.memo}
+                                                        </p>
+                                                    )}
                                                 </td>
                                                 <td className="max-w-[140px] truncate text-gray-500 text-[12px]">{tx.specification || "—"}</td>
                                                 <td className="text-[12px] text-gray-500">{tx.payee || "—"}</td>
@@ -740,6 +748,12 @@ export default function TransactionsPage() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* 備考・メモ */}
+                            <div>
+                                <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">備考・メモ</label>
+                                <input type="text" className="form-input text-xs py-1" value={editBase.memo || ""} onChange={(e) => setEditBase({ ...editBase, memo: e.target.value })} placeholder="特記事項など" />
+                            </div>
 
                             {/* ===== 予算配分セクション ===== */}
                             <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2.5 space-y-2">

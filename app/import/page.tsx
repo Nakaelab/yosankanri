@@ -31,6 +31,7 @@ interface LaborRow {
     quantity: number;      // 数量
     amount: number;        // 金額
     status: LaborStatus;   // 仮/確
+    memo?: string;         // メモ
 }
 
 const TAX_RATE = 0.10; // 消費税率 10%
@@ -44,6 +45,7 @@ function emptyLaborRow(): LaborRow {
         quantity: 1,
         amount: 0,
         status: "provisional",
+        memo: "",
     };
 }
 
@@ -85,6 +87,7 @@ export default function ImportPage() {
     const [quantity, setQuantity] = useState(1);
     const [amount, setAmount] = useState(0);
     const [category, setCategory] = useState<ExpenseCategory>("goods");
+    const [memo, setMemo] = useState("");
     const [dateUnknown, setDateUnknown] = useState(false);
 
     // Estimates (見積書)
@@ -118,6 +121,8 @@ export default function ImportPage() {
         amount: 0,
         category: "goods" as ExpenseCategory,
         budgetId: "",
+        memo: "",
+        status: "provisional" as "provisional" | "confirmed",
     });
 
     useEffect(() => {
@@ -363,6 +368,7 @@ export default function ImportPage() {
                 quantity: validSplits.length > 1 ? 1 : quantity,
                 amount: txAmount,
                 category,
+                memo,
                 attachmentCount: idx === 0 ? uploadedMeta.length : 0,
                 attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
                 ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
@@ -417,6 +423,7 @@ export default function ImportPage() {
                 amount: row.amount,
                 category: "labor",
                 status: row.status,
+                memo: row.memo,
                 attachmentCount: 0,
                 createdAt: new Date().toISOString(),
             });
@@ -438,6 +445,7 @@ export default function ImportPage() {
                         amount: taxAmount,
                         category: "labor",
                         status: row.status,
+                        memo: row.memo,
                         attachmentCount: 0,
                         // ソート時に本体のすぐ下に来るようにcreatedAtを少しだけ遅らせる
                         createdAt: new Date(Date.now() + 1).toISOString(),
@@ -453,6 +461,7 @@ export default function ImportPage() {
     const resetForm = () => {
         setSlipNumber(""); setItemName(""); setSpecification(""); setPayee("");
         setUnitPrice(0); setQuantity(1); setAmount(0); setCategory(mode === "labor" ? "labor" : "goods");
+        setMemo("");
         setEstimates([]); setErrors([]); setDateUnknown(false);
         setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText("");
         setLaborRows([emptyLaborRow()]);
@@ -490,6 +499,8 @@ export default function ImportPage() {
             amount: tx.amount,
             category: tx.category,
             budgetId: tx.budgetId,
+            memo: tx.memo || "",
+            status: tx.status || "provisional",
         });
     };
 
@@ -732,6 +743,16 @@ export default function ImportPage() {
                                                 />
                                             </div>
                                         </div>
+                                    </div>
+                                    {/* 備考・メモ */}
+                                    <div className="mt-2 text-right">
+                                        <input
+                                            type="text"
+                                            className="w-full text-xs font-medium border-0 bg-gray-50/50 rounded-lg px-3 py-1.5 focus:ring-0 focus:bg-white transition-colors"
+                                            placeholder="備考・メモ"
+                                            value={row.memo || ""}
+                                            onChange={(e) => updateLaborRow(row.id, "memo", e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -1006,6 +1027,18 @@ export default function ImportPage() {
                                     </p>
                                 )}
                             </div>
+
+                            {/* Memo */}
+                            <div className="md:col-span-2">
+                                <label className="form-label">備考・メモ</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={memo}
+                                    onChange={(e) => setMemo(e.target.value)}
+                                    placeholder="必要に応じて入力 (例: 立替払い、特記事項など)"
+                                />
+                            </div>
                         </div>
 
                         {/* Estimate Attachments (見積書) */}
@@ -1133,7 +1166,17 @@ export default function ImportPage() {
                                             <tr key={tx.id}>
                                                 <td className="font-mono text-[11px] text-gray-500 whitespace-nowrap">{tx.slipNumber || "—"}</td>
                                                 <td className="whitespace-nowrap text-[12px]">{tx.date}</td>
-                                                <td className="font-medium max-w-[180px] truncate">{tx.itemName || "—"}</td>
+                                                <td className="font-medium max-w-[180px] truncate">
+                                                    {tx.category === "labor" && tx.status === "provisional" && (
+                                                        <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-amber-200 align-text-bottom">仮</span>
+                                                    )}
+                                                    {tx.itemName || "—"}
+                                                    {tx.memo && (
+                                                        <p className="text-[10px] text-gray-400 font-normal mt-0.5 truncate" title={tx.memo}>
+                                                            📝 {tx.memo}
+                                                        </p>
+                                                    )}
+                                                </td>
                                                 <td className="text-right font-medium tabular-nums whitespace-nowrap">{fmtYen(tx.amount)}</td>
                                                 <td>
                                                     <span className={`badge ${colors.bg} ${colors.text}`}>
@@ -1299,6 +1342,35 @@ export default function ImportPage() {
                                             単価 {editForm.unitPrice.toLocaleString()} × 数量 {editForm.quantity} = {(editForm.unitPrice * editForm.quantity).toLocaleString()}
                                         </p>
                                     )}
+                                </div>
+
+                                {editForm.category === "labor" && (
+                                    <div className="md:col-span-2">
+                                        <label className="form-label">ステータス (仮/確)</label>
+                                        <div className="flex rounded-md overflow-hidden border border-gray-200 text-sm font-semibold mt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditForm({ ...editForm, status: "provisional" })}
+                                                className={`flex-1 py-1.5 transition-colors ${editForm.status === "provisional" ? "bg-amber-400 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                            >仮</button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditForm({ ...editForm, status: "confirmed" })}
+                                                className={`flex-1 py-1.5 transition-colors border-l border-gray-200 ${editForm.status === "confirmed" ? "bg-green-500 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                            >確定</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="md:col-span-2">
+                                    <label className="form-label">備考・メモ</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={editForm.memo}
+                                        onChange={(e) => setEditForm({ ...editForm, memo: e.target.value })}
+                                        placeholder="特記事項など"
+                                    />
                                 </div>
                             </div>
                         </div>
