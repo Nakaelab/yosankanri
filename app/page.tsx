@@ -415,7 +415,6 @@ function Dashboard() {
                                                             {/* 残額（大きく） */}
                                                             <div className={`text-base font-bold tabular-nums leading-none ${isOver ? "text-red-600" : "text-gray-800"}`}>
                                                                 {isOver ? "▲" : ""}{fmtYen(Math.abs(c.remaining))}
-                                                                <span className="text-[10px] font-normal text-gray-400 ml-1">残</span>
                                                             </div>
                                                             {/* 配分・執行・残額 */}
                                                             <div className="space-y-0.5">
