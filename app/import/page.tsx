@@ -224,9 +224,13 @@ export default function ImportPage() {
         const handlePaste = (e: ClipboardEvent) => {
             if (mode !== "ocr") return;
             const items = Array.from(e.clipboardData?.items || []);
-            const imageItem = items.find(item => item.type.startsWith("image/") || item.type === "application/pdf");
-            if (imageItem) {
-                const file = imageItem.getAsFile();
+            const fileItem = items.find(item => {
+                if (item.kind !== "file") return false;
+                const file = item.getAsFile();
+                return file && (file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
+            });
+            if (fileItem) {
+                const file = fileItem.getAsFile();
                 if (file) handleFile(file);
             }
         };
@@ -628,7 +632,7 @@ export default function ImportPage() {
                             onDrop={handleDrop}
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileChange} />
+                            <input ref={fileInputRef} type="file" accept=".pdf,image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleFileChange} />
                             {imageFile ? (
                                 imageFile.type === "application/pdf" ? (
                                     <div className="flex flex-col items-center gap-2 p-4 text-slate-700">
@@ -1108,7 +1112,7 @@ export default function ImportPage() {
                                 <input
                                     ref={estimateInputRef}
                                     type="file"
-                                    accept="image/*,.pdf"
+                                    accept=".pdf,image/png,image/jpeg,image/webp,application/pdf"
                                     multiple
                                     className="hidden"
                                     onChange={handleEstimateAdd}
