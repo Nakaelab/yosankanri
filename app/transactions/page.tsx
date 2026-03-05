@@ -306,22 +306,40 @@ export default function TransactionsPage() {
         return true;
     }).reduce((s, t) => s + t.amount, 0);
 
-    const selectedBudget = filterBudgetId === "all" ? null : budgets.find((b) => b.id === filterBudgetId);
-    let budgetAllocated = 0;
-    let budgetRemaining = 0;
+    let totalAllocated = 0;
+    let totalSpent = 0;
+    let totalRemaining = 0;
     const activeStats: { category: ExpenseCategory; allocated: number; spent: number; remaining: number }[] = [];
-    if (selectedBudget) {
-        budgetAllocated = ALL_CATEGORIES.reduce((s, cat) => s + (selectedBudget.allocations[cat] || 0), 0);
-        budgetRemaining = budgetAllocated - filteredTotal;
+
+    if (filterBudgetId === "all") {
+        totalAllocated = budgets.reduce((acc, b) => acc + ALL_CATEGORIES.reduce((s, cat) => s + (b.allocations[cat] || 0), 0), 0);
+        totalSpent = allTxs.reduce((s, t) => s + t.amount, 0);
+        totalRemaining = totalAllocated - totalSpent;
 
         ALL_CATEGORIES.forEach(cat => {
-            const allocated = selectedBudget.allocations[cat] || 0;
-            const spent = allTxs.filter(t => t.budgetId === filterBudgetId && t.category === cat).reduce((s, t) => s + t.amount, 0);
+            const allocated = budgets.reduce((acc, b) => acc + (b.allocations[cat] || 0), 0);
+            const spent = allTxs.filter(t => t.category === cat).reduce((s, t) => s + t.amount, 0);
             const remaining = allocated - spent;
             if (allocated > 0 || spent > 0) {
                 activeStats.push({ category: cat, allocated, spent, remaining });
             }
         });
+    } else {
+        const selectedBudget = budgets.find(b => b.id === filterBudgetId);
+        if (selectedBudget) {
+            totalAllocated = ALL_CATEGORIES.reduce((s, cat) => s + (selectedBudget.allocations[cat] || 0), 0);
+            totalSpent = allTxs.filter(t => t.budgetId === filterBudgetId).reduce((s, t) => s + t.amount, 0);
+            totalRemaining = totalAllocated - totalSpent;
+
+            ALL_CATEGORIES.forEach(cat => {
+                const allocated = selectedBudget.allocations[cat] || 0;
+                const spent = allTxs.filter(t => t.budgetId === filterBudgetId && t.category === cat).reduce((s, t) => s + t.amount, 0);
+                const remaining = allocated - spent;
+                if (allocated > 0 || spent > 0) {
+                    activeStats.push({ category: cat, allocated, spent, remaining });
+                }
+            });
+        }
     }
 
     // トランザクションの予算名表示（複数の場合は「分割」と表示）
@@ -345,78 +363,107 @@ export default function TransactionsPage() {
         <div className="animate-fade-in">
             {/* Page Header */}
             <div className="page-header">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                        <h1 className="page-title">取引一覧</h1>
-                        <p className="page-subtitle">全支出明細</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        {selectedBudget ? (
-                            <div className="flex gap-4 text-right sm:pr-4 sm:border-r border-gray-200">
-                                <div>
-                                    <div className="text-[10px] text-gray-400 uppercase">配分総額</div>
-                                    <div className="text-sm font-bold tabular-nums text-gray-900">{fmt(budgetAllocated)}</div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] text-gray-400 uppercase">執行済</div>
-                                    <div className="text-sm font-bold tabular-nums text-brand-700">{fmt(filteredTotal)}</div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] text-gray-400 uppercase">残額</div>
-                                    <div className={`text-sm font-bold tabular-nums ${budgetRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
-                                        {fmt(budgetRemaining)}
-                                    </div>
-                                </div>
+                <div>
+                    <h1 className="page-title">取引一覧</h1>
+                    <p className="page-subtitle">全支出明細</p>
+                </div>
+            </div>
+
+            {/* Status & Options Panel */}
+            <div className="mt-5 bg-white border border-gray-100 rounded-xl p-4 md:p-5 shadow-sm space-y-5">
+
+                {/* 1. Status Dashboard */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex gap-4 sm:gap-8 text-left">
+                        <div>
+                            <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">配分総額</div>
+                            <div className="text-2xl sm:text-3xl font-bold tabular-nums text-gray-900">{fmt(totalAllocated)}</div>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">執行済</div>
+                            <div className="text-2xl sm:text-3xl font-bold tabular-nums text-brand-600">{fmt(totalSpent)}</div>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">残額</div>
+                            <div className={`text-2xl sm:text-3xl font-bold tabular-nums ${totalRemaining < 0 ? "text-red-600" : "text-emerald-500"}`}>
+                                {fmt(totalRemaining)}
                             </div>
-                        ) : (
-                            <div className="text-left sm:text-right">
-                                <div className="text-[10px] text-gray-400 uppercase">表示中の合計</div>
-                                <div className="text-sm font-bold tabular-nums">{fmt(filteredTotal)}</div>
-                            </div>
-                        )}
+                        </div>
                     </div>
+
+                    {(filterBudgetId !== "all" || filterCategory !== "all" || searchTerm.trim()) && (
+                        <div className="text-left md:text-right px-5 py-3 bg-gray-50 rounded-xl border border-gray-100 shrink-0">
+                            <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-0.5">フィルター表示中の合計</div>
+                            <div className="text-lg font-bold tabular-nums text-gray-900">{fmt(filteredTotal)}</div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Control Panel: Filters & Search */}
-                <div className="mt-5 bg-white border border-gray-100 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        {/* Budget Selector (Primary) */}
-                        <div className="flex-1 min-w-[200px]">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                <svg className="w-3.5 h-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" /></svg>
-                                予算で絞り込む
-                            </label>
-                            <select
-                                className="w-full bg-slate-50 border border-gray-200 text-sm py-2 px-3 rounded-lg font-medium text-gray-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
-                                value={filterBudgetId}
-                                onChange={(e) => setFilterBudgetId(e.target.value)}
-                            >
-                                <option value="all">すべての予算 ({displayRows.length}件)</option>
-                                {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
-                            </select>
+                {/* 2. Category Breakdown */}
+                {activeStats.length > 0 && (
+                    <div className="pt-5 border-t border-gray-100 overflow-x-auto">
+                        <div className="flex gap-3 min-w-max pb-2">
+                            {activeStats.map(s => {
+                                const colors = CATEGORY_COLORS[s.category];
+                                return (
+                                    <div key={s.category} className="flex flex-col min-w-[140px] bg-slate-50/70 rounded-lg p-3 border border-slate-100 shadow-sm transition-all hover:bg-slate-50">
+                                        <div className={`flex items-center gap-1.5 text-xs font-bold mb-2.5 ${colors.text}`}>
+                                            <span className={`w-2.5 h-2.5 rounded-full ${colors.bar}`} />
+                                            {CATEGORY_LABELS[s.category]}
+                                        </div>
+                                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px] tabular-nums">
+                                            <span className="text-gray-400 font-medium">配分</span>
+                                            <span className="text-right text-gray-900 font-semibold">{fmt(s.allocated)}</span>
+                                            <span className="text-gray-400 font-medium">執行</span>
+                                            <span className="text-right text-gray-900 font-bold">{fmt(s.spent)}</span>
+                                            <span className="text-gray-400 font-medium">残額</span>
+                                            <span className={`text-right font-bold ${s.remaining < 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s.remaining)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
+                    </div>
+                )}
 
-                        {/* Category Selector */}
-                        <div className="w-full sm:w-48 shrink-0">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
-                                費目で絞り込む
-                            </label>
-                            <select
-                                className="w-full bg-white border border-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 transition-all outline-none text-gray-700"
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "all")}
-                            >
-                                <option value="all">すべての費目</option>
-                                {ALL_CATEGORIES.map(cat => (
-                                    <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-                                ))}
-                            </select>
-                        </div>
+                {/* 3. Filters & Search */}
+                <div className="pt-5 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                    {/* Budget Selector (Primary) */}
+                    <div className="flex-1 min-w-[200px]">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" /></svg>
+                            予算で絞り込む
+                        </label>
+                        <select
+                            className="w-full bg-slate-50 border border-gray-200 text-sm py-2 px-3 rounded-lg font-medium text-gray-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
+                            value={filterBudgetId}
+                            onChange={(e) => setFilterBudgetId(e.target.value)}
+                        >
+                            <option value="all">すべての予算 ({displayRows.length}件)</option>
+                            {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
+                        </select>
+                    </div>
+
+                    {/* Category Selector */}
+                    <div className="w-full sm:w-48 shrink-0">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
+                            費目で絞り込む
+                        </label>
+                        <select
+                            className="w-full bg-white border border-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 transition-all outline-none text-gray-700"
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "all")}
+                        >
+                            <option value="all">すべての費目</option>
+                            {ALL_CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Search Bar */}
-                    <div>
+                    <div className="w-full sm:w-64 shrink-0">
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                             <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                             キーワード検索
@@ -427,7 +474,7 @@ export default function TransactionsPage() {
                             </svg>
                             <input
                                 type="text"
-                                placeholder="品名、支払先、規格等、伝票番号で検索..."
+                                placeholder="品名や支払先で検索..."
                                 className="w-full bg-white border border-gray-200 text-sm py-2 pl-9 pr-3 rounded-lg focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none placeholder:text-gray-300"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -435,33 +482,6 @@ export default function TransactionsPage() {
                         </div>
                     </div>
                 </div>
-
-                {/* Category Breakdown */}
-                {selectedBudget && activeStats.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-gray-100 overflow-x-auto -mb-2">
-                        <div className="flex gap-3 min-w-max pb-2">
-                            {activeStats.map(s => {
-                                const colors = CATEGORY_COLORS[s.category];
-                                return (
-                                    <div key={s.category} className="flex flex-col min-w-[140px] bg-slate-50/70 rounded-lg p-2.5 border border-slate-100 shadow-sm">
-                                        <div className={`flex items-center gap-1.5 text-[11px] font-bold mb-2 ${colors.text}`}>
-                                            <span className={`w-2 h-2 rounded-full ${colors.bar}`} />
-                                            {CATEGORY_LABELS[s.category]}
-                                        </div>
-                                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[11px] tabular-nums">
-                                            <span className="text-gray-400">配分</span>
-                                            <span className="text-right text-gray-700">{fmt(s.allocated)}</span>
-                                            <span className="text-gray-400">執行</span>
-                                            <span className="text-right text-gray-700 font-medium">{fmt(s.spent)}</span>
-                                            <span className="text-gray-400">残額</span>
-                                            <span className={`text-right font-bold ${s.remaining < 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s.remaining)}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Table */}
