@@ -537,6 +537,9 @@ export default function TransactionsPage() {
                                                     {isLabor && tx.status === "provisional" && (
                                                         <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-amber-200 align-text-bottom">仮</span>
                                                     )}
+                                                    {isLabor && tx.status === "confirmed" && (
+                                                        <span className="inline-block bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-emerald-200 align-text-bottom">確</span>
+                                                    )}
                                                     {tx.itemName || "—"}
                                                     {tx.memo && (
                                                         <p className="text-[10px] text-gray-400 font-normal mt-0.5 truncate" title={tx.memo}>
