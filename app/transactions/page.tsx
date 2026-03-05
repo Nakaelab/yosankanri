@@ -56,7 +56,14 @@ export default function TransactionsPage() {
     const editFileInputRef = useRef<HTMLInputElement>(null);
 
     const reload = () => {
-        setTransactions(getTransactions().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        setTransactions(getTransactions().sort((a, b) => {
+            // 人件費を最上位に固定
+            const aIsLabor = a.category === "labor" ? 0 : 1;
+            const bIsLabor = b.category === "labor" ? 0 : 1;
+            if (aIsLabor !== bIsLabor) return aIsLabor - bIsLabor;
+            // 同カテゴリ内は登録日時の降順
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }));
         setBudgets(getBudgets());
     };
 
