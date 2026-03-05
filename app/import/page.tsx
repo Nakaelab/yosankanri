@@ -399,13 +399,14 @@ export default function ImportPage() {
         const teacherId = tid === "default" ? undefined : tid;
 
         for (const row of validRows) {
+            const baseTxId = uuidv4();
             saveTransaction({
-                id: uuidv4(),
+                id: baseTxId,
                 budgetId: laborBudgetId,
                 slipNumber: "",
                 date: laborDate,
                 itemName: row.itemName,
-                specification: row.payee, // 支払先を規格等フィールドに格納
+                specification: row.payee, // 対象者名
                 payee: row.payee,
                 unitPrice: row.amount,
                 quantity: 1,
@@ -414,27 +415,29 @@ export default function ImportPage() {
                 attachmentCount: 0,
                 createdAt: new Date().toISOString(),
             });
-        }
 
-        // 消費税分も別取引として登録
-        if (laborTax > 0) {
-            // 対象者名を連結して specification に入れる
-            const payeeNames = validRows.map(r => r.payee).filter(Boolean).join("、");
-            saveTransaction({
-                id: uuidv4(),
-                budgetId: laborBudgetId,
-                slipNumber: "",
-                date: laborDate,
-                itemName: "人件費 消費税 (10%)",
-                specification: payeeNames,
-                payee: payeeNames,
-                unitPrice: laborTax,
-                quantity: 1,
-                amount: laborTax,
-                category: "labor",
-                attachmentCount: 0,
-                createdAt: new Date().toISOString(),
-            });
+            // 各行ごとの消費税を個別に登録
+            if (laborIncludeTax) {
+                const taxAmount = Math.floor(row.amount * TAX_RATE);
+                if (taxAmount > 0) {
+                    saveTransaction({
+                        id: uuidv4(),
+                        budgetId: laborBudgetId,
+                        slipNumber: "",
+                        date: laborDate,
+                        itemName: `消費税 (10%)`,
+                        specification: row.payee, // 誰の消費税かわかるように対象者名をセット
+                        payee: row.payee,
+                        unitPrice: taxAmount,
+                        quantity: 1,
+                        amount: taxAmount,
+                        category: "labor",
+                        attachmentCount: 0,
+                        // ソート時に本体のすぐ下に来るようにcreatedAtを少しだけ遅らせる
+                        createdAt: new Date(Date.now() + 1).toISOString(),
+                    });
+                }
+            }
         }
 
         router.push("/transactions");

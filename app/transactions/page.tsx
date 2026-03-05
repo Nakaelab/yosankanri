@@ -61,7 +61,26 @@ export default function TransactionsPage() {
             const aIsLabor = a.category === "labor" ? 0 : 1;
             const bIsLabor = b.category === "labor" ? 0 : 1;
             if (aIsLabor !== bIsLabor) return aIsLabor - bIsLabor;
-            // 同カテゴリ内は登録日時の降順
+
+            if (aIsLabor === 0) {
+                // まずは計上日（新しい順）
+                if (a.date !== b.date) return new Date(b.date).getTime() - new Date(a.date).getTime();
+
+                // 同じ日の場合は、対象者名でグループ化（五十音順）
+                const aPayee = a.specification || a.payee || "";
+                const bPayee = b.specification || b.payee || "";
+                if (aPayee !== bPayee) return aPayee.localeCompare(bPayee, "ja");
+
+                // 同じ対象者なら、本体が上、消費税が下
+                const aIsTax = a.itemName.includes("消費税");
+                const bIsTax = b.itemName.includes("消費税");
+                if (aIsTax !== bIsTax) return aIsTax ? 1 : -1;
+
+                // 対象者名が同じでどちらも本体/消費税の場合は登録日時が古い順(通常ありえないが念のため)
+                return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            }
+
+            // 人件費以外は登録日時の降順
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }));
         setBudgets(getBudgets());
