@@ -188,13 +188,20 @@ export default function ImportPage() {
     const splitTotal = budgetSplits.filter(s => s.budgetId).reduce((s, v) => s + v.amount, 0);
     const splitRemainder = amount - splitTotal;
 
-    // ---- File upload (OCR) ----
+    // ---- File upload (OCR/PDF) ----
     const handleFile = useCallback((file: File) => {
-        if (!file.type.startsWith("image/")) { alert("画像ファイルを選択してください"); return; }
+        if (!file.type.startsWith("image/") && file.type !== "application/pdf") { alert("画像またはPDFファイルを選択してください"); return; }
         setImageFile(file);
-        const reader = new FileReader();
-        reader.onload = (e) => setImagePreview(e.target?.result as string);
-        reader.readAsDataURL(file);
+
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => setImagePreview(e.target?.result as string);
+            reader.readAsDataURL(file);
+        } else {
+            // PDFの場合はプレビュー画像を出さない（必要ならアイコンなどにする）
+            setImagePreview("");
+        }
+
         setOcrStatus("idle");
         setOcrRawText("");
     }, []);
@@ -217,7 +224,7 @@ export default function ImportPage() {
         const handlePaste = (e: ClipboardEvent) => {
             if (mode !== "ocr") return;
             const items = Array.from(e.clipboardData?.items || []);
-            const imageItem = items.find(item => item.type.startsWith("image/"));
+            const imageItem = items.find(item => item.type.startsWith("image/") || item.type === "application/pdf");
             if (imageItem) {
                 const file = imageItem.getAsFile();
                 if (file) handleFile(file);
@@ -227,34 +234,54 @@ export default function ImportPage() {
         return () => window.removeEventListener("paste", handlePaste);
     }, [mode, handleFile]);
 
-    // ---- OCR ----
+    // ---- OCR / PDF Parse ----
     const runOCR = async () => {
         if (!imageFile) return;
         setOcrStatus("loading");
         setOcrProgress(0);
-        setOcrProgressLabel("OCRエンジンを準備中...");
 
         try {
-            const Tesseract = await import("tesseract.js");
-            setOcrProgressLabel("日本語モデルをダウンロード中（初回は数十秒かかります）...");
-            const result = await Tesseract.recognize(imageFile, "jpn", {
-                logger: (m: { status: string; progress: number }) => {
-                    if (m.status === "recognizing text") {
-                        setOcrStatus("processing");
-                        setOcrProgress(Math.round(m.progress * 100));
-                        setOcrProgressLabel("文字認識中...");
-                    } else if (m.status === "loading language traineddata") {
-                        setOcrProgress(Math.round(m.progress * 100));
-                        setOcrProgressLabel("日本語モデルをダウンロード中...");
-                    } else {
-                        setOcrProgressLabel(m.status);
-                    }
-                },
-            });
+            let extractedText = "";
 
-            const text = result.data.text;
-            setOcrRawText(text);
-            const data = extractFromOCRText(text);
+            if (imageFile.type === "application/pdf") {
+                setOcrProgressLabel("PDFからテキストを抽出中...");
+                const formData = new FormData();
+                formData.append("file", imageFile);
+
+                const res = await fetch("/api/pdf", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (!res.ok) {
+                    throw new Error("PDF parse failed");
+                }
+                const data = await res.json();
+                extractedText = data.text;
+                setOcrStatus("processing");
+                setOcrProgress(100);
+            } else {
+                setOcrProgressLabel("OCRエンジンを準備中...");
+                const Tesseract = await import("tesseract.js");
+                setOcrProgressLabel("日本語モデルをダウンロード中（初回は数十秒かかります）...");
+                const result = await Tesseract.recognize(imageFile, "jpn", {
+                    logger: (m: { status: string; progress: number }) => {
+                        if (m.status === "recognizing text") {
+                            setOcrStatus("processing");
+                            setOcrProgress(Math.round(m.progress * 100));
+                            setOcrProgressLabel("文字認識中...");
+                        } else if (m.status === "loading language traineddata") {
+                            setOcrProgress(Math.round(m.progress * 100));
+                            setOcrProgressLabel("日本語モデルをダウンロード中...");
+                        } else {
+                            setOcrProgressLabel(m.status);
+                        }
+                    },
+                });
+                extractedText = result.data.text;
+            }
+
+            setOcrRawText(extractedText);
+            const data = extractFromOCRText(extractedText);
             // Fill form fields from extraction
             setSlipNumber(data.slipNumber);
             setOrderDate(data.orderDate || "");
@@ -595,24 +622,36 @@ export default function ImportPage() {
                     <div className="section-card p-5 space-y-4">
                         <h2 className="text-sm font-bold text-gray-900">画像アップロード & OCR</h2>
                         <div
-                            className={`upload-zone ${dragging ? "dragging" : ""}`}
+                            className={`upload-zone flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${dragging ? "border-brand-500 bg-brand-50" : "border-slate-300 hover:border-brand-500 bg-slate-50 hover:bg-brand-50/50"}`}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                            {imagePreview ? (
-                                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                    <img src={imagePreview} alt="preview" className="max-h-96 w-full object-contain rounded-lg shadow-md" />
-                                    <button
-                                        type="button"
-                                        onClick={() => { setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText(""); }}
-                                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-lg leading-none transition-colors"
-                                        title="画像を削除"
-                                    >✕</button>
-                                    <p className="text-xs text-gray-400 mt-2 text-center">{imageFile?.name} — <button type="button" className="underline" onClick={() => fileInputRef.current?.click()}>クリックで変更</button></p>
-                                </div>
+                            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileChange} />
+                            {imageFile ? (
+                                imageFile.type === "application/pdf" ? (
+                                    <div className="flex flex-col items-center gap-2 p-4 text-slate-700">
+                                        <svg className="w-16 h-16 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6C4.9 2 4.01 2.9 4.01 4L4 20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM11.5 13H10V18H11.5V13ZM15.5 13H14V16H15.5C16.33 16 17 15.33 17 14.5C17 13.67 16.33 13 15.5 13ZM15.5 15H14.5V14H15.5V15ZM8.5 13H7V18H8.5C9.33 18 10 17.33 10 16.5V14.5C10 13.67 9.33 13 8.5 13ZM8.5 17H7.5V14H8.5V17Z" /></svg>
+                                        <p className="font-medium text-sm text-center">{imageFile.name}</p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText(""); }}
+                                            className="text-white bg-red-500 hover:bg-red-600 rounded-md px-3 py-1 text-xs mt-2 transition-colors"
+                                        >削除</button>
+                                    </div>
+                                ) : (
+                                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                        <img src={imagePreview!} alt="preview" className="max-h-96 w-full object-contain rounded-lg shadow-md" />
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText(""); }}
+                                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-lg leading-none transition-colors"
+                                            title="画像を削除"
+                                        >✕</button>
+                                        <p className="text-xs text-gray-400 mt-2 text-center">{imageFile?.name} — <button type="button" className="underline" onClick={() => fileInputRef.current?.click()}>クリックで変更</button></p>
+                                    </div>
+                                )
                             ) : (
                                 <div className="space-y-2">
                                     <svg className="w-12 h-12 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
@@ -628,7 +667,7 @@ export default function ImportPage() {
                                 <button className="btn-primary" onClick={runOCR} disabled={ocrStatus === "loading" || ocrStatus === "processing"}>
                                     {ocrStatus === "loading" || ocrStatus === "processing" ? (
                                         <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>処理中...</>
-                                    ) : "OCRを実行"}
+                                    ) : imageFile.type === "application/pdf" ? "テキストを抽出" : "OCRを実行"}
                                 </button>
                                 {(ocrStatus === "loading" || ocrStatus === "processing") && (
                                     <div className="space-y-1.5">
