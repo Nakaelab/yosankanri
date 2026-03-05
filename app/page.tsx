@@ -354,7 +354,7 @@ function Dashboard() {
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
                                             <div className="min-w-0">
-                                                <div className="text-base font-bold text-gray-900 truncate">{s.budget.name}</div>
+                                                <div className="text-base font-bold text-gray-900 break-words">{s.budget.name}</div>
                                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                                     <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
                                                     {s.budget.jCode && (
