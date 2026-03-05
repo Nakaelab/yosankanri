@@ -374,30 +374,63 @@ export default function TransactionsPage() {
                     </div>
                 </div>
 
-                {/* Filter / Search Bar */}
-                <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                    <div className="relative flex-1">
-                        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="品名、支払先、規格等、伝票番号で検索..."
-                            className="form-input text-xs py-1.5 pl-9 w-full"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                {/* Control Panel: Filters & Search */}
+                <div className="mt-5 bg-white border border-gray-100 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        {/* Budget Selector (Primary) */}
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" /></svg>
+                                予算で絞り込む
+                            </label>
+                            <select
+                                className="w-full bg-slate-50 border border-gray-200 text-sm py-2 px-3 rounded-lg font-medium text-gray-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
+                                value={filterBudgetId}
+                                onChange={(e) => setFilterBudgetId(e.target.value)}
+                            >
+                                <option value="all">すべての予算 ({displayRows.length}件)</option>
+                                {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
+                            </select>
+                        </div>
+
+                        {/* Category Selector */}
+                        <div className="w-full sm:w-48 shrink-0">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
+                                費目で絞り込む
+                            </label>
+                            <select
+                                className="w-full bg-white border border-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 transition-all outline-none text-gray-700"
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "all")}
+                            >
+                                <option value="all">すべての費目</option>
+                                {ALL_CATEGORIES.map(cat => (
+                                    <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                    <select className="form-select text-xs py-1.5 w-full sm:w-40 shrink-0" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "all")}>
-                        <option value="all">すべての費目</option>
-                        {ALL_CATEGORIES.map(cat => (
-                            <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-                        ))}
-                    </select>
-                    <select className="form-select text-xs py-1.5 w-full sm:w-52 shrink-0" value={filterBudgetId} onChange={(e) => setFilterBudgetId(e.target.value)}>
-                        <option value="all">すべての予算 ({displayRows.length}件)</option>
-                        {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
-                    </select>
+
+                    {/* Search Bar */}
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+                            キーワード検索
+                        </label>
+                        <div className="relative">
+                            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="品名、支払先、規格等、伝票番号で検索..."
+                                className="w-full bg-white border border-gray-200 text-sm py-2 pl-9 pr-3 rounded-lg focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none placeholder:text-gray-300"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Category Breakdown */}
