@@ -227,11 +227,20 @@ function extractPurchaseRequest(text: string): ExtractedData {
         amount = parseInt(amtLabelMatch[1].replace(/,/g, ""), 10);
     }
 
-    // 見つからなければ全体から推理 (カンマ付きの数字を最優先、大きすぎるコード番号などを除外)
+    // 金額が大きすぎる場合や0の場合は全体から推理
     if (!amount || amount > 5000000) {
+        amount = 0; // 一旦リセット
         const allNums = normalized.match(/[\d,]+/g) || [];
-        const validNums = allNums.map(n => parseInt(n.replace(/,/g, ""), 10)).filter(n => !isNaN(n) && n > 100 && n < 5000000);
-        const commaNums = allNums.filter(n => n.includes(',')).map(n => parseInt(n.replace(/,/g, ''), 10)).filter(n => n < 5000000);
+
+        // 先頭が0の数字（0050...や040...など）はコードなので除外する
+        // さらに2から始まる9桁（250000252など）もJ番号の一部なので除外する、3から始まる6桁なども除外
+        const cleanNums = allNums.filter(n => {
+            const str = n.replace(/,/g, "");
+            return !str.startsWith('0') && !str.match(/^2\d{8}$/) && !str.match(/^3\d{5}$/) && !str.match(/^104\d+/) && !str.match(/^501\d+/);
+        });
+
+        const validNums = cleanNums.map(n => parseInt(n.replace(/,/g, ""), 10)).filter(n => !isNaN(n) && n > 100 && n < 5000000);
+        const commaNums = cleanNums.filter(n => n.includes(',')).map(n => parseInt(n.replace(/,/g, ''), 10)).filter(n => n < 5000000);
 
         if (commaNums.length > 0) {
             amount = Math.max(...commaNums);
@@ -240,6 +249,21 @@ function extractPurchaseRequest(text: string): ExtractedData {
         }
     }
     unitPrice = amount;
+
+    // スペースやタブで区切りの連続した数値を探す
+    const lineRowMatch = normalized.match(/(?:^|\s)(\d+)\s+([\d,]{3,})\s+([\d,]{3,})(?:\s|$)/);
+    if (lineRowMatch) {
+        const q = parseInt(lineRowMatch[1], 10);
+        const u = parseInt(lineRowMatch[2].replace(/,/g, ""), 10);
+        const a = parseInt(lineRowMatch[3].replace(/,/g, ""), 10);
+        if (q > 0 && q < 1000 && u > 100 && u < 5000000) {
+            if (q * u === a || u === a) {
+                quantity = q;
+                unitPrice = u;
+                amount = a;
+            }
+        }
+    }
 
     // 同じ行に「数量・単価・金額」が連続しているかもしれない
     for (let i = 0; i < lines.length - 2; i++) {
@@ -259,20 +283,9 @@ function extractPurchaseRequest(text: string): ExtractedData {
         }
     }
 
-    // スペース区切りの連続した数値を探す
-    const lineRowMatch = normalized.match(/(\d+)\s+([\d,]{3,})\s+([\d,]{3,})/);
-    if (lineRowMatch) {
-        const q = parseInt(lineRowMatch[1], 10);
-        const u = parseInt(lineRowMatch[2].replace(/,/g, ""), 10);
-        const a = parseInt(lineRowMatch[3].replace(/,/g, ""), 10);
-        if (q > 0 && q < 1000 && u > 100 && u < 5000000) {
-            if (q * u === a || u === a) {
-                quantity = q;
-                unitPrice = u;
-                amount = a;
-            }
-        }
-    }
+    // 最終的に500万を超えていたら異常値として0にする
+    if (amount > 5000000) amount = 0;
+    if (unitPrice > 5000000) unitPrice = 0;
 
     // 4. Jナンバーを確実にメモへ
     const jCodeMatch = normalized.match(/[JＪ]?[A-Za-z]?\s*(2\d{8})/);
