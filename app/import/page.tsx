@@ -268,6 +268,7 @@ export default function ImportPage() {
             // 分割が1件だけなら金額を自動同期
             setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: data.amount }] : prev);
             setCategory(data.category);
+            if (data.memo) setMemo(data.memo);
             setOcrStatus("done");
         } catch (err) {
             console.error("OCR Error:", err);
