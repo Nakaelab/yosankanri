@@ -1162,15 +1162,23 @@ export default function ImportPage() {
                                 <tbody>
                                     {existingTransactions.map((tx) => {
                                         const colors = CATEGORY_COLORS[tx.category];
+                                        const isLabor = tx.category === "labor";
+                                        const isTax = isLabor && tx.itemName.includes("消費税");
+                                        let rowClass = "border-b border-gray-100 last:border-0";
+                                        if (isLabor) {
+                                            rowClass = isTax ? "bg-slate-50/60 border-b border-gray-100 last:border-0" : "bg-indigo-50/30 border-b border-gray-100 last:border-0";
+                                        }
+
                                         return (
-                                            <tr key={tx.id}>
+                                            <tr key={tx.id} className={rowClass}>
                                                 <td className="font-mono text-[11px] text-gray-500 whitespace-nowrap">{tx.slipNumber || "—"}</td>
                                                 <td className="whitespace-nowrap text-[12px]">{tx.date}</td>
-                                                <td className="font-medium max-w-[180px] truncate">
-                                                    {tx.category === "labor" && tx.status === "provisional" && (
+                                                <td className={`font-medium max-w-[180px] truncate ${isTax ? "text-gray-500 font-normal" : ""}`}>
+                                                    {isTax && <span className="text-gray-400 mr-1.5 text-[10px]">↳</span>}
+                                                    {isLabor && tx.status === "provisional" && (
                                                         <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-amber-200 align-text-bottom">仮</span>
                                                     )}
-                                                    {tx.category === "labor" && tx.status === "confirmed" && (
+                                                    {isLabor && tx.status === "confirmed" && (
                                                         <span className="inline-block bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-emerald-200 align-text-bottom">確</span>
                                                     )}
                                                     {tx.itemName || "—"}
@@ -1182,9 +1190,13 @@ export default function ImportPage() {
                                                 </td>
                                                 <td className="text-right font-medium tabular-nums whitespace-nowrap">{fmtYen(tx.amount)}</td>
                                                 <td>
-                                                    <span className={`badge ${colors.bg} ${colors.text}`}>
-                                                        {CATEGORY_LABELS[tx.category]}
-                                                    </span>
+                                                    {isTax ? (
+                                                        <span className={`badge ${colors.bg} ${colors.text} opacity-80`}>人件費S（消費税）</span>
+                                                    ) : (
+                                                        <span className={`badge ${colors.bg} ${colors.text}`}>
+                                                            {CATEGORY_LABELS[tx.category]}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="text-[11px] text-gray-400 max-w-[100px] truncate">{getBudgetName(tx.budgetId)}</td>
                                                 <td>

@@ -557,7 +557,7 @@ export default function TransactionsPage() {
                                                 </td>
                                                 <td>
                                                     {isTax ? (
-                                                        <span className="text-[10px] text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded bg-white">消費税</span>
+                                                        <span className={`badge ${colors.bg} ${colors.text} opacity-80`}>人件費S（消費税）</span>
                                                     ) : (
                                                         <span className={`badge ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
                                                     )}
