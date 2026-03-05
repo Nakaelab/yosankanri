@@ -410,20 +410,37 @@ export default function TransactionsPage() {
                                         const colors = CATEGORY_COLORS[tx.category];
                                         const isSplit = !!(tx.splitGroupId && allTxs.filter(t => t.splitGroupId === tx.splitGroupId).length > 1);
                                         const totalAmt = getTxTotalAmount(tx);
+
+                                        const isLabor = tx.category === "labor";
+                                        const isTax = isLabor && tx.itemName.includes("消費税");
+                                        let rowClass = "hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0";
+                                        if (isLabor) {
+                                            rowClass = isTax ? "bg-slate-50/60 hover:bg-slate-100 border-b border-gray-100 last:border-0" : "bg-indigo-50/30 hover:bg-indigo-50/60 border-b border-gray-100 last:border-0";
+                                        }
+
                                         return (
-                                            <tr key={tx.id}>
+                                            <tr key={tx.id} className={rowClass}>
                                                 <td className="font-mono text-[11px] text-gray-500 whitespace-nowrap">{tx.slipNumber || "—"}</td>
                                                 <td className="whitespace-nowrap text-[12px]">{tx.date}</td>
-                                                <td className="font-medium max-w-[180px] truncate">{tx.itemName || "—"}</td>
+                                                <td className={`font-medium max-w-[180px] truncate ${isTax ? "text-gray-500 font-normal" : "text-gray-900"}`}>
+                                                    {isTax && <span className="text-gray-400 mr-1.5 text-[10px]">↳</span>}
+                                                    {tx.itemName || "—"}
+                                                </td>
                                                 <td className="max-w-[140px] truncate text-gray-500 text-[12px]">{tx.specification || "—"}</td>
                                                 <td className="text-[12px] text-gray-500">{tx.payee || "—"}</td>
-                                                <td className="text-right tabular-nums text-[12px]">{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"}</td>
-                                                <td className="text-center tabular-nums text-[12px]">{tx.quantity}</td>
-                                                <td className="text-right font-medium tabular-nums whitespace-nowrap">
+                                                <td className={`text-right tabular-nums text-[12px] ${isTax ? "text-gray-500" : ""}`}>{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"}</td>
+                                                <td className={`text-center tabular-nums text-[12px] ${isTax ? "text-gray-500" : ""}`}>{tx.quantity}</td>
+                                                <td className={`text-right font-medium tabular-nums whitespace-nowrap ${isTax ? "text-gray-600" : ""}`}>
                                                     {fmt(totalAmt)}
                                                     {isSplit && <span className="ml-1 text-[9px] text-indigo-400 font-bold">分割</span>}
                                                 </td>
-                                                <td><span className={`badge ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span></td>
+                                                <td>
+                                                    {isTax ? (
+                                                        <span className="text-[10px] text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded bg-white">消費税</span>
+                                                    ) : (
+                                                        <span className={`badge ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
+                                                    )}
+                                                </td>
                                                 <td className="text-[11px] text-gray-400 max-w-[120px] truncate">{getTxBudgetDisplay(tx)}</td>
                                                 <td className="text-center">
                                                     {(tx.attachmentCount || 0) > 0 ? (
