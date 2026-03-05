@@ -110,6 +110,7 @@ export interface Transaction {
     attachments?: AttachmentMeta[]; // 添付ファイルメタデータ
     ocrRawText?: string;    // OCR全文（デバッグ用）
     splitGroupId?: string;  // 複数予算に分割登録した場合のグループID（同じIDの分割分が同一物品）
+    status?: "provisional" | "confirmed"; // 仮/確定（主に人件費用）
     createdAt: string;
 }
 

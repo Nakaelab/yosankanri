@@ -28,6 +28,7 @@ interface EditBase {
     unitPrice: number;
     quantity: number;
     category: ExpenseCategory;
+    status?: "provisional" | "confirmed";
 }
 
 export default function TransactionsPage() {
@@ -129,6 +130,7 @@ export default function TransactionsPage() {
             unitPrice: rep.unitPrice,
             quantity: rep.quantity,
             category: rep.category,
+            status: rep.status,
         });
         setSplitRows(groupTxs.map(t => ({
             key: uuidv4(),
@@ -214,6 +216,7 @@ export default function TransactionsPage() {
                 quantity: editBase.category === "labor" ? 1 : editBase.quantity,
                 amount: row.amount,
                 category: editBase.category,
+                status: editBase.status,
                 attachmentCount: idx === 0 ? allAttachments.length : 0,
                 attachments: idx === 0 && allAttachments.length > 0 ? allAttachments : undefined,
                 ocrRawText: editingTx.ocrRawText,
@@ -364,7 +367,7 @@ export default function TransactionsPage() {
             {/* Page Header */}
             <div className="page-header">
                 <div>
-                    <h1 className="page-title">取引一覧</h1>
+                    <h1 className="page-title">執行一覧</h1>
                     <p className="page-subtitle">全支出明細</p>
                 </div>
             </div>
@@ -528,6 +531,9 @@ export default function TransactionsPage() {
                                                 <td className="whitespace-nowrap text-[12px]">{tx.date}</td>
                                                 <td className={`font-medium max-w-[180px] truncate ${isTax ? "text-gray-500 font-normal" : "text-gray-900"}`}>
                                                     {isTax && <span className="text-gray-400 mr-1.5 text-[10px]">↳</span>}
+                                                    {isLabor && tx.status === "provisional" && (
+                                                        <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 border border-amber-200 align-text-bottom">仮</span>
+                                                    )}
                                                     {tx.itemName || "—"}
                                                 </td>
                                                 <td className="max-w-[140px] truncate text-gray-500 text-[12px]">{tx.specification || "—"}</td>
@@ -658,14 +664,31 @@ export default function TransactionsPage() {
                         {/* Body */}
                         <div className="px-4 py-3 space-y-3">
 
-                            {/* 費目 */}
+                            {/* 費目 & 状態(人件費のみ) */}
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="col-span-2 sm:col-span-1">
+                                <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">費目</label>
                                     <select className="form-select text-xs py-1" value={editBase.category} onChange={(e) => setEditBase({ ...editBase, category: e.target.value as ExpenseCategory })}>
                                         {ALL_CATEGORIES.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
                                     </select>
                                 </div>
+                                {isLabor && (
+                                    <div>
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">ステータス (仮/確)</label>
+                                        <div className="flex rounded-md overflow-hidden border border-gray-200 text-xs font-semibold mt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditBase({ ...editBase, status: "provisional" })}
+                                                className={`flex-1 py-1 transition-colors ${editBase.status === "provisional" ? "bg-amber-400 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                            >仮</button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditBase({ ...editBase, status: "confirmed" })}
+                                                className={`flex-1 py-1 transition-colors border-l border-gray-200 ${editBase.status === "confirmed" ? "bg-green-500 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                            >確定</button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* 伝票 + 日付 */}

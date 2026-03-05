@@ -416,6 +416,7 @@ export default function ImportPage() {
                 quantity: 1,
                 amount: row.amount,
                 category: "labor",
+                status: row.status,
                 attachmentCount: 0,
                 createdAt: new Date().toISOString(),
             });
@@ -436,6 +437,7 @@ export default function ImportPage() {
                         quantity: 1,
                         amount: taxAmount,
                         category: "labor",
+                        status: row.status,
                         attachmentCount: 0,
                         // ソート時に本体のすぐ下に来るようにcreatedAtを少しだけ遅らせる
                         createdAt: new Date(Date.now() + 1).toISOString(),
