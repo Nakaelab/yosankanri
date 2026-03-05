@@ -33,6 +33,8 @@ export default function TransactionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [filterBudgetId, setFilterBudgetId] = useState("all");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterCategory, setFilterCategory] = useState<ExpenseCategory | "all">("all");
     const [mounted, setMounted] = useState(false);
 
     // Attachment preview
@@ -264,19 +266,42 @@ export default function TransactionsPage() {
         }
     }
 
-    const filtered = filterBudgetId === "all"
-        ? displayRows
-        : displayRows.filter((t) => {
+    const filtered = displayRows.filter((t) => {
+        // 予算フィルタ
+        if (filterBudgetId !== "all") {
             if (t.splitGroupId) {
-                // グループ内にフィルタ対象の予算が含まれるか確認
-                return allTxs.some(at => at.splitGroupId === t.splitGroupId && at.budgetId === filterBudgetId);
+                const hasBudget = allTxs.some(at => at.splitGroupId === t.splitGroupId && at.budgetId === filterBudgetId);
+                if (!hasBudget) return false;
+            } else {
+                if (t.budgetId !== filterBudgetId) return false;
             }
-            return t.budgetId === filterBudgetId;
-        });
+        }
 
-    const filteredTotal = filterBudgetId === "all"
-        ? allTxs.reduce((s, t) => s + t.amount, 0)
-        : allTxs.filter(t => t.budgetId === filterBudgetId).reduce((s, t) => s + t.amount, 0);
+        // カテゴリフィルタ
+        if (filterCategory !== "all" && t.category !== filterCategory) return false;
+
+        // 検索ワードフィルタ
+        if (searchTerm.trim()) {
+            const q = searchTerm.toLowerCase();
+            const groupTxs = t.splitGroupId ? allTxs.filter(at => at.splitGroupId === t.splitGroupId) : [t];
+            const groupText = groupTxs.map(tx => [
+                tx.itemName, tx.payee, tx.specification, tx.slipNumber, getBudgetName(tx.budgetId)
+            ].join(" ")).join(" ").toLowerCase();
+
+            if (!groupText.includes(q)) return false;
+        }
+
+        return true;
+    });
+
+    const filteredTotal = allTxs.filter(t => {
+        // 代表行がfilteredに残っているか
+        const rep = t.splitGroupId ? filtered.find(f => f.splitGroupId === t.splitGroupId) : filtered.find(f => f.id === t.id);
+        if (!rep) return false;
+        // 予算が指定されている場合は、その予算の分だけを合計する
+        if (filterBudgetId !== "all" && t.budgetId !== filterBudgetId) return false;
+        return true;
+    }).reduce((s, t) => s + t.amount, 0);
 
     const selectedBudget = filterBudgetId === "all" ? null : budgets.find((b) => b.id === filterBudgetId);
     let budgetAllocated = 0;
@@ -346,11 +371,33 @@ export default function TransactionsPage() {
                                 <div className="text-sm font-bold tabular-nums">{fmt(filteredTotal)}</div>
                             </div>
                         )}
-                        <select className="form-select text-xs py-1.5 w-full sm:w-52" value={filterBudgetId} onChange={(e) => setFilterBudgetId(e.target.value)}>
-                            <option value="all">すべての予算 ({displayRows.length}件)</option>
-                            {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
-                        </select>
                     </div>
+                </div>
+
+                {/* Filter / Search Bar */}
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="品名、支払先、規格等、伝票番号で検索..."
+                            className="form-input text-xs py-1.5 pl-9 w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <select className="form-select text-xs py-1.5 w-full sm:w-40 shrink-0" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "all")}>
+                        <option value="all">すべての費目</option>
+                        {ALL_CATEGORIES.map(cat => (
+                            <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                        ))}
+                    </select>
+                    <select className="form-select text-xs py-1.5 w-full sm:w-52 shrink-0" value={filterBudgetId} onChange={(e) => setFilterBudgetId(e.target.value)}>
+                        <option value="all">すべての予算 ({displayRows.length}件)</option>
+                        {budgets.map((b) => <option key={b.id} value={b.id}>{b.name} ({allTxs.filter((t) => t.budgetId === b.id).length}件)</option>)}
+                    </select>
                 </div>
 
                 {/* Category Breakdown */}
