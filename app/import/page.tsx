@@ -223,15 +223,14 @@ export default function ImportPage() {
     useEffect(() => {
         const handlePaste = (e: ClipboardEvent) => {
             if (mode !== "ocr") return;
-            const items = Array.from(e.clipboardData?.items || []);
-            const fileItem = items.find(item => {
-                if (item.kind !== "file") return false;
-                const file = item.getAsFile();
-                return file && (file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
-            });
-            if (fileItem) {
-                const file = fileItem.getAsFile();
-                if (file) handleFile(file);
+            const files = Array.from(e.clipboardData?.files || []);
+            const validFile = files.find(file =>
+                file.type.startsWith("image/") ||
+                file.type === "application/pdf" ||
+                file.name.toLowerCase().endsWith(".pdf")
+            );
+            if (validFile) {
+                handleFile(validFile);
             }
         };
         window.addEventListener("paste", handlePaste);
@@ -1173,15 +1172,6 @@ export default function ImportPage() {
                     </div>
                 )}
 
-                {/* OCR Raw Text */}
-                {ocrRawText && (
-                    <details className="section-card">
-                        <summary className="px-5 py-3 cursor-pointer text-xs font-medium text-gray-500 hover:bg-gray-50">OCR全文（デバッグ用）</summary>
-                        <div className="px-5 pb-4">
-                            <pre className="bg-slate-50 rounded-lg p-3 text-[11px] text-gray-600 whitespace-pre-wrap font-mono max-h-72 overflow-y-auto">{ocrRawText}</pre>
-                        </div>
-                    </details>
-                )}
 
                 {/* Existing Transactions - Editable */}
                 {existingTransactions.length > 0 && (
