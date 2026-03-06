@@ -1221,6 +1221,15 @@ export default function ImportPage() {
                     </div>
                 )}
 
+                {/* OCR Raw Text - always show when available for debugging */}
+                {ocrRawText && (
+                    <details className="section-card">
+                        <summary className="px-5 py-3 cursor-pointer text-xs font-medium text-amber-700 hover:bg-amber-50">📄 OCR読み取り全文（確認・修正の参考用）</summary>
+                        <div className="px-5 pb-4">
+                            <pre className="bg-amber-50 rounded-lg p-3 text-[10px] text-amber-900 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto border border-amber-200">{ocrRawText}</pre>
+                        </div>
+                    </details>
+                )}
 
                 {/* Existing Transactions - Editable */}
                 {existingTransactions.length > 0 && (

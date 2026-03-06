@@ -232,11 +232,23 @@ function extractPurchaseRequest(text: string): ExtractedData {
         amount = 0; // 一旦リセット
         const allNums = normalized.match(/[\d,]+/g) || [];
 
-        // 先頭が0の数字（0050...や040...など）はコードなので除外する
-        // さらに2から始まる9桁（250000252など）もJ番号の一部なので除外する、3から始まる6桁なども除外
+        // コード番号・バーコード・J番号など除外:
+        // - 先頭が0（コード番号）
+        // - 2で始まる9桁 (J番号)
+        // - 2で始まる10桁以上 (カタログ番号等)
+        // - 3で始まる6桁
+        // - 104, 501 で始まる (特定コード)
+        // - 7桁以上でコンマなし（バーコード等）
         const cleanNums = allNums.filter(n => {
             const str = n.replace(/,/g, "");
-            return !str.startsWith('0') && !str.match(/^2\d{8}$/) && !str.match(/^3\d{5}$/) && !str.match(/^104\d+/) && !str.match(/^501\d+/);
+            if (str.startsWith('0')) return false;
+            if (n.includes(',')) return true; // コンマ区切りは優先
+            if (str.length >= 7) return false; // 7桁以上でコンマなしはコード扱い
+            if (str.match(/^2\d{8}$/)) return false;
+            if (str.match(/^3\d{5}$/)) return false;
+            if (str.match(/^104\d+/)) return false;
+            if (str.match(/^501\d+/)) return false;
+            return true;
         });
 
         const validNums = cleanNums.map(n => parseInt(n.replace(/,/g, ""), 10)).filter(n => !isNaN(n) && n > 100 && n < 5000000);
