@@ -387,19 +387,47 @@ export function extractFromPastedText(raw: string): Partial<ExtractedData> {
     // キーと値のペアを収集
     const pairs: Record<string, string> = {};
 
-    // マークダウン表形式 | key | value | を解析
-    const tableRows = raw.split(/\r?\n/).filter(l => l.trim().startsWith("|"));
-    for (const row of tableRows) {
-        const cells = row.split("|").map(c => c.trim()).filter(c => c && c !== "---" && !c.match(/^-+$/));
-        if (cells.length >= 2) {
-            pairs[cells[0]] = cells[1];
+    // マークダウン表の行を集める
+    const allLines = raw.split(/\r?\n/);
+    const tableRows = allLines
+        .map(l => l.trim())
+        .filter(l => l.startsWith("|"))
+        .map(l => l.split("|").map(c => c.trim()).filter(c => c));
+
+    // セパレータ行（--- や :---:）を除外
+    const isSep = (row: string[]) => row.every(c => /^[-:]+$/.test(c));
+    const nonSepRows = tableRows.filter(r => !isSep(r));
+
+    if (nonSepRows.length >= 2) {
+        const firstRow = nonSepRows[0];
+        const secondRow = nonSepRows[1];
+
+        // 横型テーブル判定: 1行目がヘッダー、2行目がデータ
+        // 1行目が日本語ラベルで2行目が値と見なす
+        if (firstRow.length > 2) {
+            // 横型: ヘッダー列配列 × データ行を zip
+            firstRow.forEach((header, i) => {
+                if (secondRow[i] !== undefined) {
+                    pairs[header] = secondRow[i];
+                }
+            });
+        } else {
+            // 縦型: | key | value | ごとに pairs に追加
+            for (const row of nonSepRows) {
+                if (row.length >= 2) {
+                    pairs[row[0]] = row[1];
+                }
+            }
         }
+    } else if (nonSepRows.length === 1 && nonSepRows[0].length >= 2) {
+        // 縦型1行のみ
+        pairs[nonSepRows[0][0]] = nonSepRows[0][1];
     }
 
-    // キーバリュー形式 "key: value" or "key　value" を解析（表でない行）
+    // キーバリュー形式 "key: value" を解析（表でない行のみ）
     if (Object.keys(pairs).length === 0) {
-        for (const line of raw.split(/\r?\n/)) {
-            const kv = line.match(/^([^\t:：　|]+)[:\s:：　]\s*(.+)$/);
+        for (const line of allLines) {
+            const kv = line.match(/^([^\t:：　|]+)[:：]\s*(.+)$/);
             if (kv) {
                 pairs[kv[1].trim()] = kv[2].trim();
             }
