@@ -268,28 +268,40 @@ function extractPurchaseRequest(text: string): ExtractedData {
     let unitPrice = 0;
     let quantity = 1;
 
-    // 「契約金額(税込)」「金額(税込)」優先
+    const MAX_AMOUNT = 5_000_000; // 500万円が上限
+
+    // 「契約金額(税込)」優先
     const contractAmtMatch = normalized.match(/契約金額\s*[\(（]?税込[\)）]?\s*[:\s]?\s*([\d,]+)/);
     if (contractAmtMatch) {
-        amount = parseInt(contractAmtMatch[1].replace(/,/g, ""), 10);
+        const v = parseInt(contractAmtMatch[1].replace(/,/g, ""), 10);
+        if (v > 0 && v <= MAX_AMOUNT) amount = v;
     }
+    // 「金額(税込)」
     if (!amount) {
         const taxIncMatch = normalized.match(/金額\s*[\(（]?税込[\)）]?\s*[:\s]?\s*([\d,]+)/);
-        if (taxIncMatch) amount = parseInt(taxIncMatch[1].replace(/,/g, ""), 10);
+        if (taxIncMatch) {
+            const v = parseInt(taxIncMatch[1].replace(/,/g, ""), 10);
+            if (v > 0 && v <= MAX_AMOUNT) amount = v;
+        }
     }
+    // 「税込」単独
     if (!amount) {
         const taxMatch = normalized.match(/税込[金額]*\s*[:\s]?\s*([\d,]+)/);
-        if (taxMatch) amount = parseInt(taxMatch[1].replace(/,/g, ""), 10);
+        if (taxMatch) {
+            const v = parseInt(taxMatch[1].replace(/,/g, ""), 10);
+            if (v > 0 && v <= MAX_AMOUNT) amount = v;
+        }
     }
 
-    // 単価・数量の取得（品名テーブル行から）
+    // 単価・数量の取得（品名テーブル行 数量 単価 金額 が並ぶ行から）
+    // [\d,]{3,} は「133,650」や「133650」など3文字以上の数字列
     const tableRowMatch = normalized.match(/(\d+)[,\s]+([\d,]{3,})[,\s]+([\d,]{3,})/);
     if (tableRowMatch) {
         const q = parseInt(tableRowMatch[1], 10);
         const u = parseInt(tableRowMatch[2].replace(/,/g, ""), 10);
         const a = parseInt(tableRowMatch[3].replace(/,/g, ""), 10);
-        if (q > 0 && q < 1000 && u > 100 && u < 5000000 && a < 5000000) {
-            if (Math.abs(q * u - a) < 10 || u === a) {
+        if (q > 0 && q < 1000 && u > 100 && u <= MAX_AMOUNT && a > 0 && a <= MAX_AMOUNT) {
+            if (Math.abs(q * u - a) < a * 0.01 + 1 || u === a) {
                 quantity = q;
                 unitPrice = u;
                 if (!amount) amount = a;
@@ -298,20 +310,20 @@ function extractPurchaseRequest(text: string): ExtractedData {
     }
     if (!unitPrice && amount) unitPrice = amount;
 
-    // フォールバック: コンマ区切りの数字（7桁以上コンマなしを除外）
+    // フォールバック: コンマ区切りの数字のみを候補にする（7桁以上コンマなしは除外）
     if (!amount) {
         const allNums = normalized.match(/[\d,]+/g) || [];
         const commaNums = allNums
             .filter(n => n.includes(","))
             .map(n => parseInt(n.replace(/,/g, ""), 10))
-            .filter(n => !isNaN(n) && n > 100 && n < 5000000);
+            .filter(n => !isNaN(n) && n > 100 && n <= MAX_AMOUNT);
         if (commaNums.length > 0) amount = Math.max(...commaNums);
         if (!unitPrice && amount) unitPrice = amount;
     }
 
-    // 最終安全確認
-    if (amount > 5000000) amount = 0;
-    if (unitPrice > 5000000) unitPrice = 0;
+    // 最終安全確認（万が一pass-throughした場合をリセット）
+    if (amount > MAX_AMOUNT) amount = 0;
+    if (unitPrice > MAX_AMOUNT) unitPrice = 0;
 
     // ===== 7. Jコード → メモ =====
     const jCodeMatch = normalized.match(/J(\d{9})/);

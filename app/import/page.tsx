@@ -277,7 +277,8 @@ export default function ImportPage() {
                     setOcrProgress(Math.round(((pageNum - 1) / numPages) * 50));
 
                     const page = await pdfDoc.getPage(pageNum);
-                    const viewport = page.getViewport({ scale: 2.0 });
+                    // Scale 3.5x for higher resolution OCR
+                    const viewport = page.getViewport({ scale: 3.5 });
 
                     const canvas = document.createElement("canvas");
                     canvas.width = Math.round(viewport.width);
@@ -286,6 +287,18 @@ export default function ImportPage() {
                     if (!ctx) throw new Error("Canvas context\u306e\u53d6\u5f97\u306b\u5931\u6557");
 
                     await page.render({ canvasContext: ctx, viewport }).promise;
+
+                    // Preprocess: grayscale + contrast boost for better OCR
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const d = imgData.data;
+                    const contrast = 1.8;
+                    const brightness = 15;
+                    for (let i = 0; i < d.length; i += 4) {
+                        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                        const v = Math.min(255, Math.max(0, (gray - 128) * contrast + 128 + brightness));
+                        d[i] = v; d[i + 1] = v; d[i + 2] = v;
+                    }
+                    ctx.putImageData(imgData, 0, 0);
 
                     setOcrProgressLabel(`\u30da\u30fc\u30b8 ${pageNum}/${numPages} \u3092OCR\u4e2d...`);
                     setOcrStatus("processing");
