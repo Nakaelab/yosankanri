@@ -336,10 +336,11 @@ export default function ImportPage() {
             setCategory(data.category);
             if (data.memo) setMemo(data.memo);
             setOcrStatus("done");
-        } catch (err) {
+        } catch (err: any) {
             console.error("テキスト抽出エラー:", err);
             setOcrStatus("error");
-            setOcrProgressLabel("テキストの抽出に失敗しました");
+            const msg = err?.message || String(err) || "不明なエラー";
+            setOcrProgressLabel("失敗: " + msg);
         }
     };
 
