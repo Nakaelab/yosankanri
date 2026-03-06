@@ -37,7 +37,21 @@ export default function TransactionsPage() {
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [filterBudgetId, setFilterBudgetId] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterCategory, setFilterCategory] = useState<ExpenseCategory | "all">("all");
+    const [filterCategories, setFilterCategories] = useState<Set<ExpenseCategory>>(new Set(ALL_CATEGORIES));
+    const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+    // ドロップダウン外クリックで閉じる
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+                setCategoryDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     const [mounted, setMounted] = useState(false);
 
     // Attachment preview
@@ -287,7 +301,7 @@ export default function TransactionsPage() {
         }
 
         // カテゴリフィルタ
-        if (filterCategory !== "all" && t.category !== filterCategory) return false;
+        if (!filterCategories.has(t.category)) return false;
 
         // 検索ワードフィルタ
         if (searchTerm.trim()) {
@@ -397,7 +411,7 @@ export default function TransactionsPage() {
                         </div>
                     </div>
 
-                    {(filterBudgetId !== "all" || filterCategory !== "all" || searchTerm.trim()) && (
+                    {(filterBudgetId !== "all" || filterCategories.size !== ALL_CATEGORIES.length || searchTerm.trim()) && (
                         <div className="text-left md:text-right px-5 py-3 bg-gray-50 rounded-xl border border-gray-100 shrink-0">
                             <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-0.5">フィルター表示中の合計</div>
                             <div className="text-lg font-bold tabular-nums text-gray-900">{fmt(filteredTotal)}</div>
@@ -451,21 +465,57 @@ export default function TransactionsPage() {
                     </div>
 
                     {/* Category Selector */}
-                    <div className="w-full sm:w-48 shrink-0">
+                    <div className="w-full sm:w-48 shrink-0 relative" ref={categoryDropdownRef}>
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                             <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
                             費目で絞り込む
                         </label>
-                        <select
-                            className="w-full bg-white border border-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 transition-all outline-none text-gray-700"
-                            value={filterCategory}
-                            onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "all")}
+                        <button
+                            onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                            className="w-full text-left bg-white border border-gray-200 text-sm py-2 px-3 rounded-lg focus:ring-2 focus:ring-gray-400/20 focus:border-gray-400 transition-all outline-none text-gray-700 flex items-center justify-between"
                         >
-                            <option value="all">すべての費目</option>
-                            {ALL_CATEGORIES.map(cat => (
-                                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-                            ))}
-                        </select>
+                            <span className="truncate">
+                                {filterCategories.size === ALL_CATEGORIES.length ? "すべての費目" :
+                                    filterCategories.size === 0 ? "選択なし" :
+                                        `${filterCategories.size}件選択中`}
+                            </span>
+                            <svg className={`w-4 h-4 ml-2 text-gray-400 transition-transform ${categoryDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+
+                        {categoryDropdownOpen && (
+                            <div className="absolute top-[60px] left-0 mt-1 w-full bg-white border border-gray-200 shadow-xl rounded-lg py-1 z-20 max-h-64 overflow-y-auto">
+                                <label className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
+                                    <input
+                                        type="checkbox"
+                                        className="mr-2 text-brand-600 rounded border-gray-300 focus:ring-brand-500"
+                                        checked={filterCategories.size === ALL_CATEGORIES.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setFilterCategories(new Set(ALL_CATEGORIES));
+                                            else setFilterCategories(new Set());
+                                        }}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">すべて選択</span>
+                                </label>
+                                {ALL_CATEGORIES.map(cat => (
+                                    <label key={cat} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="mr-2 text-brand-600 rounded border-gray-300 focus:ring-brand-500"
+                                            checked={filterCategories.has(cat)}
+                                            onChange={(e) => {
+                                                const newSet = new Set(filterCategories);
+                                                if (e.target.checked) newSet.add(cat);
+                                                else newSet.delete(cat);
+                                                setFilterCategories(newSet);
+                                            }}
+                                        />
+                                        <span className="text-sm text-gray-700">{CATEGORY_LABELS[cat]}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Search Bar */}
