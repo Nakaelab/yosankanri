@@ -263,6 +263,28 @@ export default function ImportPage() {
             }
             if (data.memo) setMemo(data.memo);
             if (data.category) setCategory(data.category as ExpenseCategory);
+
+            // JコードからBudgetを自動マッチ
+            if (data.memo) {
+                // "J番号: J250000252" や "J250000252" 等からJコードを抽出
+                const jMatch = data.memo.match(/J(\d{9})/);
+                if (jMatch) {
+                    const extracted = `J${jMatch[1]}`;
+                    // budgetsの中からjCodeが一致するものを探す
+                    const matched = budgets.find(b =>
+                        b.jCode &&
+                        b.jCode.replace(/\s/g, "").toUpperCase() === extracted.toUpperCase()
+                    );
+                    if (matched) {
+                        setBudgetSplits(prev => [{
+                            ...prev[0],
+                            budgetId: matched.id,
+                            amount: data.amount || prev[0].amount
+                        }]);
+                    }
+                }
+            }
+
             setPasteError("");
             setMode("manual"); // フォームモードに切り替え
         } catch (e: any) {
@@ -718,11 +740,12 @@ export default function ImportPage() {
                                 <h3 className="text-sm font-bold text-emerald-800">ChatGPT等で抽出したテキストを貼り付け</h3>
                             </div>
                             <p className="text-xs text-emerald-700">
-                                マークダウン表形式（| 項目 | 値 |）や「項目: 値」形式をそのまま貼り付けるとフォームに自動入力されます
+                                マークダウン表形式（| 項目 | 値 |）や「項目: 値」形式を貼り付けると自動入力されます。<br />
+                                <strong>Jコードを含めると予算も自動選択されます！</strong>
                             </p>
                             <textarea
                                 className="w-full h-36 text-xs font-mono border border-emerald-300 rounded-lg p-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-y"
-                                placeholder={"| 項目 | 抽出値 |\n| --- | --- |\n| 品名 | 魚眼レンズ |\n| 単価 | 133,650円 |\n..."}
+                                placeholder={"| 項目 | 抽出値 |\n| --- | --- |\n| 品名 | 魚眼レンズ |\n| 規格 | DBK33GR0234 |\n| 支払先 | （株）アルゴ |\n| 単価 | 133,650円 |\n| 数量 | 1 |\n| 起案日 | R7/2/2 |\n| Jコード | J250000252 |  ← 予算が自動選択されます"}
                                 value={pasteText}
                                 onChange={e => { setPasteText(e.target.value); setPasteError(""); }}
                             />
