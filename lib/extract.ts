@@ -371,3 +371,94 @@ export function extractFromOCRText(ocrText: string): ExtractedData {
         category: detectCategory(ocrText, docType),
     };
 }
+
+// ==========================================
+// コピペテキスト（マークダウン表・KV形式）からの抽出
+// ==========================================
+
+/**
+ * ChatGPT等が出力するマークダウン表やキーバリュー形式テキストを解析してフォームに反映
+ * 対応形式:
+ *   | 項目 | 値 |     ← マークダウン表
+ *   項目: 値          ← キーバリュー
+ *   項目　値          ← タブ/全角スペース区切り
+ */
+export function extractFromPastedText(raw: string): Partial<ExtractedData> {
+    // キーと値のペアを収集
+    const pairs: Record<string, string> = {};
+
+    // マークダウン表形式 | key | value | を解析
+    const tableRows = raw.split(/\r?\n/).filter(l => l.trim().startsWith("|"));
+    for (const row of tableRows) {
+        const cells = row.split("|").map(c => c.trim()).filter(c => c && c !== "---" && !c.match(/^-+$/));
+        if (cells.length >= 2) {
+            pairs[cells[0]] = cells[1];
+        }
+    }
+
+    // キーバリュー形式 "key: value" or "key　value" を解析（表でない行）
+    if (Object.keys(pairs).length === 0) {
+        for (const line of raw.split(/\r?\n/)) {
+            const kv = line.match(/^([^\t:：　|]+)[:\s:：　]\s*(.+)$/);
+            if (kv) {
+                pairs[kv[1].trim()] = kv[2].trim();
+            }
+        }
+    }
+
+    // キー名を正規化して値を取り出すヘルパー
+    const get = (...keys: string[]): string => {
+        for (const key of keys) {
+            for (const [k, v] of Object.entries(pairs)) {
+                const kn = k.replace(/\s/g, "");
+                const kn2 = key.replace(/\s/g, "");
+                if (kn === kn2 || kn.includes(kn2) || kn2.includes(kn)) {
+                    return v;
+                }
+            }
+        }
+        return "";
+    };
+
+    // 日付の正規化ヘルパー
+    const toDate = (s: string): string => {
+        if (!s) return "";
+        // R7/2/2 → extractDate で処理
+        return extractDate(s) || s;
+    };
+
+    // 金額の正規化ヘルパー（「133,650円」→ 133650）
+    const toAmount = (s: string): number => {
+        if (!s) return 0;
+        const n = parseInt(s.replace(/[円¥,，\s]/g, "").replace(/[０-９]/g, c =>
+            String.fromCharCode(c.charCodeAt(0) - 0xfee0)
+        ), 10);
+        return isNaN(n) ? 0 : n;
+    };
+
+    const qty = parseInt(get("数量", "個数", "quantity") || "1", 10) || 1;
+    const unitPriceStr = get("単価", "価格", "unit price", "単価（税込）");
+    const amountStr = get("金額", "合計", "税込金額", "契約金額", "amount", "合計金額", "税込", "総額");
+    const unitPrice = toAmount(unitPriceStr);
+    let amount = toAmount(amountStr);
+    if (!amount && unitPrice) amount = unitPrice * qty;
+
+    const orderDateStr = get("起案日", "発注日", "注文日", "起案日付", "order date", "注文日付");
+    const memoStr = get("J番号", "Jコード", "J code", "コード", "備考", "メモ", "memo", "note");
+    const slipStr = get("伝票番号", "起案NO", "起案No", "起案番号", "slip", "伝票No");
+
+    return {
+        slipNumber: slipStr || "",
+        orderDate: toDate(orderDateStr) || undefined,
+        itemName: get("品名", "件名", "商品名", "品目", "item", "item name") || "",
+        specification: get("規格", "型番", "型式", "規格等", "spec", "specification") || "",
+        payee: get("支払先", "契約相手先", "納入業者", "購入先", "業者", "payee", "vendor") || "",
+        unitPrice,
+        quantity: qty,
+        amount,
+        memo: memoStr || "",
+        category: "goods",
+        docType: "purchase_request",
+        date: "",
+    };
+}

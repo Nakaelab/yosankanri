@@ -7,7 +7,7 @@ import {
     ExtractedData, ExpenseCategory, CATEGORY_LABELS, ALL_CATEGORIES, CATEGORY_COLORS,
     DOC_TYPE_LABELS, DocType, validateExtracted, Transaction,
 } from "@/lib/types";
-import { extractFromOCRText } from "@/lib/extract";
+import { extractFromOCRText, extractFromPastedText } from "@/lib/extract";
 import { getCurrentTeacherId, saveTransaction, getBudgets, getTransactions } from "@/lib/storage";
 import type { Budget } from "@/lib/types";
 
@@ -72,6 +72,10 @@ export default function ImportPage() {
     const [ocrProgress, setOcrProgress] = useState(0);
     const [ocrProgressLabel, setOcrProgressLabel] = useState("");
     const [ocrRawText, setOcrRawText] = useState("");
+
+    // Paste-to-fill state
+    const [pasteText, setPasteText] = useState("");
+    const [pasteError, setPasteError] = useState("");
 
     // Form fields (shared by both modes)
     const [slipNumber, setSlipNumber] = useState("");
@@ -238,6 +242,34 @@ export default function ImportPage() {
     }, [mode, handleFile]);
 
     // ---- OCR / PDF Parse ----
+    // ---- コピペテキストからフォーム入力 ----
+    const applyPastedText = () => {
+        if (!pasteText.trim()) {
+            setPasteError("テキストを貼り付けてください");
+            return;
+        }
+        try {
+            const data = extractFromPastedText(pasteText);
+            if (data.slipNumber) setSlipNumber(data.slipNumber);
+            if (data.orderDate) setOrderDate(data.orderDate);
+            if (data.itemName) setItemName(data.itemName);
+            if (data.specification) setSpecification(data.specification);
+            if (data.payee) setPayee(data.payee);
+            if (data.unitPrice) setUnitPrice(data.unitPrice);
+            if (data.quantity) setQuantity(data.quantity);
+            if (data.amount) {
+                setAmount(data.amount);
+                setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: data.amount! }] : prev);
+            }
+            if (data.memo) setMemo(data.memo);
+            if (data.category) setCategory(data.category as ExpenseCategory);
+            setPasteError("");
+            setMode("manual"); // フォームモードに切り替え
+        } catch (e: any) {
+            setPasteError("解析に失敗しました: " + (e?.message || String(e)));
+        }
+    };
+
     const runOCR = async () => {
         if (!imageFile) return;
         setOcrStatus("loading");
@@ -679,6 +711,36 @@ export default function ImportPage() {
                 {/* OCR Section */}
                 {mode === "ocr" && ocrStatus !== "done" && (
                     <div className="section-card p-5 space-y-4">
+                        {/* Paste-text tab */}
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-emerald-700 text-lg">📋</span>
+                                <h3 className="text-sm font-bold text-emerald-800">ChatGPT等で抽出したテキストを貼り付け</h3>
+                            </div>
+                            <p className="text-xs text-emerald-700">
+                                マークダウン表形式（| 項目 | 値 |）や「項目: 値」形式をそのまま貼り付けるとフォームに自動入力されます
+                            </p>
+                            <textarea
+                                className="w-full h-36 text-xs font-mono border border-emerald-300 rounded-lg p-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-y"
+                                placeholder={"| 項目 | 抽出値 |\n| --- | --- |\n| 品名 | 魚眼レンズ |\n| 単価 | 133,650円 |\n..."}
+                                value={pasteText}
+                                onChange={e => { setPasteText(e.target.value); setPasteError(""); }}
+                            />
+                            {pasteError && <p className="text-xs text-red-600">{pasteError}</p>}
+                            <button
+                                className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-sm"
+                                onClick={applyPastedText}
+                            >
+                                ✅ フォームに反映する
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                            <hr className="flex-1 border-slate-200" />
+                            <span>または画像・PDFファイルをOCRで読み取る</span>
+                            <hr className="flex-1 border-slate-200" />
+                        </div>
+
                         <h2 className="text-sm font-bold text-gray-900">書類アップロード &amp; テキスト抽出</h2>
                         <div
                             className={`upload-zone flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${dragging ? "border-brand-500 bg-brand-50" : "border-slate-300 hover:border-brand-500 bg-slate-50 hover:bg-brand-50/50"}`}
