@@ -167,157 +167,172 @@ function extractPayee(text: string): string {
  * 購入依頼書専用の抽出ロジック
  */
 function extractPurchaseRequest(text: string): ExtractedData {
-    const normalized = text.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)).replace(/，/g, ",");
+    const normalized = text
+        .replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+        .replace(/[Ａ-Ｚａ-ｚ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+        .replace(/，/g, ",");
     const lines = normalized.split(/[\r\n]+/).map(l => l.trim()).filter(l => l);
 
-    // 1. 起案日 (発注日)
+    // ===== 1. 起案NO → 伝票番号 (W2511... or P250... etc.) =====
+    let slipNumber = "";
+    const kiamNoMatch = normalized.match(/起案\s*N\s*O\s*[:\s]*(W\d{10,})/i)
+        || normalized.match(/起案\s*N\s*O\s*[:\s]*([PEW]\d{7,})/i);
+    if (kiamNoMatch) {
+        slipNumber = kiamNoMatch[1];
+    } else {
+        slipNumber = extractSlipNumber(text);
+    }
+
+    // ===== 2. 起案日 → 発注日 =====
     let orderDate = "";
-    const kianDateMatch = normalized.match(/(?:起案日?|起案)[^\dRＲ]*([RＲ令和]?\s*\d{1,2}\s*[\/／]\s*\d{1,2}\s*[\/／]\s*\d{1,2})/i);
-    if (kianDateMatch) {
-        orderDate = extractDate(kianDateMatch[1]);
+    // "起案日" のすぐ後の日付パターンを探す
+    const kianDateLine = normalized.match(/起案\s*日[^RＲ\d令和]*([RＲ令和]?\s*\d{1,2}\s*[\/／]\s*\d{1,2}\s*[\/／]\s*\d{1,2})/i);
+    if (kianDateLine) {
+        orderDate = extractDate(kianDateLine[1]);
     } else {
-        const rPat = /[RＲ令和]\s*(\d{1,2})\s*[\/／]\s*(\d{1,2})\s*[\/／]\s*(\d{1,2})/;
-        const rMatch = normalized.match(rPat);
-        if (rMatch) {
-            orderDate = extractDate(rMatch[0]);
-        }
-    }
-
-    // 2. 件名(品名)と規格
-    let itemName = "";
-    let specification = "";
-    const kenmeiMatch = normalized.match(/件\s*名\s*[:：]?\s*([^\n\r]+)/);
-    if (kenmeiMatch && kenmeiMatch[1].replace(/[\s\d_]/g, "").length > 0) {
-        itemName = kenmeiMatch[1].trim();
-    } else {
-        const kenmeiIdx = lines.findIndex(l => l.includes("件") && l.includes("名"));
-        if (kenmeiIdx >= 0 && kenmeiIdx + 1 < lines.length) {
-            itemName = lines[kenmeiIdx + 1].replace(/^[:：]\s*/, "").trim();
-        }
-    }
-
-    if (itemName) {
-        const safeItemName = itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const itemLineIdx = lines.findIndex(l => l.match(new RegExp(`^${safeItemName}$`)) || l.includes(itemName));
-        if (itemLineIdx >= 0) {
-            for (let i = 1; i <= 3; i++) {
-                if (itemLineIdx + i >= lines.length) break;
-                const cand = lines[itemLineIdx + i];
-                // 確実に数字や関係ないワードを避ける
-                if (!cand.match(/^[\d,\.\s]+$/) && !cand.match(/^(数量|単価|金額|所\s*管|プロジェ|財\s*源|勘定|科目)/) && cand.length >= 2) {
-                    specification = cand;
+        // ラインをまたぐ場合：「起案」と「日」の行を探す
+        for (let i = 0; i < lines.length; i++) {
+            if (/起案.*日/.test(lines[i]) || (lines[i].includes("起案") && lines[i + 1]?.includes("日"))) {
+                // 同じ行か次の行に日付がある
+                const searchText = lines.slice(i, i + 3).join(" ");
+                const rMatch = searchText.match(/[RＲ令和]\s*(\d{1,2})\s*[\/／]\s*(\d{1,2})\s*[\/／]\s*(\d{1,2})/);
+                if (rMatch) {
+                    orderDate = extractDate(rMatch[0]);
                     break;
                 }
             }
         }
     }
 
-    if (!itemName) {
-        itemName = "物品";
+    // ===== 3. 件名 → 品名 =====
+    let itemName = "";
+    // "件名" ラベルの後のテキスト
+    const kenmeiMatch = normalized.match(/件\s*名\s*[:：]?\s*([^\n\r]{2,50})/);
+    if (kenmeiMatch && kenmeiMatch[1].replace(/[\s\d_]/g, "").length > 0) {
+        itemName = kenmeiMatch[1].trim();
+    } else {
+        // ラベルと値が別行の場合
+        for (let i = 0; i < lines.length; i++) {
+            if (/^件\s*名$/.test(lines[i]) && i + 1 < lines.length) {
+                itemName = lines[i + 1].trim();
+                break;
+            }
+        }
+    }
+    if (!itemName) itemName = "物品";
+
+    // ===== 4. 規格 → 規格等（品名の次行にある英数字コードや説明） =====
+    let specification = "";
+    // 品名行の次にある規格/型式を探す
+    const specMatch = normalized.match(/規\s*格\s*[:：]?\s*([^\n\r]{2,50})/);
+    if (specMatch) {
+        specification = specMatch[1].trim();
+    } else if (itemName && itemName !== "物品") {
+        // 品名の次の行をチェック（英数字コードを含む行を優先）
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes(itemName)) {
+                for (let j = i + 1; j <= i + 3 && j < lines.length; j++) {
+                    const cand = lines[j];
+                    // 英数字混在（型番らしいもの）を優先
+                    if (cand.match(/[A-Z]{2,}\d+/) || cand.match(/\d{2,}[A-Z]+/)) {
+                        specification = cand;
+                        break;
+                    }
+                    // 数字だけ・ラベル行は除外
+                    if (cand.length >= 2 && !cand.match(/^[\d\s,]+$/) &&
+                        !cand.match(/^(数量|単価|金額|所管|プロジェ|財源|勘定|科目|納品|消費税)/)) {
+                        specification = cand;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
     }
 
-    // 3. 金額・単価・数量
+    // ===== 5. 契約相手先 → 支払先 =====
+    let payee = "";
+    const contractorMatch = normalized.match(/契約相手先\s*[:：]?\s*([^\n\r]{2,40})/);
+    if (contractorMatch) {
+        payee = contractorMatch[1].replace(/\s*大阪府.*$/, "").trim(); // 住所を削除
+        // 括弧内の会社名を取り出す
+        const companyMatch = payee.match(/[\(（]?([^\)）\s]{2,20})[\)）]?/);
+        if (companyMatch) payee = companyMatch[0].trim();
+    } else {
+        // 支払先・購入先なども試す
+        payee = extractPayee(text);
+    }
+
+    // ===== 6. 金額（税込）→ amount =====
     let amount = 0;
     let unitPrice = 0;
     let quantity = 1;
 
-    // 「金額」「税込」「計」などのお金を示すキーワードの近くにある数字を探すのが最も確実
-    const amtLabelMatch = normalized.match(/(?:金額|税込|計|合計)[^\d]*([\d,]{3,})/);
-    if (amtLabelMatch) {
-        amount = parseInt(amtLabelMatch[1].replace(/,/g, ""), 10);
+    // 「契約金額(税込)」「金額(税込)」優先
+    const contractAmtMatch = normalized.match(/契約金額\s*[\(（]?税込[\)）]?\s*[:\s]?\s*([\d,]+)/);
+    if (contractAmtMatch) {
+        amount = parseInt(contractAmtMatch[1].replace(/,/g, ""), 10);
+    }
+    if (!amount) {
+        const taxIncMatch = normalized.match(/金額\s*[\(（]?税込[\)）]?\s*[:\s]?\s*([\d,]+)/);
+        if (taxIncMatch) amount = parseInt(taxIncMatch[1].replace(/,/g, ""), 10);
+    }
+    if (!amount) {
+        const taxMatch = normalized.match(/税込[金額]*\s*[:\s]?\s*([\d,]+)/);
+        if (taxMatch) amount = parseInt(taxMatch[1].replace(/,/g, ""), 10);
     }
 
-    // 金額が大きすぎる場合や0の場合は全体から推理
-    if (!amount || amount > 5000000) {
-        amount = 0; // 一旦リセット
-        const allNums = normalized.match(/[\d,]+/g) || [];
-
-        // コード番号・バーコード・J番号など除外:
-        // - 先頭が0（コード番号）
-        // - 2で始まる9桁 (J番号)
-        // - 2で始まる10桁以上 (カタログ番号等)
-        // - 3で始まる6桁
-        // - 104, 501 で始まる (特定コード)
-        // - 7桁以上でコンマなし（バーコード等）
-        const cleanNums = allNums.filter(n => {
-            const str = n.replace(/,/g, "");
-            if (str.startsWith('0')) return false;
-            if (n.includes(',')) return true; // コンマ区切りは優先
-            if (str.length >= 7) return false; // 7桁以上でコンマなしはコード扱い
-            if (str.match(/^2\d{8}$/)) return false;
-            if (str.match(/^3\d{5}$/)) return false;
-            if (str.match(/^104\d+/)) return false;
-            if (str.match(/^501\d+/)) return false;
-            return true;
-        });
-
-        const validNums = cleanNums.map(n => parseInt(n.replace(/,/g, ""), 10)).filter(n => !isNaN(n) && n > 100 && n < 5000000);
-        const commaNums = cleanNums.filter(n => n.includes(',')).map(n => parseInt(n.replace(/,/g, ''), 10)).filter(n => n < 5000000);
-
-        if (commaNums.length > 0) {
-            amount = Math.max(...commaNums);
-        } else if (validNums.length > 0) {
-            amount = Math.max(...validNums);
-        }
-    }
-    unitPrice = amount;
-
-    // スペースやタブで区切りの連続した数値を探す
-    const lineRowMatch = normalized.match(/(?:^|\s)(\d+)\s+([\d,]{3,})\s+([\d,]{3,})(?:\s|$)/);
-    if (lineRowMatch) {
-        const q = parseInt(lineRowMatch[1], 10);
-        const u = parseInt(lineRowMatch[2].replace(/,/g, ""), 10);
-        const a = parseInt(lineRowMatch[3].replace(/,/g, ""), 10);
-        if (q > 0 && q < 1000 && u > 100 && u < 5000000) {
-            if (q * u === a || u === a) {
+    // 単価・数量の取得（品名テーブル行から）
+    const tableRowMatch = normalized.match(/(\d+)[,\s]+([\d,]{3,})[,\s]+([\d,]{3,})/);
+    if (tableRowMatch) {
+        const q = parseInt(tableRowMatch[1], 10);
+        const u = parseInt(tableRowMatch[2].replace(/,/g, ""), 10);
+        const a = parseInt(tableRowMatch[3].replace(/,/g, ""), 10);
+        if (q > 0 && q < 1000 && u > 100 && u < 5000000 && a < 5000000) {
+            if (Math.abs(q * u - a) < 10 || u === a) {
                 quantity = q;
                 unitPrice = u;
-                amount = a;
+                if (!amount) amount = a;
             }
         }
     }
+    if (!unitPrice && amount) unitPrice = amount;
 
-    // 同じ行に「数量・単価・金額」が連続しているかもしれない
-    for (let i = 0; i < lines.length - 2; i++) {
-        if (lines[i].match(/^\d+$/)) {
-            const maybeQty = parseInt(lines[i], 10);
-            const maybeUp = parseInt(lines[i + 1].replace(/,/g, ""), 10);
-            const maybeAmt = parseInt(lines[i + 2].replace(/,/g, ""), 10);
-
-            if (maybeQty > 0 && maybeQty < 1000 && !isNaN(maybeUp) && !isNaN(maybeAmt) && maybeAmt < 5000000) {
-                if (maybeQty * maybeUp === maybeAmt || maybeUp === maybeAmt) {
-                    quantity = maybeQty;
-                    unitPrice = maybeUp;
-                    amount = maybeAmt;
-                    break;
-                }
-            }
-        }
+    // フォールバック: コンマ区切りの数字（7桁以上コンマなしを除外）
+    if (!amount) {
+        const allNums = normalized.match(/[\d,]+/g) || [];
+        const commaNums = allNums
+            .filter(n => n.includes(","))
+            .map(n => parseInt(n.replace(/,/g, ""), 10))
+            .filter(n => !isNaN(n) && n > 100 && n < 5000000);
+        if (commaNums.length > 0) amount = Math.max(...commaNums);
+        if (!unitPrice && amount) unitPrice = amount;
     }
 
-    // 最終的に500万を超えていたら異常値として0にする
+    // 最終安全確認
     if (amount > 5000000) amount = 0;
     if (unitPrice > 5000000) unitPrice = 0;
 
-    // 4. Jナンバーを確実にメモへ
-    const jCodeMatch = normalized.match(/[JＪ]?[A-Za-z]?\s*(2\d{8})/);
+    // ===== 7. Jコード → メモ =====
+    const jCodeMatch = normalized.match(/J(\d{9})/);
     const memo = jCodeMatch ? `J番号: J${jCodeMatch[1]}` : "";
 
     return {
         docType: "purchase_request",
-        slipNumber: extractSlipNumber(text),
+        slipNumber,
         orderDate: orderDate || undefined,
         date: "",
-        itemName: itemName,
-        specification: specification,
-        payee: extractPayee(text),
-        unitPrice: unitPrice,
-        quantity: quantity,
-        amount: amount,
+        itemName,
+        specification,
+        payee,
+        unitPrice,
+        quantity,
+        amount,
         category: "goods",
-        memo: memo
+        memo,
     };
 }
+
 
 /**
  * OCRテキストから情報を抽出するメイン関数
