@@ -247,36 +247,46 @@ export default function ImportPage() {
             let extractedText = "";
 
             if (imageFile.type === "application/pdf" || imageFile.name.toLowerCase().endsWith(".pdf")) {
-                setOcrProgressLabel("PDFを画像に変換中...");
+                setOcrProgressLabel("PDF\u3092\u753b\u50cf\u306b\u5909\u63db\u4e2d...");
 
-                // Use pdfjs-dist to render PDF pages to canvas, then OCR each page
                 const pdfjsLib = await import("pdfjs-dist");
-                pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+                // Use the CDN worker that matches pdfjs-dist version 5.x
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.worker.min.mjs";
 
                 const arrayBuffer = await imageFile.arrayBuffer();
-                const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                let pdfDoc;
+                try {
+                    pdfDoc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+                } catch (loadErr: any) {
+                    throw new Error("PDF\u306e\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f: " + (loadErr.message || loadErr));
+                }
                 const numPages = pdfDoc.numPages;
 
                 const Tesseract = await import("tesseract.js");
 
                 for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-                    setOcrProgressLabel(`ページ ${pageNum}/${numPages} を処理中...`);
+                    setOcrProgressLabel(`\u30da\u30fc\u30b8 ${pageNum}/${numPages} \u3092\u5909\u63db\u4e2d...`);
                     setOcrProgress(Math.round(((pageNum - 1) / numPages) * 50));
 
                     const page = await pdfDoc.getPage(pageNum);
-                    const viewport = page.getViewport({ scale: 2.0 }); // scale 2x for better OCR
+                    const viewport = page.getViewport({ scale: 2.0 });
 
                     const canvas = document.createElement("canvas");
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    const ctx = canvas.getContext("2d")!;
+                    canvas.width = Math.round(viewport.width);
+                    canvas.height = Math.round(viewport.height);
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) throw new Error("Canvas context\u306e\u53d6\u5f97\u306b\u5931\u6557");
 
                     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
 
-                    setOcrProgressLabel(`ページ ${pageNum}/${numPages} をOCR中...`);
+                    setOcrProgressLabel(`\u30da\u30fc\u30b8 ${pageNum}/${numPages} \u3092OCR\u4e2d...`);
                     setOcrStatus("processing");
 
-                    const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), "image/png"));
+                    const blob = await new Promise<Blob>((resolve, reject) =>
+                        canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
+                    );
                     const result = await Tesseract.recognize(blob, "jpn", {
                         logger: (m: { status: string; progress: number }) => {
                             if (m.status === "recognizing text") {
