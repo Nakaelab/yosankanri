@@ -257,17 +257,17 @@ export default function ImportPage() {
             if (data.payee) setPayee(data.payee);
             if (data.unitPrice) setUnitPrice(data.unitPrice);
             if (data.quantity) setQuantity(data.quantity);
-            if (data.amount) {
+            if (data.amount !== undefined) {
                 setAmount(data.amount);
-                setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: data.amount! }] : prev);
             }
-            if (data.memo) setMemo(data.memo);
+            if (data.memo !== undefined) setMemo(data.memo);
             if (data.category) setCategory(data.category as ExpenseCategory);
 
             // JコードからBudgetを自動マッチ
+            let newBudgetId = "";
             if (data.memo) {
-                // "J番号: J250000252" や "J250000252" 等からJコードを抽出
-                const jMatch = data.memo.match(/J(\d{9})/);
+                // 半角/全角/大文字/小文字のJ + 9桁の数字 に対応
+                const jMatch = data.memo.match(/[JＪjｊ](\d{9})/);
                 if (jMatch) {
                     const extracted = `J${jMatch[1]}`;
                     // budgetsの中からjCodeが一致するものを探す
@@ -275,15 +275,21 @@ export default function ImportPage() {
                         b.jCode &&
                         b.jCode.replace(/\s/g, "").toUpperCase() === extracted.toUpperCase()
                     );
-                    if (matched) {
-                        setBudgetSplits(prev => [{
-                            ...prev[0],
-                            budgetId: matched.id,
-                            amount: data.amount || prev[0].amount
-                        }]);
-                    }
+                    if (matched) newBudgetId = matched.id;
                 }
             }
+
+            // 何も選択せずに = 空にする。見つかればその予算をセット。
+            setBudgetSplits(prev => {
+                if (prev.length === 1) {
+                    return [{
+                        ...prev[0],
+                        budgetId: newBudgetId,
+                        amount: data.amount !== undefined ? data.amount : prev[0].amount
+                    }];
+                }
+                return prev;
+            });
 
             setPasteError("");
             setMode("manual"); // フォームモードに切り替え
