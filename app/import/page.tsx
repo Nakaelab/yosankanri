@@ -250,8 +250,8 @@ export default function ImportPage() {
                 setOcrProgressLabel("PDF\u3092\u753b\u50cf\u306b\u5909\u63db\u4e2d...");
 
                 const pdfjsLib = await import("pdfjs-dist");
-                // Use the CDN worker that matches pdfjs-dist version 5.x
-                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.worker.min.mjs";
+                // Use local worker file (copied to public/ folder at build time)
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
                 const arrayBuffer = await imageFile.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
@@ -260,7 +260,7 @@ export default function ImportPage() {
                 try {
                     pdfDoc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
                 } catch (loadErr: any) {
-                    throw new Error("PDF\u306e\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f: " + (loadErr.message || loadErr));
+                    throw new Error("PDFの読み込みに失敗: " + (loadErr.message || String(loadErr)));
                 }
                 const numPages = pdfDoc.numPages;
 
