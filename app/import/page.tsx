@@ -724,6 +724,12 @@ export default function ImportPage() {
                                 {ocrStatus === "error" && (
                                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">{ocrProgressLabel || "テキストの抽出に失敗しました"}</div>
                                 )}
+                                {ocrRawText && (ocrStatus as string) !== "done" && (
+                                    <details open className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                        <summary className="text-xs font-medium text-amber-700 cursor-pointer">OCR読み取り結果（確認用）</summary>
+                                        <pre className="mt-2 text-[10px] text-amber-900 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">{ocrRawText}</pre>
+                                    </details>
+                                )}
                             </div>
                         )}
                     </div>
