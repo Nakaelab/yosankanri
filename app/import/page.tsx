@@ -246,21 +246,47 @@ export default function ImportPage() {
         try {
             let extractedText = "";
 
-            if (imageFile.type === "application/pdf") {
-                setOcrProgressLabel("PDFからテキストを抽出中...");
-                const formData = new FormData();
-                formData.append("file", imageFile);
+            if (imageFile.type === "application/pdf" || imageFile.name.toLowerCase().endsWith(".pdf")) {
+                setOcrProgressLabel("PDFを画像に変換中...");
 
-                const res = await fetch("/api/pdf", {
-                    method: "POST",
-                    body: formData,
-                });
-                if (!res.ok) {
-                    throw new Error("PDF parse failed");
+                // Use pdfjs-dist to render PDF pages to canvas, then OCR each page
+                const pdfjsLib = await import("pdfjs-dist");
+                pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+                const arrayBuffer = await imageFile.arrayBuffer();
+                const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdfDoc.numPages;
+
+                const Tesseract = await import("tesseract.js");
+
+                for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                    setOcrProgressLabel(`ページ ${pageNum}/${numPages} を処理中...`);
+                    setOcrProgress(Math.round(((pageNum - 1) / numPages) * 50));
+
+                    const page = await pdfDoc.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 2.0 }); // scale 2x for better OCR
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext("2d")!;
+
+                    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+
+                    setOcrProgressLabel(`ページ ${pageNum}/${numPages} をOCR中...`);
+                    setOcrStatus("processing");
+
+                    const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), "image/png"));
+                    const result = await Tesseract.recognize(blob, "jpn", {
+                        logger: (m: { status: string; progress: number }) => {
+                            if (m.status === "recognizing text") {
+                                const base = ((pageNum - 1) / numPages) * 100;
+                                setOcrProgress(Math.round(base + (m.progress * 100 / numPages)));
+                            }
+                        },
+                    });
+                    extractedText += result.data.text + "\n";
                 }
-                const data = await res.json();
-                extractedText = data.text;
-                setOcrStatus("processing");
                 setOcrProgress(100);
             } else {
                 setOcrProgressLabel("OCRエンジンを準備中...");
@@ -301,9 +327,9 @@ export default function ImportPage() {
             if (data.memo) setMemo(data.memo);
             setOcrStatus("done");
         } catch (err) {
-            console.error("OCR Error:", err);
+            console.error("テキスト抽出エラー:", err);
             setOcrStatus("error");
-            setOcrProgressLabel("OCRエラーが発生しました");
+            setOcrProgressLabel("テキストの抽出に失敗しました");
         }
     };
 
@@ -575,7 +601,7 @@ export default function ImportPage() {
         <div className="animate-fade-in">
             <div className="page-header">
                 <h1 className="page-title">執行登録</h1>
-                <p className="page-subtitle">手入力またはOCRで執行を登録</p>
+                <p className="page-subtitle">手入力または書類読み取りで執行を登録</p>
             </div>
 
             <div className="p-6 space-y-5 max-w-4xl">
@@ -615,7 +641,7 @@ export default function ImportPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                             </svg>
-                            OCR取り込み
+                            OCR・テキスト抽出
                         </span>
                     </button>
                 </div>
@@ -623,7 +649,7 @@ export default function ImportPage() {
                 {/* OCR Section */}
                 {mode === "ocr" && ocrStatus !== "done" && (
                     <div className="section-card p-5 space-y-4">
-                        <h2 className="text-sm font-bold text-gray-900">画像アップロード & OCR</h2>
+                        <h2 className="text-sm font-bold text-gray-900">書類アップロード &amp; テキスト抽出</h2>
                         <div
                             className={`upload-zone flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${dragging ? "border-brand-500 bg-brand-50" : "border-slate-300 hover:border-brand-500 bg-slate-50 hover:bg-brand-50/50"}`}
                             onDragOver={handleDragOver}
@@ -670,7 +696,7 @@ export default function ImportPage() {
                                 <button className="btn-primary" onClick={runOCR} disabled={ocrStatus === "loading" || ocrStatus === "processing"}>
                                     {ocrStatus === "loading" || ocrStatus === "processing" ? (
                                         <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>処理中...</>
-                                    ) : imageFile.type === "application/pdf" ? "テキストを抽出" : "OCRを実行"}
+                                    ) : imageFile.type === "application/pdf" || imageFile.name.toLowerCase().endsWith(".pdf") ? "テキストを抽出" : "OCRを実行"}
                                 </button>
                                 {(ocrStatus === "loading" || ocrStatus === "processing") && (
                                     <div className="space-y-1.5">
@@ -679,7 +705,7 @@ export default function ImportPage() {
                                     </div>
                                 )}
                                 {ocrStatus === "error" && (
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">OCRエラーが発生しました</div>
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">{ocrProgressLabel || "テキストの抽出に失敗しました"}</div>
                                 )}
                             </div>
                         )}
