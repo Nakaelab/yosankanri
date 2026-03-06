@@ -247,16 +247,22 @@ export default function ImportPage() {
             let extractedText = "";
 
             if (imageFile.type === "application/pdf" || imageFile.name.toLowerCase().endsWith(".pdf")) {
-                setOcrProgressLabel("PDF\u3092\u753b\u50cf\u306b\u5909\u63db\u4e2d...");
+                setOcrProgressLabel("PDFライブラリを準備中...");
 
-                const pdfjsLib = await import("pdfjs-dist");
-                // Use local worker file (copied to public/ folder at build time)
-                pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+                // Load pdfjs via webpack import, set local worker to avoid CDN issues
+                let pdfjsLib: any;
+                try {
+                    pdfjsLib = await import("pdfjs-dist");
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+                } catch (importErr: any) {
+                    throw new Error("pdfjsの読み込みに失敗: " + (importErr.message || String(importErr)));
+                }
 
+                setOcrProgressLabel("PDFを解析中...");
                 const arrayBuffer = await imageFile.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
 
-                let pdfDoc;
+                let pdfDoc: any;
                 try {
                     pdfDoc = await pdfjsLib.getDocument({ data: uint8Array }).promise;
                 } catch (loadErr: any) {
@@ -279,7 +285,7 @@ export default function ImportPage() {
                     const ctx = canvas.getContext("2d");
                     if (!ctx) throw new Error("Canvas context\u306e\u53d6\u5f97\u306b\u5931\u6557");
 
-                    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+                    await page.render({ canvasContext: ctx, viewport }).promise;
 
                     setOcrProgressLabel(`\u30da\u30fc\u30b8 ${pageNum}/${numPages} \u3092OCR\u4e2d...`);
                     setOcrStatus("processing");
