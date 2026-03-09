@@ -393,19 +393,19 @@ export default function TransactionsPage() {
             <div className="mt-5 bg-white border border-gray-100 rounded-xl p-4 md:p-5 shadow-sm space-y-5">
 
                 {/* 1. Status Dashboard */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex gap-4 sm:gap-8 text-left">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex flex-wrap gap-x-6 gap-y-4 sm:gap-8 text-left">
                         <div>
                             <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">配分総額</div>
-                            <div className="text-2xl sm:text-3xl font-bold tabular-nums text-gray-900">{fmt(totalAllocated)}</div>
+                            <div className="text-xl sm:text-3xl font-bold tabular-nums text-gray-900">{fmt(totalAllocated)}</div>
                         </div>
                         <div>
                             <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">執行済</div>
-                            <div className="text-2xl sm:text-3xl font-bold tabular-nums text-brand-600">{fmt(totalSpent)}</div>
+                            <div className="text-xl sm:text-3xl font-bold tabular-nums text-brand-600">{fmt(totalSpent)}</div>
                         </div>
                         <div>
                             <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">残額</div>
-                            <div className={`text-2xl sm:text-3xl font-bold tabular-nums ${totalRemaining < 0 ? "text-red-600" : "text-emerald-500"}`}>
+                            <div className={`text-xl sm:text-3xl font-bold tabular-nums ${totalRemaining < 0 ? "text-red-600" : "text-emerald-500"}`}>
                                 {fmt(totalRemaining)}
                             </div>
                         </div>
