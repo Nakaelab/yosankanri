@@ -303,6 +303,23 @@ function Dashboard() {
             </div>
 
             <div className="p-4 md:p-6 space-y-6">
+                {/* ===== 全体サマリー ===== */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div className="stat-card">
+                        <div className="stat-card-label">配分総額</div>
+                        <div className="stat-card-value text-gray-900">{fmtYen(totalAllocated)}</div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-card-label">執行総額</div>
+                        <div className="stat-card-value text-brand-700">{fmtYen(totalSpent)}</div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-card-label">残額</div>
+                        <div className={`stat-card-value ${totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                            {fmtYen(totalRemaining)}
+                        </div>
+                    </div>
+                </div>
 
                 {/* ===== 予算カード ===== */}
                 {summaries.length === 0 ? (
