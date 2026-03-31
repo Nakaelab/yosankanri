@@ -342,18 +342,24 @@ function Dashboard() {
                             return (
                                 <div key={s.budget.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                     {/* ===== 予算ヘッダー ===== */}
-                                    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className={`w-1.5 h-12 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
-                                                <div className="min-w-0">
-                                                    <div className="text-[15px] font-bold text-gray-900 break-words leading-tight">{s.budget.name}</div>
-                                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                        <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
-                                                        {s.budget.jCode && (
-                                                            <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
-                                                        )}
-                                                    </div>
+                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-white">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
+                                            <div className="min-w-0">
+                                                <div className="text-base font-bold text-gray-900 break-words">{s.budget.name}</div>
+                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                    <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
+                                                    {s.budget.jCode && (
+                                                        <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                            <div className="text-right">
+                                                <div className="text-[10px] text-gray-400 font-medium">残額</div>
+                                                <div className={`text-xl font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}>
+                                                    {fmtYen(s.totalRemaining)}
                                                 </div>
                                             </div>
                                             <Link
@@ -368,35 +374,21 @@ function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {/* ===== 配分・執行・残額（大きく） ===== */}
-                                    <div className="px-5 py-4 border-b border-gray-100">
-                                        <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
-                                            <div>
-                                                <div className="text-[10px] text-gray-400 font-semibold tracking-wider mb-0.5">配分</div>
-                                                <div className="text-xl font-bold tabular-nums text-gray-800">{fmtYen(s.totalAllocated)}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-[10px] text-brand-500 font-semibold tracking-wider mb-0.5">執行</div>
-                                                <div className="text-xl font-bold tabular-nums text-brand-700">{fmtYen(s.totalSpent)}</div>
-                                            </div>
-                                            <div>
-                                                <div className={`text-[10px] font-semibold tracking-wider mb-0.5 ${s.totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
-                                                <div className={`text-xl font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtYen(s.totalRemaining)}</div>
-                                            </div>
-                                            <div className="ml-auto flex items-center gap-2">
-                                                <span className="text-xs text-gray-400">執行率</span>
-                                                <span className={`text-lg font-bold tabular-nums ${usageRate > 100 ? "text-red-600" : usageRate > 80 ? "text-amber-600" : "text-brand-600"}`}>{usageRate}%</span>
-                                            </div>
+                                    {/* ===== 全体進捗バー ===== */}
+                                    <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-xs font-semibold text-gray-500">執行率 <span className={`text-sm font-bold ${usageRate > 100 ? "text-red-600" : usageRate > 80 ? "text-amber-600" : "text-brand-600"}`}>{usageRate}%</span></span>
+                                            <span className="text-xs text-gray-400 tabular-nums">{fmtYen(s.totalSpent)} <span className="text-gray-300">/ {fmtYen(s.totalAllocated)}</span></span>
                                         </div>
-                                        <div className="mt-3 h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                                        <div className="h-2.5 rounded-full bg-gray-200 overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                                className={`h-full rounded-full transition-all ${barColor}`}
                                                 style={{ width: `${Math.min(usageRate, 100)}%` }}
                                             />
                                         </div>
                                     </div>
 
-                                    {/* ===== 費目タイル ===== */}
+                                    {/* ===== 費目内訳 ===== */}
                                     {activeCats.length > 0 && (
                                         <div className="p-4">
                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
@@ -406,34 +398,41 @@ function Dashboard() {
                                                     const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                                     const isOver = c.remaining < 0;
                                                     return (
-                                                        <div key={c.category} className={`rounded-xl border p-3 flex flex-col gap-2 ${colors.bg}`}>
-                                                            {/* カテゴリ名 */}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors.bar}`} />
-                                                                <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</span>
+                                                        <div key={c.category} className={`rounded-xl border p-3 ${colors.bg}`}>
+                                                            {/* カテゴリ名 + 進捗率 */}
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors.bar}`} />
+                                                                    <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</span>
+                                                                </div>
+                                                                <span className="text-[10px] text-gray-400 font-semibold tabular-nums">{catPct}%</span>
                                                             </div>
-                                                            {/* 残額（大きく） */}
-                                                            <div className={`text-base font-bold tabular-nums leading-none ${isOver ? "text-red-600" : "text-gray-800"}`}>
-                                                                {isOver ? "▲" : ""}{fmtYen(Math.abs(c.remaining))}
+                                                            {/* ミニ進捗バー */}
+                                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5">
+                                                                <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
                                                             </div>
-                                                            {/* 配分・執行 */}
-                                                            <div className="space-y-0.5">
-                                                                <div className="flex justify-between text-[10px] text-gray-500">
-                                                                    <span>配分</span>
-                                                                    <span className="font-medium tabular-nums">¥{fmt(c.allocated)}</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-400">執行</span>
-                                                                    <span className="font-bold tabular-nums text-gray-900">¥{fmt(c.spent)}</span>
-                                                                </div>
-                                                                <div className={`flex justify-between font-bold pt-1 border-t border-gray-100 ${isOver ? "text-red-600" : "text-emerald-600"}`}>
-                                                                    <span>残額</span>
-                                                                    <span className="tabular-nums">{isOver ? "▲" : ""}¥{fmt(Math.abs(c.remaining))}</span>
-                                                                </div>
+                                                            {/* 配分・執行・残額 */}
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
+                                                                <span className="text-gray-400">配分</span>
+                                                                <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated)}</span>
+                                                                <span className="text-gray-400">執行</span>
+                                                                <span className="text-right text-gray-800 font-bold">¥{fmt(c.spent)}</span>
+                                                                <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
+                                                                <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}¥{fmt(Math.abs(c.remaining))}</span>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
+                                            </div>
+
+                                            {/* 合計行 */}
+                                            <div className="mt-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
+                                                <span className="text-xs font-bold text-gray-600">合計</span>
+                                                <div className="flex items-center gap-4 text-sm tabular-nums flex-wrap">
+                                                    <span className="text-gray-500">配分 <span className="font-semibold text-gray-700">¥{fmt(s.totalAllocated)}</span></span>
+                                                    <span className="text-gray-500">執行 <span className="font-bold text-gray-900">¥{fmt(s.totalSpent)}</span></span>
+                                                    <span className={`font-bold ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(s.totalRemaining)}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
