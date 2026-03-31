@@ -303,21 +303,6 @@ function Dashboard() {
             </div>
 
             <div className="p-4 md:p-6 space-y-6">
-                {/* ===== 全体サマリー ===== */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-xl border-l-4 border-l-blue-500 shadow-sm px-5 py-4">
-                        <div className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1">配分総額</div>
-                        <div className="text-2xl font-extrabold tabular-nums text-gray-900">{fmtYen(totalAllocated)}</div>
-                    </div>
-                    <div className="bg-white rounded-xl border-l-4 border-l-orange-500 shadow-sm px-5 py-4">
-                        <div className="text-xs font-bold text-orange-500 uppercase tracking-wider mb-1">執行総額</div>
-                        <div className="text-2xl font-extrabold tabular-nums text-gray-900">{fmtYen(totalSpent)}</div>
-                    </div>
-                    <div className={`bg-white rounded-xl border-l-4 shadow-sm px-5 py-4 ${totalRemaining < 0 ? "border-l-red-500" : "border-l-emerald-500"}`}>
-                        <div className={`text-xs font-bold uppercase tracking-wider mb-1 ${totalRemaining < 0 ? "text-red-500" : "text-emerald-500"}`}>残額</div>
-                        <div className={`text-2xl font-extrabold tabular-nums ${totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtYen(totalRemaining)}</div>
-                    </div>
-                </div>
 
                 {/* ===== 予算カード ===== */}
                 {summaries.length === 0 ? (
@@ -331,38 +316,32 @@ function Dashboard() {
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-5">
                         {summaries.map((s) => {
                             const usageRate = pct(s.totalSpent, s.totalAllocated);
+                            const barColor = usageRate > 100 ? "bg-red-500" : usageRate > 80 ? "bg-amber-500" : "bg-brand-500";
                             const activeCats = s.categories.filter((c) => c.allocated > 0 || c.spent > 0);
 
-                            // テーマカラーを執行率で決定
-                            const themeColor = usageRate > 100 ? "red" : usageRate > 80 ? "amber" : "blue";
-                            const gradientClass = themeColor === "red"
-                                ? "from-red-600 to-red-700"
-                                : themeColor === "amber"
-                                    ? "from-amber-500 to-amber-600"
-                                    : "from-blue-600 to-indigo-700";
-                            const barBg = themeColor === "red" ? "bg-red-500" : themeColor === "amber" ? "bg-amber-500" : "bg-blue-500";
-
                             return (
-                                <div key={s.budget.id} className="rounded-2xl shadow-md border border-gray-100 overflow-hidden bg-white">
-
-                                    {/* ===== カラーヘッダー ===== */}
-                                    <div className={`bg-gradient-to-r ${gradientClass} px-5 py-4`}>
+                                <div key={s.budget.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                    {/* ===== 予算ヘッダー ===== */}
+                                    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
                                         <div className="flex items-center justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <div className="text-lg font-bold text-white break-words">{s.budget.name}</div>
-                                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                    <span className="text-xs text-white/70">{s.budget.fiscalYear}年度</span>
-                                                    {s.budget.jCode && (
-                                                        <span className="text-xs font-mono text-white/60 bg-white/15 px-2 py-0.5 rounded">{s.budget.jCode}</span>
-                                                    )}
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-1.5 h-12 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
+                                                <div className="min-w-0">
+                                                    <div className="text-[15px] font-bold text-gray-900 break-words leading-tight">{s.budget.name}</div>
+                                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                        <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
+                                                        {s.budget.jCode && (
+                                                            <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Link
                                                 href="/budgets"
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors text-xs font-medium flex-shrink-0 backdrop-blur-sm"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-xs font-medium flex-shrink-0"
                                             >
                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
@@ -372,43 +351,37 @@ function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {/* ===== 配分・執行・残額 ===== */}
-                                    <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
-                                        <div className="px-4 py-4 text-center">
-                                            <div className="text-[11px] font-bold text-blue-500 mb-1 tracking-wide">配分</div>
-                                            <div className="text-xl font-extrabold tabular-nums text-gray-900">{fmtYen(s.totalAllocated)}</div>
+                                    {/* ===== 配分・執行・残額（大きく） ===== */}
+                                    <div className="px-5 py-4 border-b border-gray-100">
+                                        <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
+                                            <div>
+                                                <div className="text-[10px] text-gray-400 font-semibold tracking-wider mb-0.5">配分</div>
+                                                <div className="text-xl font-bold tabular-nums text-gray-800">{fmtYen(s.totalAllocated)}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] text-brand-500 font-semibold tracking-wider mb-0.5">執行</div>
+                                                <div className="text-xl font-bold tabular-nums text-brand-700">{fmtYen(s.totalSpent)}</div>
+                                            </div>
+                                            <div>
+                                                <div className={`text-[10px] font-semibold tracking-wider mb-0.5 ${s.totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
+                                                <div className={`text-xl font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtYen(s.totalRemaining)}</div>
+                                            </div>
+                                            <div className="ml-auto flex items-center gap-2">
+                                                <span className="text-xs text-gray-400">執行率</span>
+                                                <span className={`text-lg font-bold tabular-nums ${usageRate > 100 ? "text-red-600" : usageRate > 80 ? "text-amber-600" : "text-brand-600"}`}>{usageRate}%</span>
+                                            </div>
                                         </div>
-                                        <div className="px-4 py-4 text-center">
-                                            <div className="text-[11px] font-bold text-orange-500 mb-1 tracking-wide">執行</div>
-                                            <div className="text-xl font-extrabold tabular-nums text-gray-900">{fmtYen(s.totalSpent)}</div>
-                                        </div>
-                                        <div className={`px-4 py-4 text-center ${s.totalRemaining < 0 ? "bg-red-50/50" : "bg-emerald-50/50"}`}>
-                                            <div className={`text-[11px] font-bold mb-1 tracking-wide ${s.totalRemaining < 0 ? "text-red-500" : "text-emerald-500"}`}>残額</div>
-                                            <div className={`text-xl font-extrabold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtYen(s.totalRemaining)}</div>
-                                        </div>
-                                    </div>
-
-                                    {/* ===== 進捗バー ===== */}
-                                    <div className="px-5 py-3 border-b border-gray-100">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-bold text-gray-700">
-                                                執行率
-                                                <span className={`ml-2 text-lg ${usageRate > 100 ? "text-red-600" : usageRate > 80 ? "text-amber-600" : "text-blue-600"}`}>
-                                                    {usageRate}%
-                                                </span>
-                                            </span>
-                                        </div>
-                                        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                                        <div className="mt-3 h-2.5 rounded-full bg-gray-100 overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-700 ${barBg}`}
+                                                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                                                 style={{ width: `${Math.min(usageRate, 100)}%` }}
                                             />
                                         </div>
                                     </div>
 
-                                    {/* ===== 費目カード ===== */}
+                                    {/* ===== 費目タイル ===== */}
                                     {activeCats.length > 0 && (
-                                        <div className="p-4 bg-slate-50/50">
+                                        <div className="p-4">
                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                                                 {activeCats.map((c) => {
                                                     const colors = CATEGORY_COLORS[c.category];
@@ -416,24 +389,21 @@ function Dashboard() {
                                                     const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                                     const isOver = c.remaining < 0;
                                                     return (
-                                                        <div key={c.category} className="bg-white rounded-xl border border-gray-200 p-3 flex flex-col gap-2 shadow-sm">
+                                                        <div key={c.category} className={`rounded-xl border p-3 flex flex-col gap-2 ${colors.bg}`}>
                                                             {/* カテゴリ名 */}
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className={`w-3 h-3 rounded-full flex-shrink-0 ${colors.bar}`} />
-                                                                    <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</span>
-                                                                </div>
-                                                                <span className="text-[10px] text-gray-400 font-bold tabular-nums">{catPct}%</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors.bar}`} />
+                                                                <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</span>
                                                             </div>
-                                                            {/* 進捗バー */}
-                                                            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                                                                <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                                            {/* 残額（大きく） */}
+                                                            <div className={`text-base font-bold tabular-nums leading-none ${isOver ? "text-red-600" : "text-gray-800"}`}>
+                                                                {isOver ? "▲" : ""}{fmtYen(Math.abs(c.remaining))}
                                                             </div>
-                                                            {/* 数値 */}
-                                                            <div className="space-y-1 text-[11px]">
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-400">配分</span>
-                                                                    <span className="font-semibold tabular-nums text-gray-700">¥{fmt(c.allocated)}</span>
+                                                            {/* 配分・執行 */}
+                                                            <div className="space-y-0.5">
+                                                                <div className="flex justify-between text-[10px] text-gray-500">
+                                                                    <span>配分</span>
+                                                                    <span className="font-medium tabular-nums">¥{fmt(c.allocated)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
                                                                     <span className="text-gray-400">執行</span>
@@ -469,7 +439,7 @@ function Dashboard() {
                                             <div className="border-t border-gray-100">
                                                 <button
                                                     onClick={() => toggleExpand(s.budget.id)}
-                                                    className="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                                                    className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
                                                 >
                                                     <span className="flex items-center gap-2">
                                                         <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -489,38 +459,38 @@ function Dashboard() {
                                                     <div className="px-4 pb-4 overflow-x-auto">
                                                         <table className="w-full text-xs border-collapse">
                                                             <thead>
-                                                                <tr className="bg-slate-50 border-b border-gray-200">
-                                                                    <th className="text-left py-2.5 px-3 text-gray-500 font-bold text-[11px]">日付</th>
-                                                                    <th className="text-left py-2.5 px-3 text-gray-500 font-bold text-[11px]">品名</th>
-                                                                    <th className="text-left py-2.5 px-3 text-gray-500 font-bold text-[11px] hidden sm:table-cell">費目</th>
-                                                                    <th className="text-right py-2.5 px-3 text-gray-500 font-bold text-[11px]">金額</th>
-                                                                    <th className="text-right py-2.5 px-3 text-gray-500 font-bold text-[11px]">残額</th>
+                                                                <tr className="border-b border-gray-100">
+                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold">日付</th>
+                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold">品名</th>
+                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold hidden sm:table-cell">費目</th>
+                                                                    <th className="text-right py-2 px-2 text-gray-400 font-semibold">金額</th>
+                                                                    <th className="text-right py-2 px-2 text-gray-400 font-semibold">残額</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {rowsDesc.map(({ tx, remaining }, rowIdx) => {
+                                                                {rowsDesc.map(({ tx, remaining }) => {
                                                                     const catColor = CATEGORY_COLORS[tx.category];
                                                                     return (
-                                                                        <tr key={tx.id} className={`border-b border-gray-100 hover:bg-blue-50/30 transition-colors ${rowIdx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
-                                                                            <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap font-mono">
+                                                                        <tr key={tx.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                                                            <td className="py-2 px-2 text-gray-400 whitespace-nowrap font-mono">
                                                                                 {tx.date === "未定" ? "未定" : tx.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$2/$3")}
                                                                             </td>
-                                                                            <td className="py-2.5 px-3 text-gray-800 max-w-[160px]">
+                                                                            <td className="py-2 px-2 text-gray-700 max-w-[140px]">
                                                                                 <div className="truncate font-medium">{tx.itemName}</div>
                                                                                 {tx.specification && (
                                                                                     <div className="text-[10px] text-gray-400 truncate">{tx.specification}</div>
                                                                                 )}
                                                                             </td>
-                                                                            <td className="py-2.5 px-3 hidden sm:table-cell">
-                                                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${catColor.bg} ${catColor.text}`}>
+                                                                            <td className="py-2 px-2 hidden sm:table-cell">
+                                                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${catColor.bg} ${catColor.text}`}>
                                                                                     <span className={`w-1.5 h-1.5 rounded-full ${catColor.bar}`} />
                                                                                     {CATEGORY_LABELS[tx.category]}
                                                                                 </span>
                                                                             </td>
-                                                                            <td className="py-2.5 px-3 text-right tabular-nums font-bold text-gray-900 whitespace-nowrap">
+                                                                            <td className="py-2 px-2 text-right tabular-nums font-bold text-gray-800 whitespace-nowrap">
                                                                                 ¥{fmt(tx.amount)}
                                                                             </td>
-                                                                            <td className={`py-2.5 px-3 text-right tabular-nums font-bold whitespace-nowrap ${remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                                                                            <td className={`py-2 px-2 text-right tabular-nums font-bold whitespace-nowrap ${remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
                                                                                 {remaining < 0 ? "▲" : ""}¥{fmt(Math.abs(remaining))}
                                                                             </td>
                                                                         </tr>
@@ -528,8 +498,8 @@ function Dashboard() {
                                                                 })}
                                                             </tbody>
                                                         </table>
-                                                        <div className="mt-3 text-right">
-                                                            <Link href="/transactions" className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-semibold">
+                                                        <div className="mt-2 text-right">
+                                                            <Link href="/transactions" className="text-[11px] text-brand-600 hover:underline font-medium">
                                                                 執行一覧で全件見る →
                                                             </Link>
                                                         </div>
