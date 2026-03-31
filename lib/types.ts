@@ -88,6 +88,7 @@ export interface Budget {
     jCode: string;          // Jコード（例："J250000252"）
     fiscalYear: number;     // 年度
     allocations: CategoryAllocations; // カテゴリ別配分額
+    sortOrder?: number;     // 表示順序（小さいほど上に表示）
     createdAt: string;
 }
 

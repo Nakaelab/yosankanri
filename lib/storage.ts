@@ -132,7 +132,14 @@ export function getBudgets(): Budget[] {
     try {
         const key = getStorageKey(BUDGETS_KEY);
         const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : [];
+        const budgets: Budget[] = raw ? JSON.parse(raw) : [];
+        // sortOrder がある場合はそれで並べ替え、なければ名前順
+        return budgets.sort((a, b) => {
+            const orderA = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            const orderB = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+            if (orderA !== orderB) return orderA - orderB;
+            return a.name.localeCompare(b.name, "ja");
+        });
     } catch {
         return [];
     }
@@ -158,6 +165,19 @@ export function deleteBudget(id: string): void {
     const list = getBudgets().filter((b) => b.id !== id);
     const key = getStorageKey(BUDGETS_KEY);
     setAndSync(key, JSON.stringify(list));
+}
+
+/**
+ * 予算の表示順序を一括保存
+ */
+export function saveBudgetOrder(orderedIds: string[]): void {
+    const list = getBudgets();
+    const updated = list.map((b) => {
+        const idx = orderedIds.indexOf(b.id);
+        return { ...b, sortOrder: idx >= 0 ? idx : list.length };
+    });
+    const key = getStorageKey(BUDGETS_KEY);
+    setAndSync(key, JSON.stringify(updated));
 }
 
 export function getBudgetById(id: string): Budget | undefined {
@@ -202,7 +222,6 @@ export function getBudgetSummary(budget: Budget): BudgetSummary {
  */
 export function getAllBudgetSummaries(): BudgetSummary[] {
     return getBudgets()
-        .sort((a, b) => a.name.localeCompare(b.name, "ja"))
         .map(getBudgetSummary);
 }
 
