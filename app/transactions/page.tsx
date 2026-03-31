@@ -371,6 +371,18 @@ export default function TransactionsPage() {
         return `${names[0]}他${names.length - 1}件`;
     };
 
+    // トランザクションのJコード表示
+    const getTxJCode = (tx: Transaction): string => {
+        if (!tx.splitGroupId) {
+            return budgets.find(b => b.id === tx.budgetId)?.jCode || "";
+        }
+        const group = allTxs.filter(t => t.splitGroupId === tx.splitGroupId);
+        const codes = [...new Set(group.map(t => budgets.find(b => b.id === t.budgetId)?.jCode || "").filter(Boolean))];
+        if (codes.length === 0) return "";
+        if (codes.length === 1) return codes[0];
+        return codes.join(", ");
+    };
+
     // トランザクションの合計金額（グループ全体）
     const getTxTotalAmount = (tx: Transaction) => {
         if (!tx.splitGroupId) return tx.amount;
@@ -612,7 +624,12 @@ export default function TransactionsPage() {
                                                         <span className={`badge ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
                                                     )}
                                                 </td>
-                                                <td className="text-[11px] text-gray-400 max-w-[120px] truncate">{getTxBudgetDisplay(tx)}</td>
+                                                <td className="max-w-[140px]">
+                                                    <div className="text-[11px] text-gray-600 truncate font-medium">{getTxBudgetDisplay(tx)}</div>
+                                                    {getTxJCode(tx) && (
+                                                        <div className="text-[10px] text-gray-400 font-mono truncate">{getTxJCode(tx)}</div>
+                                                    )}
+                                                </td>
                                                 <td className="text-center">
                                                     {(tx.attachmentCount || 0) > 0 ? (
                                                         <button className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-800 text-xs font-medium" onClick={() => openAttachments(tx)}>
