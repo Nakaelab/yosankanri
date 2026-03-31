@@ -342,25 +342,19 @@ function Dashboard() {
 
                             return (
                                 <div key={s.budget.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                    {/* ===== 予算ヘッダー ===== */}
-                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-white">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
-                                            <div className="min-w-0">
-                                                <div className="text-base font-bold text-gray-900 break-words">{s.budget.name}</div>
-                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                    <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
-                                                    {s.budget.jCode && (
-                                                        <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3 flex-shrink-0">
-                                            <div className="text-right">
-                                                <div className="text-[10px] text-gray-400 font-medium">残額</div>
-                                                <div className={`text-xl font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}>
-                                                    {fmtYen(s.totalRemaining)}
+                                    {/* ===== 予算ヘッダー（配分・執行・残額を大きく表示） ===== */}
+                                    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
+                                        <div className="flex items-center justify-between gap-3 mb-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
+                                                <div className="min-w-0">
+                                                    <div className="text-base font-bold text-gray-900 break-words">{s.budget.name}</div>
+                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                        <span className="text-[11px] text-gray-400">{s.budget.fiscalYear}年度</span>
+                                                        {s.budget.jCode && (
+                                                            <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Link
@@ -372,6 +366,21 @@ function Dashboard() {
                                                 </svg>
                                                 編集
                                             </Link>
+                                        </div>
+                                        {/* 配分・執行・残額 */}
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="bg-white rounded-xl border border-gray-100 px-4 py-2.5 text-center">
+                                                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">配分</div>
+                                                <div className="text-lg font-bold tabular-nums text-gray-800">{fmtYen(s.totalAllocated)}</div>
+                                            </div>
+                                            <div className="bg-white rounded-xl border border-gray-100 px-4 py-2.5 text-center">
+                                                <div className="text-[10px] text-brand-500 font-bold uppercase tracking-wider mb-0.5">執行</div>
+                                                <div className="text-lg font-bold tabular-nums text-brand-700">{fmtYen(s.totalSpent)}</div>
+                                            </div>
+                                            <div className={`rounded-xl border px-4 py-2.5 text-center ${s.totalRemaining < 0 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"}`}>
+                                                <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${s.totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
+                                                <div className={`text-lg font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>{fmtYen(s.totalRemaining)}</div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -432,16 +441,6 @@ function Dashboard() {
                                                         </div>
                                                     );
                                                 })}
-                                            </div>
-
-                                            {/* 合計行 */}
-                                            <div className="mt-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
-                                                <span className="text-xs font-bold text-gray-600">合計</span>
-                                                <div className="flex items-center gap-4 text-sm tabular-nums flex-wrap">
-                                                    <span className="text-gray-500">配分 <span className="font-semibold text-gray-700">¥{fmt(s.totalAllocated)}</span></span>
-                                                    <span className="text-gray-500">執行 <span className="font-bold text-gray-900">¥{fmt(s.totalSpent)}</span></span>
-                                                    <span className={`font-bold ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(s.totalRemaining)}</span>
-                                                </div>
                                             </div>
                                         </div>
                                     )}
