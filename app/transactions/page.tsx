@@ -610,7 +610,7 @@ export default function TransactionsPage() {
                                                     )}
                                                 </td>
                                                 <td className="max-w-[140px] truncate text-gray-500 text-[12px]">{tx.specification || "—"}</td>
-                                                <td className="text-[12px] text-gray-500">{tx.payee || "—"}</td>
+                                                <td className="max-w-[160px] truncate text-gray-500 text-[12px]" title={tx.payee}>{tx.payee || "—"}</td>
                                                 <td className={`text-right tabular-nums text-[12px] ${isTax ? "text-gray-500" : ""}`}>{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"}</td>
                                                 <td className={`text-center tabular-nums text-[12px] ${isTax ? "text-gray-500" : ""}`}>{tx.quantity}</td>
                                                 <td className={`text-right font-medium tabular-nums whitespace-nowrap ${isTax ? "text-gray-600" : ""}`}>
