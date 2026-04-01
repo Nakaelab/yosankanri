@@ -19,50 +19,53 @@ export async function POST(request: NextRequest) {
         const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         const uploadKey = serviceRoleKey || anonKey;
 
-        if (!supabaseUrl || !uploadKey) {
-            return NextResponse.json(
-                { error: `Supabase key or URL is missing.` },
-                { status: 500 }
-            );
-        }
-
-        // Supabase JS SDK を使用
-        const supabase = createClient(supabaseUrl, uploadKey);
-
         const fileId = uuidv4();
-        // 日本語も保持するように（英数字・日本語・記号以外を置換）
+        // 日本語等も保持するように
         const safeName = file.name.replace(/[^a-zA-Z0-9.\u3000-\u30ff\u4e00-\u9faf_-]/g, "_");
         const storagePath = `${transactionId}/${fileId}_${safeName}`;
 
         const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
+        const mimeType = file.type || "application/octet-stream";
+        let finalUrl = "";
 
-        const { error: uploadError } = await supabase.storage
-            .from("attachments")
-            .upload(storagePath, uint8Array, {
-                contentType: file.type || "application/octet-stream",
-                upsert: true,
-            });
+        // 1. Supabaseが設定されていればアップロードを試みる
+        if (supabaseUrl && uploadKey) {
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const supabase = createClient(supabaseUrl, uploadKey);
+            
+            const { error: uploadError } = await supabase.storage
+                .from("attachments")
+                .upload(storagePath, uint8Array, {
+                    contentType: mimeType,
+                    upsert: true,
+                });
 
-        if (uploadError) {
-            console.error("Supabase Storage upload error:", uploadError);
-            return NextResponse.json(
-                { error: `Supabase Error: ${uploadError.message}` },
-                { status: 500 }
-            );
+            if (!uploadError) {
+                const { data: urlData } = supabase.storage
+                    .from("attachments")
+                    .getPublicUrl(storagePath);
+                finalUrl = urlData.publicUrl;
+            } else {
+                console.error("Supabase Storage upload error:", uploadError);
+                // エラーの場合はフォールバック(Base64)へ
+            }
         }
 
-        const { data: urlData } = supabase.storage
-            .from("attachments")
-            .getPublicUrl(storagePath);
+        // 2. 設定なし・またはエラーだった場合のフォールバック（Base64文字列として直接DB(localStorage)に保持）
+        if (!finalUrl) {
+            console.log("Fallback to Base64 URI for file:", file.name);
+            const buffer = Buffer.from(arrayBuffer);
+            const base64Str = buffer.toString("base64");
+            finalUrl = `data:${mimeType};base64,${base64Str}`;
+        }
 
         const meta: AttachmentMeta = {
             id: fileId,
             transactionId,
             fileName: file.name,
-            mimeType: file.type || "application/octet-stream",
+            mimeType: mimeType,
             size: file.size,
-            storageUrl: urlData.publicUrl,
+            storageUrl: finalUrl,
             createdAt: new Date().toISOString(),
         };
 
