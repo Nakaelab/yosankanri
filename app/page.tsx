@@ -355,11 +355,24 @@ function Dashboard() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3 flex-shrink-0">
-                                            <div className="text-right">
-                                                <div className="text-[10px] text-gray-400 font-medium">総額</div>
-                                                <div className="text-xl font-bold tabular-nums text-gray-900">
-                                                    {fmtYen(s.totalAllocated)}
+                                        <div className="flex items-center gap-4 flex-shrink-0">
+                                            {/* 配分・執行・残額 3カラム */}
+                                            <div className="hidden sm:flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <div className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">配分</div>
+                                                    <div className="text-sm font-bold tabular-nums text-indigo-700">{fmtYen(s.totalAllocated)}</div>
+                                                </div>
+                                                <div className="w-px h-8 bg-gray-200" />
+                                                <div className="text-right">
+                                                    <div className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">執行</div>
+                                                    <div className="text-sm font-bold tabular-nums text-amber-700">{fmtYen(s.totalSpent)}</div>
+                                                </div>
+                                                <div className="w-px h-8 bg-gray-200" />
+                                                <div className="text-right">
+                                                    <div className={`text-[10px] font-semibold uppercase tracking-wider ${s.totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
+                                                    <div className={`text-sm font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                                        {s.totalRemaining < 0 ? "▲" : ""}{fmtYen(Math.abs(s.totalRemaining))}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Link
@@ -423,16 +436,6 @@ function Dashboard() {
                                                         </div>
                                                     );
                                                 })}
-                                            </div>
-
-                                            {/* 合計行 */}
-                                            <div className="mt-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
-                                                <span className="text-xs font-bold text-gray-600">合計</span>
-                                                <div className="flex items-center gap-4 text-sm tabular-nums flex-wrap">
-                                                    <span className="text-gray-500">配分 <span className="font-semibold text-gray-700">¥{fmt(s.totalAllocated)}</span></span>
-                                                    <span className="text-gray-500">執行 <span className="font-bold text-gray-900">¥{fmt(s.totalSpent)}</span></span>
-                                                    <span className={`font-bold ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>残 ¥{fmt(s.totalRemaining)}</span>
-                                                </div>
                                             </div>
                                         </div>
                                     )}
