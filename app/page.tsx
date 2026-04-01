@@ -357,9 +357,9 @@ function Dashboard() {
                                         </div>
                                         <div className="flex items-center gap-3 flex-shrink-0">
                                             <div className="text-right">
-                                                <div className="text-[10px] text-gray-400 font-medium">残額</div>
-                                                <div className={`text-xl font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}>
-                                                    {fmtYen(s.totalRemaining)}
+                                                <div className="text-[10px] text-gray-400 font-medium">総額</div>
+                                                <div className="text-xl font-bold tabular-nums text-gray-900">
+                                                    {fmtYen(s.totalAllocated)}
                                                 </div>
                                             </div>
                                             <Link
