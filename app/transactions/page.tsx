@@ -105,7 +105,19 @@ export default function TransactionsPage() {
         setBudgets(getBudgets());
     };
 
-    useEffect(() => { setMounted(true); reload(); }, []);
+    useEffect(() => { 
+        setMounted(true); 
+        reload(); 
+        
+        // クエリストリングから初期の予算フィルターを取得
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const budgetParam = params.get("budget");
+            if (budgetParam) {
+                setFilterBudgetId(budgetParam);
+            }
+        }
+    }, []);
 
     // ===== 削除 =====
     const handleDelete = (tx: Transaction) => {
