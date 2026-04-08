@@ -15,6 +15,16 @@ type Mode = "ocr" | "manual" | "labor";
 type OCRStatus = "idle" | "loading" | "processing" | "done" | "error";
 type LaborStatus = "provisional" | "confirmed";
 
+/** 手入力バッチ入力行 */
+interface ManualItemRow {
+    id: string;
+    itemName: string;
+    specification: string;
+    unitPrice: number;
+    quantity: number;
+    amount: number;
+}
+
 /** 予算分割エントリ */
 interface BudgetSplit {
     id: string;
@@ -84,12 +94,30 @@ export default function ImportPage() {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     });
-    const [itemName, setItemName] = useState("");
-    const [specification, setSpecification] = useState("");
+    
+    const [manualItems, setManualItems] = useState<ManualItemRow[]>([{ id: uuidv4(), itemName: "", specification: "", unitPrice: 0, quantity: 1, amount: 0 }]);
+    const manualTotalAmount = manualItems.reduce((s, it) => s + (it.amount || 0), 0);
+
+    const updateManualItem = (id: string, field: keyof ManualItemRow, value: string | number) => {
+        setManualItems(prev => prev.map(item => {
+            if (item.id !== id) return item;
+            const updated: any = { ...item, [field]: value };
+            if (field === "unitPrice" || field === "quantity" || field === "amount") {
+                if (field !== "amount") {
+                    updated.amount = updated.unitPrice * updated.quantity;
+                } else if (field === "amount" && updated.unitPrice === 0) {
+                    updated.unitPrice = updated.amount;
+                    updated.quantity = 1;
+                }
+            }
+            return updated;
+        }));
+    };
+
+    const addManualItem = () => setManualItems(prev => [...prev, { id: uuidv4(), itemName: "", specification: "", unitPrice: 0, quantity: 1, amount: 0 }]);
+    const removeManualItem = (id: string) => setManualItems(prev => prev.length <= 1 ? prev : prev.filter(r => r.id !== id));
+
     const [payee, setPayee] = useState("");
-    const [unitPrice, setUnitPrice] = useState(0);
-    const [quantity, setQuantity] = useState(1);
-    const [amount, setAmount] = useState(0);
     const [category, setCategory] = useState<ExpenseCategory>("goods");
     const [memo, setMemo] = useState("");
     const [dateUnknown, setDateUnknown] = useState(false);
@@ -143,24 +171,21 @@ export default function ImportPage() {
 
     // ---- Auto-calc amount ----
     useEffect(() => {
-        if (unitPrice > 0 && quantity > 0) {
-            const computed = unitPrice * quantity;
-            setAmount(computed);
-            // 分割が1件だけなら金額を自動同期
-            setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: computed }] : prev);
+        if (mode !== "labor") {
+            setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: manualTotalAmount }] : prev);
         }
-    }, [unitPrice, quantity]);
+    }, [manualTotalAmount, mode]);
 
     const validate = () => {
         const errs: { field: string; message: string }[] = [];
-        if (!itemName.trim()) errs.push({ field: "itemName", message: "品名が空です" });
-        if (amount <= 0) errs.push({ field: "amount", message: "金額が0以下です" });
+        if (manualItems.some(i => !i.itemName.trim())) errs.push({ field: "itemName", message: "品名が空の項目があります" });
+        if (manualTotalAmount <= 0) errs.push({ field: "amount", message: "金額が0以下です" });
         if (!date && !dateUnknown) errs.push({ field: "date", message: "日付が空です" });
         const validSplits = budgetSplits.filter(s => s.budgetId);
         if (validSplits.length === 0) errs.push({ field: "budgetSplits", message: "予算を1つ以上選択してください" });
         const splitTotal = validSplits.reduce((s, v) => s + v.amount, 0);
-        if (amount > 0 && validSplits.length > 1 && splitTotal !== amount) {
-            errs.push({ field: "budgetSplits", message: `予算の合計金額（¥${splitTotal.toLocaleString()}）が物品金額（¥${amount.toLocaleString()}）と一致しません` });
+        if (manualTotalAmount > 0 && validSplits.length > 1 && splitTotal !== manualTotalAmount) {
+            errs.push({ field: "budgetSplits", message: `予算の合計金額（¥${splitTotal.toLocaleString()}）が物品金額（¥${manualTotalAmount.toLocaleString()}）と一致しません` });
         }
         setErrors(errs);
         return errs;
@@ -179,18 +204,8 @@ export default function ImportPage() {
         setBudgetSplits(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
 
-    /** 物品金額が入力されたとき、splitが1件だけなら金額を自動同期 */
-    const syncSingleSplitAmount = (newAmount: number) => {
-        setBudgetSplits(prev => {
-            if (prev.length === 1) {
-                return [{ ...prev[0], amount: newAmount }];
-            }
-            return prev;
-        });
-    };
-
     const splitTotal = budgetSplits.filter(s => s.budgetId).reduce((s, v) => s + v.amount, 0);
-    const splitRemainder = amount - splitTotal;
+    const splitRemainder = manualTotalAmount - splitTotal;
 
     // ---- File upload (OCR/PDF) ----
     const handleFile = useCallback((file: File) => {
@@ -252,16 +267,19 @@ export default function ImportPage() {
             const data = extractFromPastedText(pasteText);
             if (data.slipNumber) setSlipNumber(data.slipNumber);
             if (data.orderDate) setOrderDate(data.orderDate);
-            if (data.itemName) setItemName(data.itemName);
-            if (data.specification) setSpecification(data.specification);
             if (data.payee) setPayee(data.payee);
-            if (data.unitPrice) setUnitPrice(data.unitPrice);
-            if (data.quantity) setQuantity(data.quantity);
-            if (data.amount !== undefined) {
-                setAmount(data.amount);
-            }
             if (data.memo !== undefined) setMemo(data.memo);
             if (data.category) setCategory(data.category as ExpenseCategory);
+            
+            const amt = data.amount !== undefined ? data.amount : (data.unitPrice && data.quantity ? data.unitPrice * data.quantity : 0);
+            setManualItems([{
+                id: uuidv4(),
+                itemName: data.itemName || "",
+                specification: data.specification || "",
+                unitPrice: data.unitPrice || 0,
+                quantity: data.quantity || 1,
+                amount: amt,
+            }]);
 
             // JコードからBudgetを自動マッチ
             let newBudgetId = "";
@@ -285,7 +303,7 @@ export default function ImportPage() {
                     return [{
                         ...prev[0],
                         budgetId: newBudgetId,
-                        amount: data.amount !== undefined ? data.amount : prev[0].amount
+                        amount: amt || prev[0].amount
                     }];
                 }
                 return prev;
@@ -404,12 +422,15 @@ export default function ImportPage() {
             setSlipNumber(data.slipNumber);
             setOrderDate(data.orderDate || "");
             setDate(data.date);
-            setItemName(data.itemName);
-            setSpecification(data.specification);
             setPayee(data.payee);
-            setUnitPrice(data.unitPrice);
-            setQuantity(data.quantity);
-            setAmount(data.amount);
+            setManualItems([{
+                id: uuidv4(),
+                itemName: data.itemName,
+                specification: data.specification,
+                unitPrice: data.unitPrice,
+                quantity: data.quantity,
+                amount: data.amount,
+            }]);
             // 分割が1件だけなら金額を自動同期
             setBudgetSplits(prev => prev.length === 1 ? [{ ...prev[0], amount: data.amount }] : prev);
             setCategory(data.category);
@@ -497,32 +518,61 @@ export default function ImportPage() {
             }
         }
 
-        // 各分割分を個別のTransactionとして保存
-        validSplits.forEach((split, idx) => {
-            const txId = idx === 0 ? firstTxId : uuidv4();
-            // 分割の場合は各分割の金額を使用、単一の場合は通常の金額
-            const txAmount = validSplits.length > 1 ? split.amount : amount;
-            saveTransaction({
-                id: txId,
-                budgetId: split.budgetId,
-                slipNumber,
-                orderDate: orderDate || undefined,
-                date: dateUnknown ? "未定" : date,
-                itemName,
-                specification,
-                payee,
-                unitPrice: validSplits.length > 1 ? split.amount : unitPrice,
-                quantity: validSplits.length > 1 ? 1 : quantity,
-                amount: txAmount,
-                category,
-                memo,
-                attachmentCount: idx === 0 ? uploadedMeta.length : 0,
-                attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
-                ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
-                splitGroupId,
-                createdAt: new Date().toISOString(),
+        const isMultipleBudgets = validSplits.length > 1;
+        const groupSplitId = (isMultipleBudgets || manualItems.length > 1) ? uuidv4() : undefined;
+
+        if (isMultipleBudgets) {
+            // 予算が複数に分割されている場合（全体の合算として扱う）
+            const combinedItemName = manualItems.length === 1 ? manualItems[0].itemName : `${manualItems[0].itemName} ほか${manualItems.length - 1}件`;
+            const combinedSpec = manualItems.length === 1 ? manualItems[0].specification : "";
+            validSplits.forEach((split, idx) => {
+                const txId = idx === 0 ? firstTxId : uuidv4();
+                saveTransaction({
+                    id: txId,
+                    budgetId: split.budgetId,
+                    slipNumber,
+                    orderDate: orderDate || undefined,
+                    date: dateUnknown ? "未定" : date,
+                    itemName: combinedItemName,
+                    specification: combinedSpec,
+                    payee,
+                    unitPrice: split.amount,
+                    quantity: 1,
+                    amount: split.amount,
+                    category,
+                    memo,
+                    attachmentCount: idx === 0 ? uploadedMeta.length : 0,
+                    attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
+                    ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
+                    splitGroupId: groupSplitId,
+                    createdAt: new Date().toISOString(),
+                });
             });
-        });
+        } else {
+            // 予算が1つの場合、各品目を個別のTransactionとして保存
+            manualItems.forEach((item, idx) => {
+                const txId = idx === 0 ? firstTxId : uuidv4();
+                saveTransaction({
+                    id: txId,
+                    budgetId: validSplits[0].budgetId,
+                    slipNumber,
+                    orderDate: orderDate || undefined,
+                    date: dateUnknown ? "未定" : date,
+                    itemName: item.itemName,
+                    specification: item.specification,
+                    payee,
+                    unitPrice: item.unitPrice,
+                    quantity: item.quantity,
+                    amount: item.amount,
+                    category,
+                    memo,
+                    attachmentCount: idx === 0 ? uploadedMeta.length : 0,
+                    attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
+                    ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
+                    createdAt: new Date().toISOString(),
+                });
+            });
+        }
 
         router.push("/transactions");
     };
@@ -606,8 +656,9 @@ export default function ImportPage() {
 
     // ---- Reset ----
     const resetForm = () => {
-        setSlipNumber(""); setItemName(""); setSpecification(""); setPayee("");
-        setUnitPrice(0); setQuantity(1); setAmount(0); setCategory(mode === "labor" ? "labor" : "goods");
+        setSlipNumber(""); setPayee("");
+        setManualItems([{ id: uuidv4(), itemName: "", specification: "", unitPrice: 0, quantity: 1, amount: 0 }]);
+        setCategory(mode === "labor" ? "labor" : "goods");
         setMemo("");
         setEstimates([]); setErrors([]); setDateUnknown(false);
         setImageFile(null); setImagePreview(null); setOcrStatus("idle"); setOcrRawText("");
@@ -1084,71 +1135,88 @@ export default function ImportPage() {
                                 )}
                                 {hasError("date") && <p className="field-error-text">{getError("date")}</p>}
                             </div>
-                            <div>
-                                <label className="form-label">品名 *</label>
-                                <input
-                                    type="text"
-                                    className={`form-input ${hasError("itemName") ? "field-error" : ""}`}
-                                    value={itemName}
-                                    onChange={(e) => setItemName(e.target.value)}
-                                    placeholder="例: 電源タップ"
-                                />
-                                {hasError("itemName") && <p className="field-error-text">{getError("itemName")}</p>}
-                            </div>
-                            <div>
-                                <label className="form-label">規格等</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    value={specification}
-                                    onChange={(e) => setSpecification(e.target.value)}
-                                    placeholder="例: エレコム 10個口 2m"
-                                />
-                            </div>
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="form-label">支払先</label>
                                 <input type="text" className="form-input" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="例: 法人カード / Amazon" />
                             </div>
-                            {category !== "labor" && (
-                                <>
-                                    <div>
-                                        <label className="form-label">単価</label>
-                                        <input type="number" className="form-input" value={unitPrice || ""} onChange={(e) => setUnitPrice(parseInt(e.target.value, 10) || 0)} min={0} placeholder="0" />
-                                    </div>
-                                    <div>
-                                        <label className="form-label">数量</label>
-                                        <input type="number" className="form-input" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 1)} min={1} />
-                                    </div>
-                                </>
-                            )}
-                            <div className="md:col-span-2">
-                                <label className="form-label">{category === "labor" ? "金額（総額）*" : "金額（円）*"}</label>
-                                <input
-                                    type="number"
-                                    className={`form-input text-lg font-bold ${hasError("amount") ? "field-error" : ""}`}
-                                    value={amount || ""}
-                                    onChange={(e) => {
-                                        const parsedAmount = parseInt(e.target.value, 10) || 0;
-                                        setAmount(parsedAmount);
-                                        syncSingleSplitAmount(parsedAmount);
-                                        if (category === "labor") {
-                                            setUnitPrice(parsedAmount);
-                                            setQuantity(1);
-                                        }
-                                    }}
-                                    min={0}
-                                    placeholder="0"
-                                />
-                                {hasError("amount") && <p className="field-error-text">{getError("amount")}</p>}
-                                {category !== "labor" && unitPrice > 0 && quantity > 1 && (
-                                    <p className="text-[11px] text-gray-400 mt-1">単価 {unitPrice.toLocaleString()} × 数量 {quantity} = {(unitPrice * quantity).toLocaleString()}</p>
-                                )}
-                                {budgetSplits.length > 1 && amount > 0 && (
-                                    <p className="text-[11px] text-brand-600 mt-1 font-medium">
-                                        ↓ 下記の予算分割で合計 ¥{splitTotal.toLocaleString()} を割り当て中
-                                    </p>
+                        </div>
+
+                        {/* Items Array Block */}
+                        <div className="mt-6 border-t border-gray-100 pt-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                    </svg>
+                                    購入品目
+                                </h3>
+                                {manualItems.length > 0 && (
+                                    <span className="text-[11px] text-gray-400 font-semibold bg-gray-100 px-2.5 py-1 rounded-full">計 {manualItems.length}件 / 合計 ¥{manualTotalAmount.toLocaleString()}</span>
                                 )}
                             </div>
+                            <div className="space-y-4">
+                                {manualItems.map((item, idx) => (
+                                    <div key={item.id} className="relative border border-gray-200 rounded-xl p-4 bg-gray-50/30 hover:border-brand-200 transition-colors">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className="text-xs font-bold text-brand-500 bg-brand-50 px-2 py-0.5 rounded-md">行 {idx + 1}</span>
+                                            {manualItems.length > 1 && (
+                                                <button type="button" onClick={() => removeManualItem(item.id)} className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                            <div className="lg:col-span-2">
+                                                <label className="text-[10px] font-semibold text-gray-500 mb-1 block">品名 *</label>
+                                                <input type="text" className={`form-input ${!item.itemName.trim() && hasError('itemName') ? 'field-error' : ''}`} value={item.itemName} onChange={(e) => updateManualItem(item.id, 'itemName', e.target.value)} placeholder="電源タップ" />
+                                            </div>
+                                            <div className="lg:col-span-2">
+                                                <label className="text-[10px] font-semibold text-gray-500 mb-1 block">規格等</label>
+                                                <input type="text" className="form-input" value={item.specification} onChange={(e) => updateManualItem(item.id, 'specification', e.target.value)} placeholder="規格など" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-semibold text-gray-500 mb-1 block">単価</label>
+                                                <input type="number" className="form-input" value={item.unitPrice || ""} onChange={(e) => updateManualItem(item.id, 'unitPrice', parseInt(e.target.value)||0)} placeholder="0" min="0" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-semibold text-gray-500 mb-1 block">数量</label>
+                                                <input type="number" className="form-input" value={item.quantity || ""} onChange={(e) => updateManualItem(item.id, 'quantity', parseInt(e.target.value)||1)} placeholder="1" min="1" />
+                                            </div>
+                                            <div className="md:col-span-2 lg:col-span-2">
+                                                <label className="text-[10px] font-semibold text-gray-500 mb-1 block">金額（円）*</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">¥</span>
+                                                    <input type="number" className="form-input pl-8 font-bold text-gray-900 bg-white" value={item.amount || ""} onChange={(e) => updateManualItem(item.id, 'amount', parseInt(e.target.value)||0)} placeholder="0" min="0" />
+                                                </div>
+                                                {item.unitPrice > 0 && item.quantity > 1 && (
+                                                    <p className="text-[10px] text-gray-400 mt-1">単価 {item.unitPrice.toLocaleString()} × 数量 {item.quantity} = {(item.unitPrice * item.quantity).toLocaleString()}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <button
+                                type="button"
+                                onClick={addManualItem}
+                                className="mt-4 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 border border-dashed border-brand-200 hover:border-brand-400 hover:bg-brand-50 px-4 py-2 rounded-xl transition-colors"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                品目を行追加
+                            </button>
+                            {hasError("amount") && <p className="field-error-text mt-2">{getError("amount")}</p>}
+                            {budgetSplits.length > 1 && manualTotalAmount > 0 && (
+                                <p className="text-[11px] text-brand-600 mt-2 font-medium">
+                                    ↓ 予算分割で合計 ¥{splitTotal.toLocaleString()} を割り当て中
+                                </p>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
 
                             {/* Memo */}
                             <div className="md:col-span-2">
