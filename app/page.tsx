@@ -252,7 +252,7 @@ function Dashboard() {
         if (!editingTx) return;
         if (!editForm.budgetId) { alert("予算を選択してください"); return; }
         if (!editForm.itemName.trim()) { alert("品名を入力してください"); return; }
-        if (editForm.amount <= 0) { alert("金額を確認してください"); return; }
+        if (editForm.amount < 0) { alert("金額を確認してください"); return; }
 
         const updated: Transaction = {
             ...editingTx,
@@ -646,7 +646,7 @@ function Dashboard() {
                                                 <input
                                                     type="number"
                                                     className="form-input"
-                                                    value={editForm.unitPrice || ""}
+                                                    value={editForm.unitPrice === 0 ? 0 : (editForm.unitPrice || "")}
                                                     onChange={(e) => setEditForm({ ...editForm, unitPrice: parseInt(e.target.value, 10) || 0 })}
                                                     min={0}
                                                 />
@@ -668,7 +668,7 @@ function Dashboard() {
                                         <input
                                             type="number"
                                             className="form-input text-lg font-bold"
-                                            value={editForm.amount || ""}
+                                            value={editForm.amount === 0 ? 0 : (editForm.amount || "")}
                                             onChange={(e) => setEditForm({ ...editForm, amount: parseInt(e.target.value, 10) || 0, ...(editForm.category === "labor" ? { unitPrice: parseInt(e.target.value, 10) || 0, quantity: 1 } : {}) })}
                                             min={0}
                                         />

@@ -196,7 +196,7 @@ export default function TransactionsPage() {
         if (splitRows.length === 0) { alert("予算を1つ以上選択してください"); return; }
         for (const r of splitRows) {
             if (!r.budgetId) { alert("すべての予算行で予算を選択してください"); return; }
-            if (r.amount <= 0) { alert("すべての予算行で金額を入力してください"); return; }
+            if (r.amount < 0) { alert("すべての予算行で金額を正しく入力してください（マイナス不可）"); return; }
         }
         if (!editBase.itemName.trim()) { alert("品名を入力してください"); return; }
 
@@ -834,7 +834,7 @@ export default function TransactionsPage() {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">単価</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editBase.unitPrice || ""} onChange={(e) => setEditBase({ ...editBase, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                        <input type="number" className="form-input text-xs py-1" value={editBase.unitPrice === 0 ? 0 : (editBase.unitPrice || "")} onChange={(e) => setEditBase({ ...editBase, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
                                     </div>
                                     <div>
                                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">数量</label>
@@ -881,7 +881,7 @@ export default function TransactionsPage() {
                                             <input
                                                 type="number"
                                                 className="form-input text-xs py-1 pl-5 w-full font-bold"
-                                                value={row.amount || ""}
+                                                value={row.amount === 0 ? 0 : (row.amount || "")}
                                                 onChange={(e) => updateSplitRow(row.key, { amount: parseInt(e.target.value, 10) || 0 })}
                                                 min={0}
                                                 placeholder="0"

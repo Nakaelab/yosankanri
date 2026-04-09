@@ -179,7 +179,7 @@ export default function ImportPage() {
     const validate = () => {
         const errs: { field: string; message: string }[] = [];
         if (manualItems.some(i => !i.itemName.trim())) errs.push({ field: "itemName", message: "品名が空の項目があります" });
-        if (manualTotalAmount <= 0) errs.push({ field: "amount", message: "金額が0以下です" });
+        if (manualTotalAmount < 0) errs.push({ field: "amount", message: "金額がマイナスです" });
         if (!date && !dateUnknown) errs.push({ field: "date", message: "日付が空です" });
         const validSplits = budgetSplits.filter(s => s.budgetId);
         if (validSplits.length === 0) errs.push({ field: "budgetSplits", message: "予算を1つ以上選択してください" });
@@ -599,7 +599,7 @@ export default function ImportPage() {
 
     const handleSaveLabor = async () => {
         if (!laborBudgetId) { alert("予算（研究費）を選択してください"); return; }
-        const validRows = laborRows.filter(r => r.itemName.trim() && r.amount > 0);
+        const validRows = laborRows.filter(r => r.itemName.trim() && r.amount >= 0);
         if (validRows.length === 0) { alert("少なくとも1行のデータを入力してください"); return; }
 
         const tid = getCurrentTeacherId();
@@ -706,7 +706,7 @@ export default function ImportPage() {
         if (!editingTx) return;
         if (!editForm.budgetId) { alert("予算を選択してください"); return; }
         if (!editForm.itemName.trim()) { alert("品名を入力してください"); return; }
-        if (editForm.amount <= 0) { alert("金額を確認してください"); return; }
+        if (editForm.amount < 0) { alert("金額を確認してください"); return; }
 
         const updated: Transaction = {
             ...editingTx,
@@ -909,7 +909,7 @@ export default function ImportPage() {
                                                 <input
                                                     type="number"
                                                     className="w-full rounded-lg border border-gray-200 pl-7 pr-2.5 py-1.5 text-sm font-bold text-gray-800 tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                    value={row.amount || ""}
+                                                    value={row.amount === 0 ? 0 : (row.amount || "")}
                                                     onChange={(e) => updateLaborRow(row.id, "amount", parseInt(e.target.value, 10) || 0)}
                                                     min={0}
                                                     placeholder="0"
@@ -1055,7 +1055,7 @@ export default function ImportPage() {
                                                     <input
                                                         type="number"
                                                         className="w-full form-input pl-6 text-sm font-bold tabular-nums"
-                                                        value={split.amount || ""}
+                                                        value={split.amount === 0 ? 0 : (split.amount || "")}
                                                         onChange={(e) => updateBudgetSplit(split.id, "amount", parseInt(e.target.value, 10) || 0)}
                                                         min={0}
                                                         placeholder="0"
@@ -1178,7 +1178,7 @@ export default function ImportPage() {
                                             </div>
                                             <div>
                                                 <label className="text-[10px] font-semibold text-gray-500 mb-1 block">単価</label>
-                                                <input type="number" className="form-input" value={item.unitPrice || ""} onChange={(e) => updateManualItem(item.id, 'unitPrice', parseInt(e.target.value)||0)} placeholder="0" min="0" />
+                                                <input type="number" className="form-input" value={item.unitPrice === 0 ? 0 : (item.unitPrice || "")} onChange={(e) => updateManualItem(item.id, 'unitPrice', parseInt(e.target.value)||0)} placeholder="0" min="0" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] font-semibold text-gray-500 mb-1 block">数量</label>
@@ -1188,7 +1188,7 @@ export default function ImportPage() {
                                                 <label className="text-[10px] font-semibold text-gray-500 mb-1 block">金額（円）*</label>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">¥</span>
-                                                    <input type="number" className="form-input pl-8 font-bold text-gray-900 bg-white" value={item.amount || ""} onChange={(e) => updateManualItem(item.id, 'amount', parseInt(e.target.value)||0)} placeholder="0" min="0" />
+                                                    <input type="number" className="form-input pl-8 font-bold text-gray-900 bg-white" value={item.amount === 0 ? 0 : (item.amount || "")} onChange={(e) => updateManualItem(item.id, 'amount', parseInt(e.target.value)||0)} placeholder="0" min="0" />
                                                 </div>
                                                 {item.unitPrice > 0 && item.quantity > 1 && (
                                                     <p className="text-[10px] text-gray-400 mt-1">単価 {item.unitPrice.toLocaleString()} × 数量 {item.quantity} = {(item.unitPrice * item.quantity).toLocaleString()}</p>
