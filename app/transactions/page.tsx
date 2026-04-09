@@ -591,8 +591,8 @@ export default function TransactionsPage() {
                         </div>
                     ) : (
                         <>
-                            {/* Card View Layout (All Screens) */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+                            {/* Compact List View (Responsive) */}
+                            <div className="flex flex-col border border-gray-100 rounded-xl overflow-hidden bg-white">
                                 {filtered.map((tx) => {
                                     const colors = CATEGORY_COLORS[tx.category];
                                     const isSplit = !!(tx.splitGroupId && allTxs.filter(t => t.splitGroupId === tx.splitGroupId).length > 1);
@@ -600,81 +600,91 @@ export default function TransactionsPage() {
                                     const isLabor = tx.category === "labor";
                                     const isTax = isLabor && tx.itemName.includes("消費税");
 
-                                    let cardBg = "bg-white";
-                                    if (isLabor) {
-                                        cardBg = isTax ? "bg-slate-50" : "bg-indigo-50/10";
-                                    }
+                                    let bgClass = "bg-white";
+                                    if (isLabor) bgClass = isTax ? "bg-slate-50/50" : "bg-indigo-50/20";
 
                                     return (
-                                        <div key={tx.id} className={`${cardBg} border text-sm border-gray-200 rounded-xl p-4 shadow-sm flex flex-col gap-3 relative`}>
-                                            <div className="flex items-start justify-between border-b border-gray-100/60 pb-2">
-                                                <div>
-                                                    <div className="text-[10px] text-gray-400 mb-1">{tx.date} {tx.orderDate ? `(発注: ${tx.orderDate})` : ""}</div>
-                                                    <div className="flex flex-wrap items-center gap-1.5">
-                                                        {isTax ? (
-                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} opacity-80`}>人件費S（消費税）</span>
-                                                        ) : (
-                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
-                                                        )}
-                                                        {getTxJCode(tx) && (
-                                                            <span className="text-[10px] bg-white text-gray-500 font-mono px-1.5 py-0.5 rounded border border-gray-100">{getTxJCode(tx)}</span>
-                                                        )}
-                                                    </div>
+                                        <div key={tx.id} className={`group flex flex-col md:flex-row md:items-center gap-2 md:gap-4 p-3 md:py-2 border-b border-gray-100 last:border-0 ${bgClass} hover:bg-gray-50/80 transition-colors text-sm relative`}>
+                                            
+                                            {/* 1. Date & Category */}
+                                            <div className="w-full md:w-[130px] shrink-0 flex items-center justify-between md:flex-col md:items-start md:justify-center gap-1.5">
+                                                <div className="text-[11px] text-gray-500 font-medium whitespace-nowrap">
+                                                    {tx.date} 
+                                                    {tx.orderDate && <span className="text-gray-400 ml-1 hidden lg:inline">(発: {tx.orderDate})</span>}
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    {(tx.attachmentCount || 0) > 0 && (
-                                                        <button className="flex items-center gap-1 text-brand-600 hover:text-brand-800 text-[11px] font-bold bg-brand-50 px-2 py-1 rounded-md" onClick={() => openAttachments(tx)}>
-                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" /></svg>
-                                                            {tx.attachmentCount}
-                                                        </button>
+                                                <div className="flex items-center gap-1">
+                                                    {isTax ? (
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} opacity-80`}>人件費S（消費税）</span>
+                                                    ) : (
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
                                                     )}
-                                                    <div className="flex items-center gap-1">
-                                                        <button className="p-1.5 text-gray-400 hover:text-brand-600 bg-white hover:bg-brand-50 rounded-lg shadow-sm border border-gray-100" onClick={() => handleEdit(tx)}>
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                                                        </button>
-                                                        <button className="p-1.5 text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 rounded-lg shadow-sm border border-gray-100" onClick={() => handleDelete(tx)}>
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
-                                                        </button>
-                                                    </div>
+                                                    {isSplit && <span className="text-[9px] text-indigo-500 font-bold bg-indigo-50 px-1 py-0.5 rounded">分割</span>}
                                                 </div>
                                             </div>
 
-                                            <div>
-                                                <div className={`font-bold text-[14px] ${isTax ? "text-gray-500 font-normal" : "text-gray-900"} mb-1.5 leading-snug`}>
-                                                    {isTax && <span className="text-gray-400 mr-1.5 text-[11px]">↳</span>}
+                                            {/* 2. Item Name & Details */}
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
                                                     {isLabor && tx.status === "provisional" && (
-                                                        <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 rounded mr-1.5 align-text-bottom">仮</span>
+                                                        <span className="shrink-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 rounded">仮</span>
                                                     )}
                                                     {isLabor && tx.status === "confirmed" && (
-                                                        <span className="inline-block bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 rounded mr-1.5 align-text-bottom">確</span>
+                                                        <span className="shrink-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 rounded">確</span>
                                                     )}
-                                                    {tx.itemName || "—"}
+                                                    <div className={`font-bold text-[13px] truncate ${isTax ? "text-gray-500 font-normal" : "text-gray-900"}`}>
+                                                        {tx.itemName || "—"}
+                                                    </div>
                                                 </div>
-                                                {(tx.specification || tx.payee) && (
-                                                    <div className="text-[11px] text-gray-500 flex flex-col gap-1 mb-2">
-                                                        {tx.payee && <div className="flex items-baseline gap-1.5"><span className="text-gray-400 w-10 shrink-0 font-medium">支払先</span><span className="text-gray-700">{tx.payee}</span></div>}
-                                                        {tx.specification && <div className="flex items-baseline gap-1.5"><span className="text-gray-400 w-10 shrink-0 font-medium">規格等</span><span>{tx.specification}</span></div>}
-                                                    </div>
-                                                )}
-                                                {tx.memo && (
-                                                    <div className="text-[11px] text-gray-500 bg-white/50 border border-gray-100 px-2 py-1.5 rounded-md mt-1 italic">
-                                                        📝 {tx.memo}
-                                                    </div>
-                                                )}
+                                                <div className="flex items-center gap-2 text-[11px] text-gray-400 truncate">
+                                                    {tx.payee && <span className="truncate" title={tx.payee}>先: <span className="text-gray-500">{tx.payee}</span></span>}
+                                                    {tx.specification && <span className="truncate" title={tx.specification}>格: <span className="text-gray-500">{tx.specification}</span></span>}
+                                                </div>
+                                                {tx.memo && <div className="text-[10px] text-gray-400/80 truncate mt-0.5" title={tx.memo}>📝 {tx.memo}</div>}
                                             </div>
 
-                                            <div className="flex items-end justify-between pt-2.5 border-t border-gray-100/60 mt-1">
-                                                <div className="space-y-1">
-                                                    <div className="text-[11px] text-gray-400 flex items-center gap-1">予算 <span className="font-semibold text-gray-700">{getTxBudgetDisplay(tx)}</span></div>
-                                                    <div className="text-[11px] text-gray-400 tracking-wide font-mono">単価 {tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"} <span className="text-gray-300">×</span> {tx.quantity}</div>
+                                            {/* 3. Budget & J-Code (Mobile: inline, Desktop: block) */}
+                                            <div className="w-full md:w-[150px] shrink-0 flex items-center justify-between md:flex-col md:items-start md:justify-center text-[11px] bg-slate-50 md:bg-transparent rounded px-2 py-1 md:p-0">
+                                                <span className="text-gray-400 font-medium md:hidden text-[10px]">予算対象</span>
+                                                <div className="text-right md:text-left w-full min-w-0">
+                                                    <div className="text-gray-600 font-medium truncate">{getTxBudgetDisplay(tx)}</div>
+                                                    {getTxJCode(tx) && <div className="text-[10px] text-gray-400 font-mono hidden md:block truncate mt-0.5">{getTxJCode(tx)}</div>}
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-[10px] font-bold text-indigo-400 mb-0.5 uppercase tracking-wider">合計金額</div>
-                                                    <div className="text-xl font-bold tabular-nums text-gray-900 leading-none">
+                                            </div>
+
+                                            {/* 4. Calculation */}
+                                            <div className="w-full md:w-[140px] shrink-0 flex items-end justify-between md:flex-col md:justify-center text-right pt-1 mt-1 border-t md:border-0 border-gray-100 md:pt-0 md:mt-0">
+                                                <div className="text-[11px] text-gray-400 md:hidden tracking-wide font-mono h-full flex items-center">
+                                                    {tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"} × {tx.quantity}
+                                                </div>
+                                                <div className="flex flex-col items-end w-full">
+                                                    <div className="text-lg md:text-base font-bold tabular-nums text-gray-900 leading-none">
                                                         {fmt(totalAmt)}
-                                                        {isSplit && <span className="ml-1.5 text-[10px] text-indigo-500 font-bold bg-indigo-50 px-1.5 py-0.5 rounded inline-block align-middle">分割</span>}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 mt-1 hidden md:block tracking-wide font-mono">
+                                                        {tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"} <span className="mx-0.5 text-gray-300">×</span> {tx.quantity}
                                                     </div>
                                                 </div>
+                                            </div>
+
+                                            {/* 5. Actions */}
+                                            <div className="absolute top-2 right-2 md:static md:w-[70px] shrink-0 flex items-center justify-end gap-0.5 opacity-100 md:opacity-50 md:group-hover:opacity-100 transition-opacity bg-white/80 md:bg-transparent rounded-lg backdrop-blur supports-[backdrop-filter]:bg-white/50 p-1 md:p-0 shadow-sm md:shadow-none border border-gray-100 md:border-none">
+                                                {(tx.attachmentCount || 0) > 0 && (
+                                                    <button className="flex items-center gap-0.5 text-brand-600 hover:text-brand-800 text-[10px] font-bold bg-brand-50 px-1.5 py-1 rounded" onClick={() => openAttachments(tx)}>
+                                                        <svg className="w-3 h-3 block" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                                <button className="p-1 md:p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded" onClick={() => handleEdit(tx)}>
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                                                    </svg>
+                                                </button>
+                                                <button className="p-1 md:p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" onClick={() => handleDelete(tx)}>
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </div>
                                     );
