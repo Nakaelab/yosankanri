@@ -35,10 +35,10 @@ export const CATEGORY_SHORT: Record<ExpenseCategory, string> = {
 export const CATEGORY_COLORS: Record<ExpenseCategory, { bg: string; text: string; bar: string }> = {
     goods: { bg: "bg-blue-50", text: "text-blue-700", bar: "bg-blue-500" },
     travel: { bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-500" },
-    labor: { bg: "bg-indigo-50", text: "text-indigo-700", bar: "bg-indigo-500" },
+    labor: { bg: "bg-fuchsia-50", text: "text-fuchsia-700", bar: "bg-fuchsia-500" },
     other: { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-500" },
     subcontract: { bg: "bg-rose-50", text: "text-rose-700", bar: "bg-rose-500" },
-    refund: { bg: "bg-gray-50", text: "text-gray-600", bar: "bg-gray-400" },
+    refund: { bg: "bg-slate-50", text: "text-slate-600", bar: "bg-slate-400" },
 };
 
 /** スプレッドシートのフラグ → カテゴリ変換 */
