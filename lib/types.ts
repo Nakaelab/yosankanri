@@ -67,17 +67,17 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
 
 /** カテゴリごとの配分額 */
 export interface CategoryAllocations {
-    goods: number;
-    travel: number;
-    labor: number;
-    other: number;
-    subcontract: number;
-    refund: number;
+    goods?: number;
+    travel?: number;
+    labor?: number;
+    other?: number;
+    subcontract?: number;
+    refund?: number;
 }
 
 /** 空の配分 */
 export function emptyAllocations(): CategoryAllocations {
-    return { goods: 0, travel: 0, labor: 0, other: 0, subcontract: 0, refund: 0 };
+    return {};
 }
 
 /** 予算（研究費/グラント） */
@@ -135,7 +135,7 @@ export interface ExtractedData {
 /** カテゴリ別集計行 */
 export interface CategorySummary {
     category: ExpenseCategory;
-    allocated: number;
+    allocated?: number;
     spent: number;
     remaining: number;
 }

@@ -296,10 +296,15 @@ function Dashboard() {
     const totalRemaining = totalAllocated - totalSpent;
 
     const activeOverallCats = ALL_CATEGORIES.map(cat => {
-        const allocated = summaries.reduce((sum, s) => sum + (s.categories.find(c => c.category === cat)?.allocated || 0), 0);
+        let hasDefinedAlloc = false;
+        const allocated = summaries.reduce((sum, s) => {
+            const catAlloc = s.categories.find(c => c.category === cat)?.allocated;
+            if (catAlloc !== undefined) hasDefinedAlloc = true;
+            return sum + (catAlloc ?? 0);
+        }, 0);
         const spent = summaries.reduce((sum, s) => sum + (s.categories.find(c => c.category === cat)?.spent || 0), 0);
-        return { category: cat, allocated, spent, remaining: allocated - spent };
-    }).filter(c => c.allocated > 0 || c.spent > 0);
+        return { category: cat, allocated, spent, remaining: allocated - spent, hasDefinedAlloc };
+    }).filter(c => c.hasDefinedAlloc || c.spent > 0);
 
     return (
         <div className="animate-fade-in">
@@ -372,7 +377,7 @@ function Dashboard() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                                 {activeOverallCats.map((c) => {
                                     const colors = CATEGORY_COLORS[c.category];
-                                    const catPct = c.allocated > 0 ? Math.min(Math.round((c.spent / c.allocated) * 100), 100) : 0;
+                                    const catPct = (c.allocated ?? 0) > 0 ? Math.min(Math.round((c.spent / (c.allocated ?? 0)) * 100), 100) : 0;
                                     const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                     const isOver = c.remaining < 0;
                                     return (
@@ -389,7 +394,7 @@ function Dashboard() {
                                             </div>
                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
                                                 <span className="text-gray-400">配分</span>
-                                                <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated)}</span>
+                                                <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated ?? 0)}</span>
                                                 <span className="text-gray-400">執行</span>
                                                 <span className="text-right text-gray-800 font-bold">¥{fmt(c.spent)}</span>
                                                 <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
@@ -419,7 +424,7 @@ function Dashboard() {
                         {summaries.map((s) => {
                             const usageRate = pct(s.totalSpent, s.totalAllocated);
                             const barColor = usageRate > 100 ? "bg-red-500" : usageRate > 80 ? "bg-amber-500" : "bg-brand-500";
-                            const activeCats = s.categories.filter((c) => c.allocated > 0 || c.spent > 0);
+                            const activeCats = s.categories.filter((c) => c.allocated !== undefined || c.spent > 0);
 
                             return (
                                 <div key={s.budget.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -506,7 +511,7 @@ function Dashboard() {
                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                                                 {activeCats.map((c) => {
                                                     const colors = CATEGORY_COLORS[c.category];
-                                                    const catPct = c.allocated > 0 ? Math.min(Math.round((c.spent / c.allocated) * 100), 100) : 0;
+                                                    const catPct = (c.allocated ?? 0) > 0 ? Math.min(Math.round((c.spent / (c.allocated ?? 0)) * 100), 100) : 0;
                                                     const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                                     const isOver = c.remaining < 0;
                                                     return (
@@ -526,7 +531,7 @@ function Dashboard() {
                                                             {/* 配分・執行・残額 */}
                                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
                                                                 <span className="text-gray-400">配分</span>
-                                                                <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated)}</span>
+                                                                <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated ?? 0)}</span>
                                                                 <span className="text-gray-400">執行</span>
                                                                 <span className="text-right text-gray-800 font-bold">¥{fmt(c.spent)}</span>
                                                                 <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>

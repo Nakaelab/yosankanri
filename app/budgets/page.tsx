@@ -41,13 +41,13 @@ export default function BudgetsPage() {
         bData.forEach((budget) => {
             const budgetTxs = tData.filter((t) => t.budgetId === budget.id);
             const categories = ALL_CATEGORIES.map((cat) => {
-                const allocated = budget.allocations[cat] || 0;
+                const allocated = budget.allocations[cat]; // type: number | undefined
                 const spent = budgetTxs
                     .filter((t) => t.category === cat)
                     .reduce((sum, t) => sum + t.amount, 0);
-                return { category: cat, allocated, spent, remaining: allocated - spent };
+                return { category: cat, allocated, spent, remaining: (allocated ?? 0) - spent };
             });
-            const totalAllocated = categories.reduce((s, c) => s + c.allocated, 0);
+            const totalAllocated = categories.reduce((s, c) => s + (c.allocated ?? 0), 0);
             const totalSpent = categories.reduce((s, c) => s + c.spent, 0);
 
             map.set(budget.id, {
@@ -153,7 +153,7 @@ export default function BudgetsPage() {
         reload();
     };
 
-    const updateAlloc = (cat: ExpenseCategory, value: number) => {
+    const updateAlloc = (cat: ExpenseCategory, value: number | undefined) => {
         setAllocations((prev) => ({ ...prev, [cat]: value }));
     };
 
@@ -208,7 +208,7 @@ export default function BudgetsPage() {
                     <div className="space-y-3">
                         {budgets.map((b, index) => {
                             const s = summaries.get(b.id);
-                            const activeCats = s ? s.categories.filter((c) => c.allocated > 0 || c.spent > 0) : [];
+                            const activeCats = s ? s.categories.filter((c) => c.allocated !== undefined || c.spent > 0) : [];
                             const isDragOver = dragOverIndex === index && dragIndex !== index;
 
                             return (
@@ -285,7 +285,7 @@ export default function BudgetsPage() {
                                                     return (
                                                         <div key={c.category} className={`rounded-lg p-2.5 ${colors.bg}`}>
                                                             <div className={`text-[10px] font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</div>
-                                                            <div className="text-xs font-bold text-gray-900 mt-1 tabular-nums">{c.allocated.toLocaleString()}</div>
+                                                            <div className="text-xs font-bold text-gray-900 mt-1 tabular-nums">{c.allocated !== undefined ? c.allocated.toLocaleString() : "未設定"}</div>
                                                             <div className="text-[10px] text-gray-500 tabular-nums">
                                                                 執行: {c.spent.toLocaleString()}
                                                             </div>
@@ -408,8 +408,8 @@ export default function BudgetsPage() {
                                                 <input
                                                     type="number"
                                                     className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
-                                                    value={allocations[cat] || ""}
-                                                    onChange={(e) => updateAlloc(cat, parseInt(e.target.value, 10) || 0)}
+                                                    value={allocations[cat] ?? ""}
+                                                    onChange={(e) => updateAlloc(cat, e.target.value === "" ? undefined : parseInt(e.target.value, 10))}
                                                     min={0}
                                                     placeholder="0"
                                                 />
