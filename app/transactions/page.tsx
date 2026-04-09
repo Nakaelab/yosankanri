@@ -445,8 +445,8 @@ export default function TransactionsPage() {
 
                 {/* 2. Category Breakdown */}
                 {activeStats.length > 0 && (
-                    <div className="pt-5 border-t border-gray-100 overflow-x-auto">
-                        <div className="flex gap-3 min-w-max pb-2">
+                    <div className="pt-5 border-t border-gray-100">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                             {activeStats.map(s => {
                                 const colors = CATEGORY_COLORS[s.category];
                                 return (
