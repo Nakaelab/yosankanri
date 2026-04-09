@@ -36,6 +36,8 @@ body {
 
 .sidebar-nav {
   @apply flex-1 py-3 px-3 space-y-0.5 overflow-y-auto;
+  /* Ensure nav area scrolls if items overflow, keeping bottom section always reachable */
+  min-height: 0;
 }
 
 .sidebar-link {

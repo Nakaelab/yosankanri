@@ -154,7 +154,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         })}
                     </nav>
 
-                    <div className="mt-auto border-t border-slate-700/50 p-4">
+                    <div className="shrink-0 border-t border-slate-700/50 p-4">
                         {currentTeacher ? (
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
