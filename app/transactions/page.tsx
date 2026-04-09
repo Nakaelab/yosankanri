@@ -619,21 +619,27 @@ export default function TransactionsPage() {
                                         <div key={tx.id} className={`flex py-2 px-3 border-b border-gray-100 last:border-0 ${bgClass} relative cursor-pointer md:cursor-auto`}>
                                             <div className="flex-1 flex flex-col min-w-0" onClick={() => handleEdit(tx)}>
                                                 <div className="flex justify-between items-baseline mb-0.5">
-                                                    <div className="font-bold text-[13px] truncate pr-2 text-gray-900 max-w-[70%]">
+                                                    <div className="font-bold text-[13px] truncate pr-2 text-gray-900 max-w-[65%]">
                                                         {tx.itemName || "—"}
                                                     </div>
-                                                    <div className="font-bold text-[14px] tabular-nums text-gray-900">
+                                                    <div className="font-bold text-[14px] tabular-nums text-gray-900 shrink-0">
                                                         {fmt(totalAmt)}
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-between items-center text-[11px] text-gray-500">
+                                                <div className="flex justify-between items-center text-[11px] text-gray-500 mb-0.5">
                                                     <div className="truncate pr-2">
-                                                        {tx.date} {tx.payee && `· ${tx.payee}`}
+                                                        {tx.date}{tx.payee && ` · ${tx.payee}`}
                                                     </div>
                                                     <div className="shrink-0 font-medium">
                                                         {CATEGORY_LABELS[tx.category]}
                                                     </div>
                                                 </div>
+                                                {tx.memo && (
+                                                    <div className="text-[11px] text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 truncate flex items-center gap-1">
+                                                        <span className="shrink-0">📝</span>
+                                                        <span className="truncate">{tx.memo}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex flex-col justify-center shrink-0 ml-2 pl-2 border-l border-gray-200/60 gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                 {(tx.attachmentCount || 0) > 0 && (
@@ -664,17 +670,18 @@ export default function TransactionsPage() {
                                 <table className="w-full text-[11px] lg:text-xs border-collapse table-fixed">
                                     <thead className="bg-[#f0f0f0] text-gray-800">
                                         <tr>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[7%]">No</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%]">納品日</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[15%]">品名</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[13%]">規格等</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[11%]">支払先</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%] text-right">単価</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[5%] text-center">数量</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[9%] text-right">金額</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%] text-center">費目</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[10%]">予算</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1 w-[6%] text-center">操作</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[6%] text-left bg-[#e8e8e8]">No</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[8%] text-center bg-[#e8e8e8]">納品日</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[13%] text-left bg-[#e8e8e8]">品名</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[11%] text-left bg-[#e8e8e8]">規格等</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[10%] text-left bg-[#e8e8e8]">支払先</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[7%] text-right bg-[#e8e8e8]">単価</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[4%] text-center bg-[#e8e8e8]">数量</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[8%] text-right bg-[#ddeeff]">金額</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[7%] text-center bg-[#e8e8e8]">費目</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[9%] text-left bg-[#e8e8e8]">予算</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-2 w-[11%] text-left bg-[#fff8e8]">メモ</th>
+                                            <th className="border border-gray-300 font-semibold py-1.5 px-1 w-[6%] text-center bg-[#e8e8e8]">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -690,19 +697,22 @@ export default function TransactionsPage() {
 
                                             return (
                                                 <tr key={tx.id} className={rowBg} onDoubleClick={() => handleEdit(tx)}>
-                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={tx.slipNumber}>{tx.slipNumber || ""}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-center text-gray-700">{tx.date}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-900 font-medium" title={tx.itemName}>{tx.itemName}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={tx.specification}>{tx.specification || ""}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={tx.payee}>{tx.payee || ""}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 text-right tabular-nums text-gray-700">{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "0"}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 text-center tabular-nums text-gray-700">{tx.quantity}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 text-right tabular-nums font-bold text-gray-900">{totalAmt.toLocaleString()}</td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 text-center truncate text-gray-600">
+                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-500 text-[11px]" title={tx.slipNumber}>{tx.slipNumber || ""}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-700 text-[11px] whitespace-nowrap">{tx.date}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-900 font-medium" title={tx.itemName}>{tx.itemName}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={tx.specification}>{tx.specification || ""}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={tx.payee}>{tx.payee || ""}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 text-right tabular-nums text-gray-700">{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "0"}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 text-center tabular-nums text-gray-700">{tx.quantity}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 text-right tabular-nums font-bold text-gray-900 bg-blue-50/60">{totalAmt.toLocaleString()}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 text-center truncate text-gray-600 text-[11px]">
                                                         {isTax ? "人事(税)" : CATEGORY_LABELS[tx.category]}
                                                     </td>
-                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={getTxBudgetDisplay(tx)}>{getTxBudgetDisplay(tx)}</td>
-                                                    <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
+                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={getTxBudgetDisplay(tx)}>{getTxBudgetDisplay(tx)}</td>
+                                                    <td className="border border-gray-200 px-2 py-1.5 text-[11px] text-amber-700 bg-amber-50/40" title={tx.memo || ""}>{tx.memo ? (
+                                                        <span className="flex items-center gap-1"><span>📝</span><span className="truncate block max-w-[120px]">{tx.memo}</span></span>
+                                                    ) : null}</td>
+                                                    <td className="border border-gray-200 px-1 py-1.5 text-center whitespace-nowrap">
                                                         <div className="flex items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
                                                             {(tx.attachmentCount || 0) > 0 && (
                                                                 <button onClick={(e) => { e.stopPropagation(); openAttachments(tx); }} className="text-brand-600 hover:text-brand-800 p-0.5" title="添付ファイル">
