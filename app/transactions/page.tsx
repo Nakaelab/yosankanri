@@ -349,10 +349,11 @@ export default function TransactionsPage() {
         totalRemaining = totalAllocated - totalSpent;
 
         ALL_CATEGORIES.forEach(cat => {
+            const isAllocated = budgets.some(b => b.allocations[cat] !== undefined);
             const allocated = budgets.reduce((acc, b) => acc + (b.allocations[cat] || 0), 0);
             const spent = allTxs.filter(t => t.category === cat).reduce((s, t) => s + t.amount, 0);
             const remaining = allocated - spent;
-            if (allocated > 0 || spent > 0) {
+            if (isAllocated || spent > 0) {
                 activeStats.push({ category: cat, allocated, spent, remaining });
             }
         });
@@ -364,10 +365,12 @@ export default function TransactionsPage() {
             totalRemaining = totalAllocated - totalSpent;
 
             ALL_CATEGORIES.forEach(cat => {
-                const allocated = selectedBudget.allocations[cat] || 0;
+                const val = selectedBudget.allocations[cat];
+                const isAllocated = val !== undefined;
+                const allocated = val || 0;
                 const spent = allTxs.filter(t => t.budgetId === filterBudgetId && t.category === cat).reduce((s, t) => s + t.amount, 0);
                 const remaining = allocated - spent;
-                if (allocated > 0 || spent > 0) {
+                if (isAllocated || spent > 0) {
                     activeStats.push({ category: cat, allocated, spent, remaining });
                 }
             });
