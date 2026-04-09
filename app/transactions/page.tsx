@@ -834,11 +834,11 @@ export default function TransactionsPage() {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">単価</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editBase.unitPrice === 0 ? 0 : (editBase.unitPrice || "")} onChange={(e) => setEditBase({ ...editBase, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
+                                        <input type="number" className="form-input text-xs py-1" value={editBase.unitPrice === 0 ? "" : editBase.unitPrice} onChange={(e) => setEditBase({ ...editBase, unitPrice: parseInt(e.target.value, 10) || 0 })} min={0} />
                                     </div>
                                     <div>
                                         <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">数量</label>
-                                        <input type="number" className="form-input text-xs py-1" value={editBase.quantity} onChange={(e) => setEditBase({ ...editBase, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
+                                        <input type="number" className="form-input text-xs py-1" value={editBase.quantity === 0 ? "" : editBase.quantity} onChange={(e) => setEditBase({ ...editBase, quantity: parseInt(e.target.value, 10) || 1 })} min={1} />
                                     </div>
                                 </div>
                             )}
@@ -881,7 +881,7 @@ export default function TransactionsPage() {
                                             <input
                                                 type="number"
                                                 className="form-input text-xs py-1 pl-5 w-full font-bold"
-                                                value={row.amount === 0 ? 0 : (row.amount || "")}
+                                                value={row.amount === 0 ? "" : row.amount}
                                                 onChange={(e) => updateSplitRow(row.key, { amount: parseInt(e.target.value, 10) || 0 })}
                                                 min={0}
                                                 placeholder="0"

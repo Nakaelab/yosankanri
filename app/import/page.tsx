@@ -924,7 +924,7 @@ export default function ImportPage() {
                                                 <input
                                                     type="number"
                                                     className="w-full rounded-lg border border-gray-200 pl-7 pr-2.5 py-1.5 text-sm font-bold text-gray-800 tabular-nums focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 transition-all"
-                                                    value={row.amount === 0 ? 0 : (row.amount || "")}
+                                                    value={row.amount === 0 ? "" : row.amount}
                                                     onChange={(e) => updateLaborRow(row.id, "amount", parseInt(e.target.value, 10) || 0)}
                                                     min={0}
                                                     placeholder="0"
@@ -1070,7 +1070,7 @@ export default function ImportPage() {
                                                     <input
                                                         type="number"
                                                         className="w-full form-input pl-6 text-sm font-bold tabular-nums"
-                                                        value={split.amount === 0 ? 0 : (split.amount || "")}
+                                                        value={split.amount === 0 ? "" : split.amount}
                                                         onChange={(e) => updateBudgetSplit(split.id, "amount", parseInt(e.target.value, 10) || 0)}
                                                         min={0}
                                                         placeholder="0"
@@ -1193,17 +1193,17 @@ export default function ImportPage() {
                                             </div>
                                             <div>
                                                 <label className="text-[10px] font-semibold text-gray-500 mb-1 block">単価</label>
-                                                <input type="number" className="form-input" value={item.unitPrice === 0 ? 0 : (item.unitPrice || "")} onChange={(e) => updateManualItem(item.id, 'unitPrice', parseInt(e.target.value)||0)} placeholder="0" min="0" />
+                                                <input type="number" className="form-input" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={(e) => updateManualItem(item.id, 'unitPrice', parseInt(e.target.value)||0)} placeholder="0" min="0" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] font-semibold text-gray-500 mb-1 block">数量</label>
-                                                <input type="number" className="form-input" value={item.quantity || ""} onChange={(e) => updateManualItem(item.id, 'quantity', parseInt(e.target.value)||1)} placeholder="1" min="1" />
+                                                <input type="number" className="form-input" value={item.quantity === 0 ? "" : item.quantity} onChange={(e) => updateManualItem(item.id, 'quantity', parseInt(e.target.value)||1)} placeholder="1" min="1" />
                                             </div>
                                             <div className="md:col-span-2 lg:col-span-2">
                                                 <label className="text-[10px] font-semibold text-gray-500 mb-1 block">金額（円）*</label>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">¥</span>
-                                                    <input type="number" className="form-input pl-8 font-bold text-gray-900 bg-white" value={item.amount === 0 ? 0 : (item.amount || "")} onChange={(e) => updateManualItem(item.id, 'amount', parseInt(e.target.value)||0)} placeholder="0" min="0" />
+                                                    <input type="number" className="form-input pl-8 font-bold text-gray-900 bg-white" value={item.amount === 0 ? "" : item.amount} onChange={(e) => updateManualItem(item.id, 'amount', parseInt(e.target.value)||0)} placeholder="0" min="0" />
                                                 </div>
                                                 {item.unitPrice > 0 && item.quantity > 1 && (
                                                     <p className="text-[10px] text-gray-400 mt-1">単価 {item.unitPrice.toLocaleString()} × 数量 {item.quantity} = {(item.unitPrice * item.quantity).toLocaleString()}</p>
