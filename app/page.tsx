@@ -484,11 +484,19 @@ function Dashboard() {
                                             <span className="text-xs font-semibold text-gray-500">執行率 <span className={`text-sm font-bold ${usageRate > 100 ? "text-red-600" : usageRate > 80 ? "text-amber-600" : "text-brand-600"}`}>{usageRate}%</span></span>
                                             <span className="text-xs text-gray-400 tabular-nums">{fmtYen(s.totalSpent)} <span className="text-gray-300">/ {fmtYen(s.totalAllocated)}</span></span>
                                         </div>
-                                        <div className="h-2.5 rounded-full bg-gray-200 overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full transition-all ${barColor}`}
-                                                style={{ width: `${Math.min(usageRate, 100)}%` }}
-                                            />
+                                        <div className="h-4 rounded-full bg-gray-200 overflow-hidden flex">
+                                            {s.categories.map(c => {
+                                                const ratio = s.totalAllocated > 0 ? (c.spent / s.totalAllocated) * 100 : 0;
+                                                if (ratio <= 0) return null;
+                                                return (
+                                                    <div 
+                                                        key={c.category}
+                                                        className={`h-full ${CATEGORY_COLORS[c.category].bar} border-r border-white/20 last:border-0 hover:opacity-80 transition-opacity`}
+                                                        style={{ width: `${ratio}%` }}
+                                                        title={`${CATEGORY_LABELS[c.category]}: ¥${fmt(c.spent)}`}
+                                                    />
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
