@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction, ExpenseCategory } from "@/lib/types";
 import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions, saveTransaction } from "@/lib/storage";
+import { initSync } from "@/lib/cloud-sync";
 
 // ===============================================
 // Teacher Selection
@@ -17,11 +18,18 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadTeachers();
+        // クラウド同期が完了してからユーザー一覧を読み込む
+        initSync()
+            .then(() => {
+                loadTeachers();
+            })
+            .catch(() => {
+                // オフラインでもローカルデータで表示
+                loadTeachers();
+            });
     }, []);
 
     const loadTeachers = () => {
-        setLoading(true);
         const list = getTeachers();
         setTeachers(list);
         setLoading(false);
@@ -52,7 +60,13 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
 
     if (loading) {
         return <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center p-4">
-            <div className="text-gray-400">読み込み中...</div>
+            <div className="flex flex-col items-center gap-3">
+                <svg className="w-7 h-7 animate-spin text-brand-500" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <div className="text-sm text-gray-400">データを同期中...</div>
+            </div>
         </div>;
     }
 
@@ -153,6 +167,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
 // ===============================================
 // Dashboard
 // ===============================================
+
 
 function Dashboard() {
     const [summaries, setSummaries] = useState<BudgetSummary[]>([]);
