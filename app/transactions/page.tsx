@@ -590,7 +590,99 @@ export default function TransactionsPage() {
                             <p className="text-xs mt-0.5">「執行登録」から追加してください</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                            {/* Mobile View (Cards) */}
+                            <div className="md:hidden flex flex-col gap-3">
+                                {filtered.map((tx) => {
+                                    const colors = CATEGORY_COLORS[tx.category];
+                                    const isSplit = !!(tx.splitGroupId && allTxs.filter(t => t.splitGroupId === tx.splitGroupId).length > 1);
+                                    const totalAmt = getTxTotalAmount(tx);
+                                    const isLabor = tx.category === "labor";
+                                    const isTax = isLabor && tx.itemName.includes("消費税");
+
+                                    let cardBg = "bg-white";
+                                    if (isLabor) {
+                                        cardBg = isTax ? "bg-slate-50" : "bg-indigo-50/10";
+                                    }
+
+                                    return (
+                                        <div key={tx.id} className={`${cardBg} border text-sm border-gray-200 rounded-xl p-4 shadow-sm flex flex-col gap-3 relative`}>
+                                            <div className="flex items-start justify-between border-b border-gray-100/60 pb-2">
+                                                <div>
+                                                    <div className="text-[10px] text-gray-400 mb-1">{tx.date} {tx.orderDate ? `(発注: ${tx.orderDate})` : ""}</div>
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {isTax ? (
+                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} opacity-80`}>人件費S（消費税）</span>
+                                                        ) : (
+                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
+                                                        )}
+                                                        {getTxJCode(tx) && (
+                                                            <span className="text-[10px] bg-white text-gray-500 font-mono px-1.5 py-0.5 rounded border border-gray-100">{getTxJCode(tx)}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {(tx.attachmentCount || 0) > 0 && (
+                                                        <button className="flex items-center gap-1 text-brand-600 hover:text-brand-800 text-[11px] font-bold bg-brand-50 px-2 py-1 rounded-md" onClick={() => openAttachments(tx)}>
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" /></svg>
+                                                            {tx.attachmentCount}
+                                                        </button>
+                                                    )}
+                                                    <div className="flex items-center gap-1">
+                                                        <button className="p-1.5 text-gray-400 hover:text-brand-600 bg-white hover:bg-brand-50 rounded-lg shadow-sm border border-gray-100" onClick={() => handleEdit(tx)}>
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                                                        </button>
+                                                        <button className="p-1.5 text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 rounded-lg shadow-sm border border-gray-100" onClick={() => handleDelete(tx)}>
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className={`font-bold text-[14px] ${isTax ? "text-gray-500 font-normal" : "text-gray-900"} mb-1.5 leading-snug`}>
+                                                    {isTax && <span className="text-gray-400 mr-1.5 text-[11px]">↳</span>}
+                                                    {isLabor && tx.status === "provisional" && (
+                                                        <span className="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 rounded mr-1.5 align-text-bottom">仮</span>
+                                                    )}
+                                                    {isLabor && tx.status === "confirmed" && (
+                                                        <span className="inline-block bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 rounded mr-1.5 align-text-bottom">確</span>
+                                                    )}
+                                                    {tx.itemName || "—"}
+                                                </div>
+                                                {(tx.specification || tx.payee) && (
+                                                    <div className="text-[11px] text-gray-500 flex flex-col gap-1 mb-2">
+                                                        {tx.payee && <div className="flex items-baseline gap-1.5"><span className="text-gray-400 w-10 shrink-0 font-medium">支払先</span><span className="text-gray-700">{tx.payee}</span></div>}
+                                                        {tx.specification && <div className="flex items-baseline gap-1.5"><span className="text-gray-400 w-10 shrink-0 font-medium">規格等</span><span>{tx.specification}</span></div>}
+                                                    </div>
+                                                )}
+                                                {tx.memo && (
+                                                    <div className="text-[11px] text-gray-500 bg-white/50 border border-gray-100 px-2 py-1.5 rounded-md mt-1 italic">
+                                                        📝 {tx.memo}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-end justify-between pt-2.5 border-t border-gray-100/60 mt-1">
+                                                <div className="space-y-1">
+                                                    <div className="text-[11px] text-gray-400 flex items-center gap-1">予算 <span className="font-semibold text-gray-700">{getTxBudgetDisplay(tx)}</span></div>
+                                                    <div className="text-[11px] text-gray-400 tracking-wide font-mono">単価 {tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"} <span className="text-gray-300">×</span> {tx.quantity}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[10px] font-bold text-indigo-400 mb-0.5 uppercase tracking-wider">合計金額</div>
+                                                    <div className="text-xl font-bold tabular-nums text-gray-900 leading-none">
+                                                        {fmt(totalAmt)}
+                                                        {isSplit && <span className="ml-1.5 text-[10px] text-indigo-500 font-bold bg-indigo-50 px-1.5 py-0.5 rounded inline-block align-middle">分割</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Desktop View (Table) */}
+                            <div className="hidden md:block overflow-x-auto">
                             <table className="data-table">
                                 <thead>
                                     <tr>
@@ -678,6 +770,7 @@ export default function TransactionsPage() {
                                 </tbody>
                             </table>
                         </div>
+                    </>
                     )}
                 </div>
             </div>
