@@ -449,19 +449,32 @@ export default function TransactionsPage() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                             {activeStats.map(s => {
                                 const colors = CATEGORY_COLORS[s.category];
+                                const catPct = (s.allocated ?? 0) > 0 ? Math.min(Math.round((s.spent / (s.allocated ?? 0)) * 100), 100) : 0;
+                                const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
+                                const isOver = s.remaining < 0;
+
                                 return (
-                                    <div key={s.category} className="flex flex-col min-w-[140px] bg-slate-50/70 rounded-lg p-3 border border-slate-100 shadow-sm transition-all hover:bg-slate-50">
-                                        <div className={`flex items-center gap-1.5 text-xs font-bold mb-2.5 ${colors.text}`}>
-                                            <span className={`w-2.5 h-2.5 rounded-full ${colors.bar}`} />
-                                            {CATEGORY_LABELS[s.category]}
+                                    <div key={s.category} className={`rounded-xl border p-3 ${colors.bg}`}>
+                                        {/* カテゴリ名 + 進捗率 */}
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors.bar}`} />
+                                                <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[s.category]}</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-400 font-semibold tabular-nums">{catPct}%</span>
                                         </div>
-                                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px] tabular-nums">
-                                            <span className="text-gray-400 font-medium">配分</span>
-                                            <span className="text-right text-gray-900 font-semibold">{fmt(s.allocated)}</span>
-                                            <span className="text-gray-400 font-medium">執行</span>
-                                            <span className="text-right text-gray-900 font-bold">{fmt(s.spent)}</span>
-                                            <span className="text-gray-400 font-medium">残額</span>
-                                            <span className={`text-right font-bold ${s.remaining < 0 ? "text-red-500" : "text-emerald-600"}`}>{fmt(s.remaining)}</span>
+                                        {/* ミニ進捗バー */}
+                                        <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5">
+                                            <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                        </div>
+                                        {/* 配分・執行・残額 */}
+                                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
+                                            <span className="text-gray-400">配分</span>
+                                            <span className="text-right text-gray-700 font-medium">¥{fmt(s.allocated ?? 0)}</span>
+                                            <span className="text-gray-400">執行</span>
+                                            <span className="text-right text-gray-800 font-bold">¥{fmt(s.spent)}</span>
+                                            <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
+                                            <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}¥{fmt(Math.abs(s.remaining))}</span>
                                         </div>
                                     </div>
                                 );
