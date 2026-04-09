@@ -600,22 +600,43 @@ export default function TransactionsPage() {
                                     const bgClass = isLabor ? (isTax ? "bg-slate-50/50" : "bg-indigo-50/20") : "bg-white";
 
                                     return (
-                                        <div key={tx.id} className={`flex flex-col py-2 px-3 border-b border-gray-100 last:border-0 ${bgClass} relative`} onClick={() => handleEdit(tx)}>
-                                            <div className="flex justify-between items-baseline mb-0.5">
-                                                <div className="font-bold text-[13px] truncate pr-2 text-gray-900 max-w-[70%]">
-                                                    {tx.itemName || "—"}
+                                        <div key={tx.id} className={`flex py-2 px-3 border-b border-gray-100 last:border-0 ${bgClass} relative cursor-pointer md:cursor-auto`}>
+                                            <div className="flex-1 flex flex-col min-w-0" onClick={() => handleEdit(tx)}>
+                                                <div className="flex justify-between items-baseline mb-0.5">
+                                                    <div className="font-bold text-[13px] truncate pr-2 text-gray-900 max-w-[70%]">
+                                                        {tx.itemName || "—"}
+                                                    </div>
+                                                    <div className="font-bold text-[14px] tabular-nums text-gray-900">
+                                                        {fmt(totalAmt)}
+                                                    </div>
                                                 </div>
-                                                <div className="font-bold text-[14px] tabular-nums text-gray-900">
-                                                    {fmt(totalAmt)}
+                                                <div className="flex justify-between items-center text-[11px] text-gray-500">
+                                                    <div className="truncate pr-2">
+                                                        {tx.date} {tx.payee && `· ${tx.payee}`}
+                                                    </div>
+                                                    <div className="shrink-0 font-medium">
+                                                        {CATEGORY_LABELS[tx.category]}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex justify-between items-center text-[11px] text-gray-500">
-                                                <div className="truncate pr-2">
-                                                    {tx.date} {tx.payee && `· ${tx.payee}`}
-                                                </div>
-                                                <div className="shrink-0 font-medium">
-                                                    {CATEGORY_LABELS[tx.category]}
-                                                </div>
+                                            <div className="flex flex-col justify-center shrink-0 ml-2 pl-2 border-l border-gray-200/60 gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                                {(tx.attachmentCount || 0) > 0 && (
+                                                    <button className="text-brand-600 hover:text-brand-800 p-0.5" onClick={() => openAttachments(tx)}>
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                                <button className="text-gray-400 hover:text-brand-600 p-0.5" onClick={() => handleEdit(tx)}>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                                                    </svg>
+                                                </button>
+                                                <button className="text-gray-400 hover:text-red-500 p-0.5" onClick={() => handleDelete(tx)}>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </div>
                                     );
@@ -627,16 +648,17 @@ export default function TransactionsPage() {
                                 <table className="w-full text-[11px] lg:text-xs border-collapse table-fixed">
                                     <thead className="bg-[#f0f0f0] text-gray-800">
                                         <tr>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[10%]">No</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[7%]">No</th>
                                             <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%]">納品日</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[16%]">品名</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[14%]">規格等</th>
-                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[12%]">支払先</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[15%]">品名</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[13%]">規格等</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[11%]">支払先</th>
                                             <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%] text-right">単価</th>
                                             <th className="border border-gray-300 font-normal py-1 px-1.5 w-[5%] text-center">数量</th>
                                             <th className="border border-gray-300 font-normal py-1 px-1.5 w-[9%] text-right">金額</th>
                                             <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%] text-center">費目</th>
                                             <th className="border border-gray-300 font-normal py-1 px-1.5 w-[10%]">予算</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1 w-[6%] text-center">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -664,6 +686,27 @@ export default function TransactionsPage() {
                                                         {isTax ? "人事(税)" : CATEGORY_LABELS[tx.category]}
                                                     </td>
                                                     <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={getTxBudgetDisplay(tx)}>{getTxBudgetDisplay(tx)}</td>
+                                                    <td className="border border-gray-300 px-1 py-1 text-center whitespace-nowrap">
+                                                        <div className="flex items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                                                            {(tx.attachmentCount || 0) > 0 && (
+                                                                <button onClick={(e) => { e.stopPropagation(); openAttachments(tx); }} className="text-brand-600 hover:text-brand-800 p-0.5" title="添付ファイル">
+                                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                            <button onClick={(e) => { e.stopPropagation(); handleEdit(tx); }} className="text-gray-500 hover:text-brand-600 p-0.5" title="編集">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                                                                </svg>
+                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); handleDelete(tx); }} className="text-gray-500 hover:text-red-500 p-0.5" title="削除">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
