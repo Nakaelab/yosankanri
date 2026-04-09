@@ -264,28 +264,38 @@ export default function ImportPage() {
             return;
         }
         try {
-            const data = extractFromPastedText(pasteText);
-            if (data.slipNumber) setSlipNumber(data.slipNumber);
-            if (data.orderDate) setOrderDate(data.orderDate);
-            if (data.payee) setPayee(data.payee);
-            if (data.memo !== undefined) setMemo(data.memo);
-            if (data.category) setCategory(data.category as ExpenseCategory);
+            const dataList = extractFromPastedText(pasteText);
+            if (!dataList || dataList.length === 0) throw new Error("抽出データがありません");
+
+            const rep = dataList.find(d => d.slipNumber) || dataList[0];
+            const repOrderDate = dataList.find(d => d.orderDate) || dataList[0];
+            const repPayee = dataList.find(d => d.payee) || dataList[0];
+            const repMemo = dataList.find(d => d.memo) || dataList[0];
+            const repCategory = dataList.find(d => d.category) || dataList[0];
+
+            if (rep.slipNumber) setSlipNumber(rep.slipNumber);
+            if (repOrderDate.orderDate) setOrderDate(repOrderDate.orderDate);
+            if (repPayee.payee) setPayee(repPayee.payee);
+            if (repMemo.memo !== undefined) setMemo(repMemo.memo);
+            if (repCategory.category) setCategory(repCategory.category as ExpenseCategory);
             
-            const amt = data.amount !== undefined ? data.amount : (data.unitPrice && data.quantity ? data.unitPrice * data.quantity : 0);
-            setManualItems([{
-                id: uuidv4(),
-                itemName: data.itemName || "",
-                specification: data.specification || "",
-                unitPrice: data.unitPrice || 0,
-                quantity: data.quantity || 1,
-                amount: amt,
-            }]);
+            setManualItems(dataList.map(data => {
+                const amt = data.amount !== undefined && data.amount > 0 ? data.amount : (data.unitPrice && data.quantity ? data.unitPrice * data.quantity : 0);
+                return {
+                    id: uuidv4(),
+                    itemName: data.itemName || "",
+                    specification: data.specification || "",
+                    unitPrice: data.unitPrice || 0,
+                    quantity: data.quantity || 1,
+                    amount: amt,
+                };
+            }));
 
             // JコードからBudgetを自動マッチ
             let newBudgetId = "";
-            if (data.memo) {
+            if (repMemo.memo) {
                 // 半角/全角/大文字/小文字のJ + 9桁の数字 に対応
-                const jMatch = data.memo.match(/[JＪjｊ](\d{9})/);
+                const jMatch = repMemo.memo.match(/[JＪjｊ](\d{9})/);
                 if (jMatch) {
                     const extracted = `J${jMatch[1]}`;
                     // budgetsの中からjCodeが一致するものを探す
@@ -297,13 +307,18 @@ export default function ImportPage() {
                 }
             }
 
+            const totalAmt = dataList.reduce((sum, d) => {
+                const a = d.amount !== undefined && d.amount > 0 ? d.amount : (d.unitPrice && d.quantity ? d.unitPrice * d.quantity : 0);
+                return sum + a;
+            }, 0);
+
             // 何も選択せずに = 空にする。見つかればその予算をセット。
             setBudgetSplits(prev => {
                 if (prev.length === 1) {
                     return [{
                         ...prev[0],
                         budgetId: newBudgetId,
-                        amount: amt || prev[0].amount
+                        amount: totalAmt
                     }];
                 }
                 return prev;

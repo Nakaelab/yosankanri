@@ -383,11 +383,8 @@ export function extractFromOCRText(ocrText: string): ExtractedData {
  *   項目: 値          ← キーバリュー
  *   項目　値          ← タブ/全角スペース区切り
  */
-export function extractFromPastedText(raw: string): Partial<ExtractedData> {
+export function extractFromPastedText(raw: string): Partial<ExtractedData>[] {
     // キーと値のペアを収集
-    const pairs: Record<string, string> = {};
-
-    // マークダウン表の行を集める
     const allLines = raw.split(/\r?\n/);
     const tableRows = allLines
         .map(l => l.trim())
@@ -398,64 +395,53 @@ export function extractFromPastedText(raw: string): Partial<ExtractedData> {
     const isSep = (row: string[]) => row.every(c => /^[-:]+$/.test(c));
     const nonSepRows = tableRows.filter(r => !isSep(r));
 
-    if (nonSepRows.length >= 2) {
-        const firstRow = nonSepRows[0];
-        const secondRow = nonSepRows[1];
+    const results: Record<string, string>[] = [];
 
-        // 横型テーブル判定: 1行目がヘッダー、2行目がデータ
-        // 1行目が日本語ラベルで2行目が値と見なす
-        if (firstRow.length > 2) {
-            // 横型: ヘッダー列配列 × データ行を zip
-            firstRow.forEach((header, i) => {
-                if (secondRow[i] !== undefined) {
-                    pairs[header] = secondRow[i];
+    if (nonSepRows.length >= 2 && nonSepRows[0].length > 2) {
+        // 横型テーブル判定: 1行目がヘッダー、2行目以降がデータ
+        const headers = nonSepRows[0];
+        for (let i = 1; i < nonSepRows.length; i++) {
+            const row = nonSepRows[i];
+            const pairs: Record<string, string> = {};
+            headers.forEach((header, colIdx) => {
+                if (row[colIdx] !== undefined) {
+                    pairs[header] = row[colIdx];
                 }
             });
-        } else {
-            // 縦型: | key | value | ごとに pairs に追加
+            results.push(pairs);
+        }
+    } else {
+        // 縦型またはキーバリュー形式
+        const pairs: Record<string, string> = {};
+        if (nonSepRows.length >= 2) {
             for (const row of nonSepRows) {
                 if (row.length >= 2) {
                     pairs[row[0]] = row[1];
                 }
             }
+        } else if (nonSepRows.length === 1 && nonSepRows[0].length >= 2) {
+            pairs[nonSepRows[0][0]] = nonSepRows[0][1];
         }
-    } else if (nonSepRows.length === 1 && nonSepRows[0].length >= 2) {
-        // 縦型1行のみ
-        pairs[nonSepRows[0][0]] = nonSepRows[0][1];
-    }
 
-    // キーバリュー形式 "key: value" を解析（表でない行のみ）
-    if (Object.keys(pairs).length === 0) {
-        for (const line of allLines) {
-            const kv = line.match(/^([^\t:：　|]+)[:：]\s*(.+)$/);
-            if (kv) {
-                pairs[kv[1].trim()] = kv[2].trim();
-            }
-        }
-    }
-
-    // キー名を正規化して値を取り出すヘルパー
-    const get = (...keys: string[]): string => {
-        for (const key of keys) {
-            for (const [k, v] of Object.entries(pairs)) {
-                const kn = k.replace(/\s/g, "");
-                const kn2 = key.replace(/\s/g, "");
-                if (kn === kn2 || kn.includes(kn2) || kn2.includes(kn)) {
-                    return v;
+        // キーバリュー形式 "key: value" を解析（表でない行のみ）
+        if (Object.keys(pairs).length === 0) {
+            for (const line of allLines) {
+                const kv = line.match(/^([^\t:：　|]+)[:：]\s*(.+)$/);
+                if (kv) {
+                    pairs[kv[1].trim()] = kv[2].trim();
                 }
             }
         }
-        return "";
-    };
+        results.push(pairs);
+    }
 
     // 日付の正規化ヘルパー
     const toDate = (s: string): string => {
         if (!s) return "";
-        // R7/2/2 → extractDate で処理
         return extractDate(s) || s;
     };
 
-    // 金額の正規化ヘルパー（「133,650円」→ 133650）
+    // 金額の正規化ヘルパー
     const toAmount = (s: string): number => {
         if (!s) return 0;
         const n = parseInt(s.replace(/[円¥,，\s]/g, "").replace(/[０-９]/g, c =>
@@ -464,29 +450,45 @@ export function extractFromPastedText(raw: string): Partial<ExtractedData> {
         return isNaN(n) ? 0 : n;
     };
 
-    const qty = parseInt(get("数量", "個数", "quantity") || "1", 10) || 1;
-    const unitPriceStr = get("単価", "価格", "unit price", "単価（税込）");
-    const amountStr = get("金額", "合計", "税込金額", "契約金額", "amount", "合計金額", "税込", "総額");
-    const unitPrice = toAmount(unitPriceStr);
-    let amount = toAmount(amountStr);
-    if (!amount && unitPrice) amount = unitPrice * qty;
+    return results.map(pairs => {
+        const get = (...keys: string[]): string => {
+            for (const key of keys) {
+                for (const [k, v] of Object.entries(pairs)) {
+                    const kn = k.replace(/\s/g, "");
+                    const kn2 = key.replace(/\s/g, "");
+                    if (kn === kn2 || kn.includes(kn2) || kn2.includes(kn)) {
+                        return v;
+                    }
+                }
+            }
+            return "";
+        };
 
-    const orderDateStr = get("起案日", "発注日", "注文日", "起案日付", "order date", "注文日付");
-    const memoStr = get("J番号", "Jコード", "J code", "コード", "備考", "メモ", "memo", "note");
-    const slipStr = get("伝票番号", "起案NO", "起案No", "起案番号", "slip", "伝票No");
+        const qty = parseInt(get("数量", "個数", "quantity") || "1", 10) || 1;
+        const unitPriceStr = get("単価", "価格", "unit price", "単価（税込）");
+        const amountStr = get("金額", "合計", "税込金額", "契約金額", "amount", "合計金額", "税込", "総額");
+        const unitPrice = toAmount(unitPriceStr);
+        let amount = toAmount(amountStr);
+        if (!amount && unitPrice) amount = unitPrice * qty;
 
-    return {
-        slipNumber: slipStr || "",
-        orderDate: toDate(orderDateStr) || undefined,
-        itemName: get("品名", "件名", "商品名", "品目", "item", "item name") || "",
-        specification: get("規格", "型番", "型式", "規格等", "spec", "specification") || "",
-        payee: get("支払先", "契約相手先", "納入業者", "購入先", "業者", "payee", "vendor") || "",
-        unitPrice,
-        quantity: qty,
-        amount,
-        memo: memoStr || "",
-        category: "goods",
-        docType: "purchase_request",
-        date: "",
-    };
+        const orderDateStr = get("起案日", "発注日", "注文日", "起案日付", "order date", "注文日付");
+        const memoStr = get("J番号", "Jコード", "J code", "コード", "備考", "メモ", "memo", "note");
+        const slipStr = get("伝票番号", "起案NO", "起案No", "起案番号", "slip", "伝票No");
+
+        // いらないものは抽出しない。支払先も各行から抽出。
+        return {
+            slipNumber: slipStr || "",
+            orderDate: toDate(orderDateStr) || undefined,
+            itemName: get("品名", "件名", "商品名", "品目", "item", "item name") || "",
+            specification: get("規格", "型番", "型式", "規格等", "spec", "specification") || "",
+            payee: get("支払先", "契約相手先", "納入業者", "購入先", "業者", "payee", "vendor") || "",
+            unitPrice,
+            quantity: qty,
+            amount,
+            memo: memoStr || "",
+            category: "goods",
+            docType: "purchase_request",
+            date: "",
+        };
+    });
 }
