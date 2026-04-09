@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction, ExpenseCategory } from "@/lib/types";
-import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions, saveTransaction } from "@/lib/storage";
+import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions, saveTransaction, saveBudgetOrder } from "@/lib/storage";
 import { initSync } from "@/lib/cloud-sync";
+import { useTouchSort } from "@/lib/useTouchSort";
 
 // ===============================================
 // Teacher Selection
@@ -246,6 +247,17 @@ function Dashboard() {
         load();
     }, []);
 
+    const { draggingId, overI, getItemProps } = useTouchSort(
+        summaries.map(s => s.budget),
+        (newBudgets) => {
+            saveBudgetOrder(newBudgets.map(b => b.id));
+            setSummaries(prev => {
+                const map = new Map(prev.map(s => [s.budget.id, s]));
+                return newBudgets.map(b => map.get(b.id)!).filter(Boolean);
+            });
+        }
+    );
+
     // Edit transaction handlers
     const handleEditTx = (tx: Transaction) => {
         setEditingTx(tx);
@@ -442,10 +454,22 @@ function Dashboard() {
                             const activeCats = s.categories.filter((c) => c.allocated !== undefined || c.spent > 0);
 
                             return (
-                                <div key={s.budget.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div
+                                    key={s.budget.id}
+                                    {...getItemProps(s.budget.id)}
+                                    className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 ${
+                                        overI === s.budget.id && draggingId !== s.budget.id ? "ring-2 ring-brand-400 ring-offset-2" : ""
+                                    } ${draggingId === s.budget.id ? "opacity-40" : ""}`}
+                                >
                                     {/* ===== 予算ヘッダー ===== */}
                                     <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-white">
                                         <div className="flex items-center gap-3 min-w-0">
+                                            {/* Drag handle */}
+                                            <div className="cursor-grab active:cursor-grabbing p-1 -ml-2 rounded touch-none flex-shrink-0 text-gray-300 hover:text-gray-400" title="長押しまたはドラッグして並び替え">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+                                                </svg>
+                                            </div>
                                             <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
                                             <div className="min-w-0">
                                                 <div className="text-base font-bold text-gray-900 break-words">{s.budget.name}</div>

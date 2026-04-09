@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
     Budget, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/types";
 import { getCurrentTeacherId, getBudgets, saveBudget, deleteBudget, getTransactions, saveBudgetOrder } from "@/lib/storage";
 import type { BudgetSummary } from "@/lib/types";
+import { useTouchSort } from "@/lib/useTouchSort";
 
 export default function BudgetsPage() {
     const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -25,10 +26,7 @@ export default function BudgetsPage() {
     const [allocations, setAllocations] = useState<CategoryAllocations>(emptyAllocations());
     const [createdAt, setCreatedAt] = useState<string>("");
 
-    // Drag & Drop State
-    const [dragIndex, setDragIndex] = useState<number | null>(null);
-    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-    const dragNodeRef = useRef<HTMLDivElement | null>(null);
+    // Drag & Drop State - handled by useTouchSort
 
     const reload = () => {
         const bData = getBudgets(); // Already sorted by sortOrder in storage
@@ -60,50 +58,10 @@ export default function BudgetsPage() {
 
     useEffect(() => { setMounted(true); reload(); }, []);
 
-    // --- Drag & Drop Handlers ---
-    const handleDragStart = (index: number, e: React.DragEvent<HTMLDivElement>) => {
-        setDragIndex(index);
-        dragNodeRef.current = e.currentTarget;
-        e.dataTransfer.effectAllowed = "move";
-        // Make drag image slightly transparent
-        requestAnimationFrame(() => {
-            if (dragNodeRef.current) {
-                dragNodeRef.current.style.opacity = "0.4";
-            }
-        });
-    };
-
-    const handleDragOver = (index: number, e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        if (dragIndex === null || dragIndex === index) return;
-        setDragOverIndex(index);
-    };
-
-    const handleDragEnd = () => {
-        if (dragNodeRef.current) {
-            dragNodeRef.current.style.opacity = "1";
-        }
-        setDragIndex(null);
-        setDragOverIndex(null);
-        dragNodeRef.current = null;
-    };
-
-    const handleDrop = (targetIndex: number, e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        if (dragIndex === null || dragIndex === targetIndex) {
-            handleDragEnd();
-            return;
-        }
-
-        const newBudgets = [...budgets];
-        const [draggedItem] = newBudgets.splice(dragIndex, 1);
-        newBudgets.splice(targetIndex, 0, draggedItem);
-
+    const { draggingId, overI, getItemProps } = useTouchSort(budgets, (newBudgets) => {
         setBudgets(newBudgets);
         saveBudgetOrder(newBudgets.map((b) => b.id));
-        handleDragEnd();
-    };
+    });
 
     const openCreateModal = () => {
         setEditingBudget(null);
@@ -189,7 +147,7 @@ export default function BudgetsPage() {
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
-                        左のハンドルをドラッグして順番を入れ替えられます
+                        ≡ ハンドルを長押し（スマホ）またはドラッグして順番を入れ替えられます
                     </div>
                 )}
 
@@ -206,23 +164,17 @@ export default function BudgetsPage() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {budgets.map((b, index) => {
+                        {budgets.map((b) => {
                             const s = summaries.get(b.id);
                             const activeCats = s ? s.categories.filter((c) => c.allocated !== undefined || c.spent > 0) : [];
-                            const isDragOver = dragOverIndex === index && dragIndex !== index;
 
                             return (
                                 <div
                                     key={b.id}
+                                    {...getItemProps(b.id)}
                                     className={`section-card relative group transition-all duration-200 ${
-                                        isDragOver ? "ring-2 ring-brand-400 ring-offset-2" : ""
-                                    } ${dragIndex === index ? "opacity-40" : ""}`}
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(index, e)}
-                                    onDragOver={(e) => handleDragOver(index, e)}
-                                    onDragLeave={() => { if (dragOverIndex === index) setDragOverIndex(null); }}
-                                    onDrop={(e) => handleDrop(index, e)}
-                                    onDragEnd={handleDragEnd}
+                                        overI === b.id && draggingId !== b.id ? "ring-2 ring-brand-400 ring-offset-2" : ""
+                                    } ${draggingId === b.id ? "opacity-40" : ""}`}
                                 >
                                     <div className="px-3 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50">
                                         <div className="flex items-center gap-3">
