@@ -25,8 +25,13 @@ body {
 
 /* ===== Sidebar ===== */
 .sidebar {
-  @apply fixed top-0 left-0 h-screen bg-slate-900 flex flex-col z-40;
+  @apply fixed top-0 left-0 bg-slate-900 flex flex-col z-40;
   width: var(--sidebar-width);
+  /* Safari iOS fix: 100vh does not account for the browser toolbar.
+     Use 100dvh (dynamic viewport height) with fallbacks. */
+  height: 100vh; /* fallback for old browsers */
+  height: -webkit-fill-available; /* Safari fallback */
+  height: 100dvh; /* modern standard */
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
