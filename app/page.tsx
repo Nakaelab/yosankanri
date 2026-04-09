@@ -295,6 +295,12 @@ function Dashboard() {
 
     const totalRemaining = totalAllocated - totalSpent;
 
+    const activeOverallCats = ALL_CATEGORIES.map(cat => {
+        const allocated = summaries.reduce((sum, s) => sum + (s.categories.find(c => c.category === cat)?.allocated || 0), 0);
+        const spent = summaries.reduce((sum, s) => sum + (s.categories.find(c => c.category === cat)?.spent || 0), 0);
+        return { category: cat, allocated, spent, remaining: allocated - spent };
+    }).filter(c => c.allocated > 0 || c.spent > 0);
+
     return (
         <div className="animate-fade-in">
             <div className="page-header">
@@ -320,6 +326,82 @@ function Dashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* ===== 費目別全体状況 ===== */}
+                {activeOverallCats.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
+                            <h2 className="text-base font-bold text-gray-900">費目別 全体執行状況</h2>
+                        </div>
+                        <div className="px-5 py-4 border-b border-gray-100">
+                            {/* スタックバーグラフ */}
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-semibold text-gray-500">全体執行率 <span className={`text-sm font-bold ${pct(totalSpent, totalAllocated) > 100 ? "text-red-600" : pct(totalSpent, totalAllocated) > 80 ? "text-amber-600" : "text-brand-600"}`}>{pct(totalSpent, totalAllocated)}%</span></span>
+                                <span className="text-xs text-gray-400 tabular-nums">{fmtYen(totalSpent)} <span className="text-gray-300">/ {fmtYen(totalAllocated)}</span></span>
+                            </div>
+                            <div className="h-4 rounded-full bg-gray-200 overflow-hidden flex">
+                                {activeOverallCats.map(c => {
+                                    const ratio = totalAllocated > 0 ? (c.spent / totalAllocated) * 100 : 0;
+                                    if (ratio <= 0) return null;
+                                    return (
+                                        <div 
+                                            key={c.category}
+                                            className={`h-full ${CATEGORY_COLORS[c.category].bar} border-r border-white/20 last:border-0 hover:opacity-80 transition-opacity`}
+                                            style={{ width: `${ratio}%` }}
+                                            title={`${CATEGORY_LABELS[c.category]}: ${fmtYen(c.spent)}`}
+                                        />
+                                    );
+                                })}
+                            </div>
+                            {/* 凡例 */}
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 pl-1">
+                                {activeOverallCats.map(c => {
+                                    if (c.spent <= 0) return null;
+                                    return (
+                                        <div key={`legend-${c.category}`} className="flex items-center gap-1.5 min-w-0">
+                                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${CATEGORY_COLORS[c.category].bar}`} />
+                                            <span className="text-[11px] text-gray-500 font-medium">{CATEGORY_LABELS[c.category]}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 費目内訳 (既存のものと似たデザイン) */}
+                        <div className="p-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                                {activeOverallCats.map((c) => {
+                                    const colors = CATEGORY_COLORS[c.category];
+                                    const catPct = c.allocated > 0 ? Math.min(Math.round((c.spent / c.allocated) * 100), 100) : 0;
+                                    const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
+                                    const isOver = c.remaining < 0;
+                                    return (
+                                        <div key={c.category} className={`rounded-xl border p-3 ${colors.bg}`}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors.bar}`} />
+                                                    <span className={`text-xs font-bold ${colors.text}`}>{CATEGORY_LABELS[c.category]}</span>
+                                                </div>
+                                                <span className="text-[10px] text-gray-400 font-semibold tabular-nums">{catPct}%</span>
+                                            </div>
+                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5">
+                                                <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
+                                                <span className="text-gray-400">配分</span>
+                                                <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated)}</span>
+                                                <span className="text-gray-400">執行</span>
+                                                <span className="text-right text-gray-800 font-bold">¥{fmt(c.spent)}</span>
+                                                <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
+                                                <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}¥{fmt(Math.abs(c.remaining))}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* ===== 予算カード ===== */}
                 {summaries.length === 0 ? (
