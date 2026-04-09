@@ -406,11 +406,14 @@ export default function BudgetsPage() {
                                                     {CATEGORY_LABELS[cat]}
                                                 </label>
                                                 <input
-                                                    type="number"
-                                                    className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all font-mono"
                                                     value={allocations[cat] ?? ""}
-                                                    onChange={(e) => updateAlloc(cat, e.target.value === "" ? undefined : parseInt(e.target.value, 10))}
-                                                    min={0}
+                                                    onChange={(e) => {
+                                                        const clean = e.target.value.replace(/[^0-9]/g, "");
+                                                        updateAlloc(cat, clean === "" ? undefined : parseInt(clean, 10));
+                                                    }}
                                                     placeholder="0"
                                                 />
                                             </div>
