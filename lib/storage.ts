@@ -193,7 +193,7 @@ export function getBudgetSummary(budget: Budget): BudgetSummary {
     const transactions = getTransactionsByBudget(budget.id);
 
     const categories: CategorySummary[] = ALL_CATEGORIES.map((cat) => {
-        const allocated = budget.allocations[cat] || 0;
+        const allocated = budget.allocations[cat];
         const spent = transactions
             .filter((t) => t.category === cat)
             .reduce((sum, t) => sum + t.amount, 0);
@@ -201,7 +201,7 @@ export function getBudgetSummary(budget: Budget): BudgetSummary {
             category: cat,
             allocated,
             spent,
-            remaining: allocated - spent,
+            remaining: (allocated ?? 0) - spent,
         };
     });
 
@@ -249,11 +249,26 @@ export function getOverallCategorySummary(): CategorySummary[] {
     const transactions = getTransactions();
 
     return ALL_CATEGORIES.map((cat) => {
-        const allocated = budgets.reduce((s, b) => s + (b.allocations[cat] || 0), 0);
+        let hasDefined = false;
+        const allocatedSum = budgets.reduce((s, b) => {
+            if (b.allocations[cat] !== undefined) {
+                hasDefined = true;
+                return s + b.allocations[cat]!;
+            }
+            return s;
+        }, 0);
+        const finalAllocated = hasDefined ? allocatedSum : undefined;
+
         const spent = transactions
             .filter((t) => t.category === cat)
             .reduce((s, t) => s + t.amount, 0);
-        return { category: cat, allocated, spent, remaining: allocated - spent };
+            
+        return { 
+            category: cat, 
+            allocated: finalAllocated, 
+            spent, 
+            remaining: (finalAllocated ?? 0) - spent 
+        };
     });
 }
 
