@@ -590,6 +590,7 @@ export default function TransactionsPage() {
                             <p className="text-xs mt-0.5">「執行登録」から追加してください</p>
                         </div>
                     ) : (
+                        <>
                             {/* Card View Layout (All Screens) */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
                                 {filtered.map((tx) => {
@@ -680,7 +681,7 @@ export default function TransactionsPage() {
                                 })}
                             </div>
 
-                            </div>
+                        </>
                     )}
                 </div>
             </div>

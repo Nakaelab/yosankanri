@@ -205,7 +205,7 @@ export function getBudgetSummary(budget: Budget): BudgetSummary {
         };
     });
 
-    const totalAllocated = categories.reduce((s, c) => s + c.allocated, 0);
+    const totalAllocated = categories.reduce((s, c) => s + (c.allocated ?? 0), 0);
     const totalSpent = categories.reduce((s, c) => s + c.spent, 0);
 
     return {
