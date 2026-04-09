@@ -58,8 +58,8 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
 
     return (
         <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in">
-                <div className="px-6 py-8 text-center">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+                <div className="px-6 py-8 text-center flex-shrink-0">
                     <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-brand-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -69,7 +69,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                     <p className="text-sm text-gray-500">研究費の管理を行う先生（ユーザー）を選択します</p>
                 </div>
 
-                <div className="px-6 pb-6 space-y-3 max-h-[40vh] overflow-y-auto">
+                <div className="px-6 pb-6 space-y-3 overflow-y-auto flex-1 min-h-0">
                     {/* Default User (if exists) */}
                     <button
                         onClick={handleDefault}
@@ -110,7 +110,7 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                     ))}
                 </div>
 
-                <div className="p-6 bg-gray-50 border-t border-gray-100">
+                <div className="p-6 bg-gray-50 border-t border-gray-100 flex-shrink-0">
                     {showForm ? (
                         <form onSubmit={handleCreate} className="space-y-3 animate-slide-in">
                             <label className="block text-xs font-bold text-gray-500 uppercase">新しい利用者の追加</label>
