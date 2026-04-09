@@ -591,104 +591,84 @@ export default function TransactionsPage() {
                         </div>
                     ) : (
                         <>
-                            {/* Compact List View (Responsive) */}
-                            <div className="flex flex-col border border-gray-100 rounded-xl overflow-hidden bg-white">
+                            {/* 1. Mobile View: Ultra-Condensed Rows */}
+                            <div className="md:hidden flex flex-col border-y border-gray-200 bg-white">
                                 {filtered.map((tx) => {
-                                    const colors = CATEGORY_COLORS[tx.category];
-                                    const isSplit = !!(tx.splitGroupId && allTxs.filter(t => t.splitGroupId === tx.splitGroupId).length > 1);
                                     const totalAmt = getTxTotalAmount(tx);
                                     const isLabor = tx.category === "labor";
                                     const isTax = isLabor && tx.itemName.includes("消費税");
-
-                                    let bgClass = "bg-white";
-                                    if (isLabor) bgClass = isTax ? "bg-slate-50/50" : "bg-indigo-50/20";
+                                    const bgClass = isLabor ? (isTax ? "bg-slate-50/50" : "bg-indigo-50/20") : "bg-white";
 
                                     return (
-                                        <div key={tx.id} className={`group flex flex-col md:flex-row md:items-center gap-2 md:gap-4 p-3 md:py-2 border-b border-gray-100 last:border-0 ${bgClass} hover:bg-gray-50/80 transition-colors text-sm relative`}>
-                                            
-                                            {/* 1. Date & Category */}
-                                            <div className="w-full md:w-[130px] shrink-0 flex items-center justify-between md:flex-col md:items-start md:justify-center gap-1.5">
-                                                <div className="text-[11px] text-gray-500 font-medium whitespace-nowrap">
-                                                    {tx.date} 
-                                                    {tx.orderDate && <span className="text-gray-400 ml-1 hidden lg:inline">(発: {tx.orderDate})</span>}
+                                        <div key={tx.id} className={`flex flex-col py-2 px-3 border-b border-gray-100 last:border-0 ${bgClass} relative`} onClick={() => handleEdit(tx)}>
+                                            <div className="flex justify-between items-baseline mb-0.5">
+                                                <div className="font-bold text-[13px] truncate pr-2 text-gray-900 max-w-[70%]">
+                                                    {tx.itemName || "—"}
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    {isTax ? (
-                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text} opacity-80`}>人件費S（消費税）</span>
-                                                    ) : (
-                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>{CATEGORY_LABELS[tx.category]}</span>
-                                                    )}
-                                                    {isSplit && <span className="text-[9px] text-indigo-500 font-bold bg-indigo-50 px-1 py-0.5 rounded">分割</span>}
+                                                <div className="font-bold text-[14px] tabular-nums text-gray-900">
+                                                    {fmt(totalAmt)}
                                                 </div>
                                             </div>
-
-                                            {/* 2. Item Name & Details */}
-                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                <div className="flex items-center gap-1.5 mb-0.5">
-                                                    {isLabor && tx.status === "provisional" && (
-                                                        <span className="shrink-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 rounded">仮</span>
-                                                    )}
-                                                    {isLabor && tx.status === "confirmed" && (
-                                                        <span className="shrink-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 rounded">確</span>
-                                                    )}
-                                                    <div className={`font-bold text-[13px] truncate ${isTax ? "text-gray-500 font-normal" : "text-gray-900"}`}>
-                                                        {tx.itemName || "—"}
-                                                    </div>
+                                            <div className="flex justify-between items-center text-[11px] text-gray-500">
+                                                <div className="truncate pr-2">
+                                                    {tx.date} {tx.payee && `· ${tx.payee}`}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[11px] text-gray-400 truncate">
-                                                    {tx.payee && <span className="truncate" title={tx.payee}>先: <span className="text-gray-500">{tx.payee}</span></span>}
-                                                    {tx.specification && <span className="truncate" title={tx.specification}>格: <span className="text-gray-500">{tx.specification}</span></span>}
+                                                <div className="shrink-0 font-medium">
+                                                    {CATEGORY_LABELS[tx.category]}
                                                 </div>
-                                                {tx.memo && <div className="text-[10px] text-gray-400/80 truncate mt-0.5" title={tx.memo}>📝 {tx.memo}</div>}
-                                            </div>
-
-                                            {/* 3. Budget & J-Code (Mobile: inline, Desktop: block) */}
-                                            <div className="w-full md:w-[150px] shrink-0 flex items-center justify-between md:flex-col md:items-start md:justify-center text-[11px] bg-slate-50 md:bg-transparent rounded px-2 py-1 md:p-0">
-                                                <span className="text-gray-400 font-medium md:hidden text-[10px]">予算対象</span>
-                                                <div className="text-right md:text-left w-full min-w-0">
-                                                    <div className="text-gray-600 font-medium truncate">{getTxBudgetDisplay(tx)}</div>
-                                                    {getTxJCode(tx) && <div className="text-[10px] text-gray-400 font-mono hidden md:block truncate mt-0.5">{getTxJCode(tx)}</div>}
-                                                </div>
-                                            </div>
-
-                                            {/* 4. Calculation */}
-                                            <div className="w-full md:w-[140px] shrink-0 flex items-end justify-between md:flex-col md:justify-center text-right pt-1 mt-1 border-t md:border-0 border-gray-100 md:pt-0 md:mt-0">
-                                                <div className="text-[11px] text-gray-400 md:hidden tracking-wide font-mono h-full flex items-center">
-                                                    {tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"} × {tx.quantity}
-                                                </div>
-                                                <div className="flex flex-col items-end w-full">
-                                                    <div className="text-lg md:text-base font-bold tabular-nums text-gray-900 leading-none">
-                                                        {fmt(totalAmt)}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-400 mt-1 hidden md:block tracking-wide font-mono">
-                                                        {tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "—"} <span className="mx-0.5 text-gray-300">×</span> {tx.quantity}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* 5. Actions */}
-                                            <div className="absolute top-2 right-2 md:static md:w-[70px] shrink-0 flex items-center justify-end gap-0.5 opacity-100 md:opacity-50 md:group-hover:opacity-100 transition-opacity bg-white/80 md:bg-transparent rounded-lg backdrop-blur supports-[backdrop-filter]:bg-white/50 p-1 md:p-0 shadow-sm md:shadow-none border border-gray-100 md:border-none">
-                                                {(tx.attachmentCount || 0) > 0 && (
-                                                    <button className="flex items-center gap-0.5 text-brand-600 hover:text-brand-800 text-[10px] font-bold bg-brand-50 px-1.5 py-1 rounded" onClick={() => openAttachments(tx)}>
-                                                        <svg className="w-3 h-3 block" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                                <button className="p-1 md:p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded" onClick={() => handleEdit(tx)}>
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
-                                                    </svg>
-                                                </button>
-                                                <button className="p-1 md:p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" onClick={() => handleDelete(tx)}>
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                                    </svg>
-                                                </button>
                                             </div>
                                         </div>
                                     );
                                 })}
+                            </div>
+
+                            {/* 2. Desktop View: Spreadsheet Table */}
+                            <div className="hidden md:block w-full overflow-hidden bg-white border border-gray-300">
+                                <table className="w-full text-[11px] lg:text-xs border-collapse table-fixed">
+                                    <thead className="bg-[#f0f0f0] text-gray-800">
+                                        <tr>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[10%]">No</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%]">納品日</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[16%]">品名</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[14%]">規格等</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[12%]">支払先</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%] text-right">単価</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[5%] text-center">数量</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[9%] text-right">金額</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[8%] text-center">費目</th>
+                                            <th className="border border-gray-300 font-normal py-1 px-1.5 w-[10%]">予算</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map((tx) => {
+                                            const totalAmt = getTxTotalAmount(tx);
+                                            const isLabor = tx.category === "labor";
+                                            const isTax = isLabor && tx.itemName.includes("消費税");
+                                            
+                                            // Make double click edit and match color scheme loosely
+                                            let rowBg = "hover:bg-blue-50/50 cursor-pointer transition-colors";
+                                            if (isLabor) rowBg += isTax ? " bg-slate-50" : " bg-indigo-50/30";
+                                            else rowBg += " bg-white";
+
+                                            return (
+                                                <tr key={tx.id} className={rowBg} onDoubleClick={() => handleEdit(tx)}>
+                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={tx.slipNumber}>{tx.slipNumber || ""}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-center text-gray-700">{tx.date}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-900 font-medium" title={tx.itemName}>{tx.itemName}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={tx.specification}>{tx.specification || ""}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={tx.payee}>{tx.payee || ""}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 text-right tabular-nums text-gray-700">{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "0"}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 text-center tabular-nums text-gray-700">{tx.quantity}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 text-right tabular-nums font-bold text-gray-900">{totalAmt.toLocaleString()}</td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 text-center truncate text-gray-600">
+                                                        {isTax ? "人事(税)" : CATEGORY_LABELS[tx.category]}
+                                                    </td>
+                                                    <td className="border border-gray-300 px-1.5 py-1 truncate text-gray-600" title={getTxBudgetDisplay(tx)}>{getTxBudgetDisplay(tx)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
 
                         </>
