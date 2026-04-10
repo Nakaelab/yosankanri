@@ -473,11 +473,11 @@ export default function TransactionsPage() {
                                         {/* 配分・執行・残額 */}
                                         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
                                             <span className="text-gray-400">配分</span>
-                                            <span className="text-right text-gray-700 font-medium">¥{fmt(s.allocated ?? 0)}</span>
+                                            <span className="text-right text-gray-700 font-medium">{fmt(s.allocated ?? 0)}</span>
                                             <span className="text-gray-400">執行</span>
-                                            <span className="text-right text-gray-800 font-bold">¥{fmt(s.spent)}</span>
+                                            <span className="text-right text-gray-800 font-bold">{fmt(s.spent)}</span>
                                             <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
-                                            <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}¥{fmt(Math.abs(s.remaining))}</span>
+                                            <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}{fmt(Math.abs(s.remaining))}</span>
                                         </div>
                                     </div>
                                 );
