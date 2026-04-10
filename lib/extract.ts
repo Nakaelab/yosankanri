@@ -20,8 +20,6 @@ function detectDocType(text: string): DocType {
 function detectCategory(text: string, docType: DocType): ExpenseCategory {
     if (docType === "travel") return "travel";
     if (text.includes("謝金") || text.includes("謝礼")) return "labor";
-    if (text.includes("再委託") || text.includes("委託")) return "subcontract";
-    if (text.includes("返金") || text.includes("返納")) return "refund";
     // 購入依頼は大体「物品」
     if (docType === "purchase_request") return "goods";
     return "goods";

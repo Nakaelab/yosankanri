@@ -7,9 +7,7 @@ export type ExpenseCategory =
     | "goods"        // 物品（フラグなし）
     | "travel"       // 旅費(R)
     | "labor"        // 人件費(L)
-    | "other"        // その他(T)
-    | "subcontract"  // 再委託(I)
-    | "refund";      // 返金(H)
+    | "other";       // その他(T)
 
 /** 費目カテゴリの日本語ラベル */
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
@@ -17,8 +15,6 @@ export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
     travel: "旅費(R)",
     labor: "人件費(S)",
     other: "その他(T)",
-    subcontract: "再委託(I)",
-    refund: "返金(H)",
 };
 
 /** 費目カテゴリのショートラベル */
@@ -27,8 +23,6 @@ export const CATEGORY_SHORT: Record<ExpenseCategory, string> = {
     travel: "旅費",
     labor: "人件費",
     other: "その他",
-    subcontract: "再委託",
-    refund: "返金",
 };
 
 /** 費目カテゴリのカラー */
@@ -37,8 +31,6 @@ export const CATEGORY_COLORS: Record<ExpenseCategory, { bg: string; text: string
     travel: { bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-500" },
     labor: { bg: "bg-fuchsia-50", text: "text-fuchsia-700", bar: "bg-fuchsia-500" },
     other: { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-500" },
-    subcontract: { bg: "bg-rose-50", text: "text-rose-700", bar: "bg-rose-500" },
-    refund: { bg: "bg-slate-50", text: "text-slate-600", bar: "bg-slate-400" },
 };
 
 /** スプレッドシートのフラグ → カテゴリ変換 */
@@ -47,13 +39,11 @@ export const FLAG_TO_CATEGORY: Record<string, ExpenseCategory> = {
     "R": "travel",
     "S": "labor",
     "T": "other",
-    "I": "subcontract",
-    "H": "refund",
 };
 
 /** 全費目カテゴリ一覧 */
 export const ALL_CATEGORIES: ExpenseCategory[] = [
-    "goods", "travel", "labor", "other", "subcontract", "refund",
+    "goods", "travel", "labor", "other",
 ];
 
 /** 書類種別（OCR判定用） */
@@ -71,8 +61,6 @@ export interface CategoryAllocations {
     travel?: number;
     labor?: number;
     other?: number;
-    subcontract?: number;
-    refund?: number;
 }
 
 /** 空の配分 */
