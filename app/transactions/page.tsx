@@ -630,8 +630,17 @@ export default function TransactionsPage() {
                                                     <div className="truncate pr-2">
                                                         {tx.date}{tx.payee && ` · ${tx.payee}`}
                                                     </div>
-                                                    <div className="shrink-0 font-medium">
-                                                        {CATEGORY_LABELS[tx.category]}
+                                                    <div className="shrink-0 flex items-center gap-1">
+                                                        {isLabor && !isTax && (
+                                                            <span className={`inline-flex items-center px-1 py-0 rounded text-[10px] font-bold leading-4 ${
+                                                                tx.status === "confirmed"
+                                                                    ? "bg-emerald-100 text-emerald-700"
+                                                                    : "bg-orange-100 text-orange-700"
+                                                            }`}>
+                                                                {tx.status === "confirmed" ? "確" : "仮"}
+                                                            </span>
+                                                        )}
+                                                        <span className="font-medium">{CATEGORY_LABELS[tx.category]}</span>
                                                     </div>
                                                 </div>
                                                 {tx.memo && (
@@ -706,7 +715,18 @@ export default function TransactionsPage() {
                                                     <td className="border border-gray-200 px-2 py-1.5 text-center tabular-nums text-gray-700">{tx.quantity}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-right tabular-nums font-bold text-gray-900 bg-blue-50/60">{totalAmt.toLocaleString()}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-center truncate text-gray-600 text-[11px]">
-                                                        {isTax ? "人事(税)" : CATEGORY_LABELS[tx.category]}
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            {isTax ? "人事(税)" : CATEGORY_LABELS[tx.category]}
+                                                            {isLabor && !isTax && (
+                                                                <span className={`inline-flex items-center px-1 py-0 rounded text-[10px] font-bold leading-4 ${
+                                                                    tx.status === "confirmed"
+                                                                        ? "bg-emerald-100 text-emerald-700"
+                                                                        : "bg-orange-100 text-orange-700"
+                                                                }`}>
+                                                                    {tx.status === "confirmed" ? "確" : "仓"}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={getTxBudgetDisplay(tx)}>{getTxBudgetDisplay(tx)}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-[11px] text-amber-700 bg-amber-50/40" title={tx.memo || ""}>{tx.memo ? (
