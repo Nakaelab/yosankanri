@@ -170,71 +170,36 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
 
 
 function Dashboard() {
-    const [summaries, setSummaries] = useState<BudgetSummary[]>([]);
-    const [totalSpent, setTotalSpent] = useState(0);
-    const [totalAllocated, setTotalAllocated] = useState(0);
-    const [budgetCount, setBudgetCount] = useState(0);
-    const [txCount, setTxCount] = useState(0);
     const [mounted, setMounted] = useState(false);
-    const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-    const [allBudgets, setAllBudgets] = useState<{ id: string; name: string; jCode: string }[]>([]);
-    const [txByBudget, setTxByBudget] = useState<Record<string, Transaction[]>>({});
+    const [allBudgetsData, setAllBudgetsData] = useState<Budget[]>([]);
+    const [allTransactionsData, setAllTransactionsData] = useState<Transaction[]>([]);
+    const [fiscalYears, setFiscalYears] = useState<number[]>([]);
+    const [selectedYear, setSelectedYear] = useState<number | "all">("all");
     const [expandedBudgets, setExpandedBudgets] = useState<Record<string, boolean>>({});
+    
     const toggleExpand = (budgetId: string) =>
         setExpandedBudgets(prev => ({ ...prev, [budgetId]: !prev[budgetId] }));
 
-
     useEffect(() => {
+        const budgets = getBudgets();
+        const transactions = getTransactions();
+        
+        // 年度の一覧を取得（降順）
+        const years = Array.from(new Set(budgets.map(b => b.fiscalYear).filter(Boolean))).sort((a, b) => b - a);
+
+        setAllBudgetsData(budgets);
+        setAllTransactionsData(transactions);
+        setFiscalYears(years);
+        
+        // デフォルトで最新の年度を選択する（なければすべて）
+        if (years.length > 0) {
+            setSelectedYear(years[0]);
+        }
+        
         setMounted(true);
-
-        const load = () => {
-            const budgets = getBudgets();
-            const transactions = getTransactions();
-
-            // Calculate summaries
-            const s: BudgetSummary[] = budgets.map(b => {
-                const bTxs = transactions.filter(t => t.budgetId === b.id);
-                const categories = ALL_CATEGORIES.map(cat => {
-                    const allocated = b.allocations[cat] || 0;
-                    const spent = bTxs.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
-                    return { category: cat, allocated, spent, remaining: allocated - spent };
-                });
-                const totalAllocated = categories.reduce((sum, c) => sum + c.allocated, 0);
-                const totalSpent = categories.reduce((sum, c) => sum + c.spent, 0);
-                return {
-                    budget: b,
-                    categories,
-                    totalAllocated,
-                    totalSpent,
-                    totalRemaining: totalAllocated - totalSpent
-                };
-            });
-
-            setSummaries(s);
-            setTotalAllocated(s.reduce((sum, item) => sum + item.totalAllocated, 0));
-            setTotalSpent(s.reduce((sum, item) => sum + item.totalSpent, 0));
-            setBudgetCount(budgets.length);
-            setTxCount(transactions.length);
-            setAllBudgets(budgets.map(b => ({ id: b.id, name: b.name, jCode: b.jCode })));
-
-            // Recent transactions (newest 5)
-            const sorted = [...transactions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            setRecentTransactions(sorted.slice(0, 5));
-
-            // Group transactions by budgetId (sorted by date desc)
-            const byBudget: Record<string, Transaction[]> = {};
-            for (const tx of sorted) {
-                if (!byBudget[tx.budgetId]) byBudget[tx.budgetId] = [];
-                byBudget[tx.budgetId].push(tx);
-            }
-            setTxByBudget(byBudget);
-        };
-        load();
     }, []);
 
-
-
-    const getBudgetName = (id: string) => allBudgets.find(b => b.id === id)?.name || "未割当";
+    const getBudgetName = (id: string) => allBudgetsData.find(b => b.id === id)?.name || "未割当";
 
     if (!mounted) {
         return (
@@ -249,6 +214,29 @@ function Dashboard() {
     const pct = (spent: number, alloc: number) =>
         alloc > 0 ? Math.min(Math.round((spent / alloc) * 100), 999) : 0;
 
+    // 選択された年度に基づいてデータを絞り込む
+    const filteredBudgets = selectedYear === "all" ? allBudgetsData : allBudgetsData.filter(b => b.fiscalYear === selectedYear);
+    
+    const summaries: BudgetSummary[] = filteredBudgets.map(b => {
+        const bTxs = allTransactionsData.filter(t => t.budgetId === b.id);
+        const categories = ALL_CATEGORIES.map(cat => {
+            const allocated = b.allocations[cat] || 0;
+            const spent = bTxs.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
+            return { category: cat, allocated, spent, remaining: allocated - spent };
+        });
+        const totalAllocated = categories.reduce((sum, c) => sum + c.allocated, 0);
+        const totalSpent = categories.reduce((sum, c) => sum + c.spent, 0);
+        return {
+            budget: b,
+            categories,
+            totalAllocated,
+            totalSpent,
+            totalRemaining: totalAllocated - totalSpent
+        };
+    });
+
+    const totalAllocated = summaries.reduce((sum, item) => sum + item.totalAllocated, 0);
+    const totalSpent = summaries.reduce((sum, item) => sum + item.totalSpent, 0);
     const totalRemaining = totalAllocated - totalSpent;
 
     const activeOverallCats = ALL_CATEGORIES.map(cat => {
@@ -262,11 +250,43 @@ function Dashboard() {
         return { category: cat, allocated, spent, remaining: allocated - spent, hasDefinedAlloc };
     }).filter(c => c.hasDefinedAlloc || c.spent > 0);
 
+    // Group transactions by budgetId (sorted by date desc) for the accordion
+    const relevantTxIds = new Set(filteredBudgets.map(b => b.id));
+    const relevantTxs = selectedYear === "all" ? allTransactionsData : allTransactionsData.filter(t => relevantTxIds.has(t.budgetId));
+    const txByBudget: Record<string, Transaction[]> = {};
+    for (const tx of relevantTxs) {
+        if (!txByBudget[tx.budgetId]) txByBudget[tx.budgetId] = [];
+        txByBudget[tx.budgetId].push(tx);
+    }
+    for (const k of Object.keys(txByBudget)) {
+        txByBudget[k].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
     return (
         <div className="animate-fade-in">
             <div className="page-header">
-                <h1 className="page-title">ダッシュボード</h1>
-                <p className="page-subtitle">研究費予算の概要</p>
+                <div>
+                    <h1 className="page-title">ダッシュボード</h1>
+                    <p className="page-subtitle">研究費予算の概要</p>
+                </div>
+                {/* 年度の切り替えタブ */}
+                {fiscalYears.length > 0 && (
+                    <div className="mt-4 sm:mt-0 flex gap-1 bg-white p-1 rounded-xl border border-gray-200">
+                        {fiscalYears.map(year => (
+                            <button
+                                key={year}
+                                onClick={() => setSelectedYear(year)}
+                                className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${
+                                    selectedYear === year
+                                        ? "bg-brand-600 text-white shadow-sm"
+                                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                }`}
+                            >
+                                {year}年度
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="p-4 md:p-6 space-y-6">
