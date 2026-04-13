@@ -270,22 +270,12 @@ function Dashboard() {
 
     return (
         <div className="animate-fade-in">
-            <div className="page-header">
+            <div className="page-header flex-row items-center justify-between">
                 <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="page-title">ダッシュボード</h1>
-                        {selectedYear === currentFiscalYear && (
-                            <span className="bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold px-2 py-0.5 rounded-full inline-flex items-center shadow-sm">
-                                今年度
-                            </span>
-                        )}
-                    </div>
-                    <p className="page-subtitle">
-                        {selectedYear === "all" ? "すべての研究費予算の概要" : `${selectedYear}年度の研究費予算の概要`}
-                    </p>
+                    <h1 className="page-title">ダッシュボード</h1>
                 </div>
-                {/* 年度の切り替えタブ */}
-                {fiscalYears.length > 0 && (
+                {/* 年度の切り替えタブ: 複数年度が存在する場合のみ表示 */}
+                {fiscalYears.length > 1 && (
                     <div className="mt-4 sm:mt-0 flex gap-1 bg-white p-1 rounded-xl border border-gray-200 flex-wrap">
                         {fiscalYears.map(year => (
                             <button
