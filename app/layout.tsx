@@ -62,11 +62,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         // Cloud sync → then load teacher
         const doSync = () => {
             initSync()
-                .then(({ pulled }) => {
-                    setSyncStatus("done");
-                    // クラウドからデータを取得した場合、ページを一度リロードして
-                    // 全コンポーネントが最新データを反映するようにする
-                    if (pulled && !sessionStorage.getItem("_cloud_synced")) {
+                .then(({ pulled, error }) => {
+                    setSyncStatus(error ? "error" : "done");
+                    
+                    if (error === "QUOTA_EXCEEDED") {
+                        if (!sessionStorage.getItem("_quota_alert_shown")) {
+                            alert("システムエラー：スマホの保存容量制限を超えたため、最新データをダウンロードできませんでした。\nPC等からログインし、不要なデータや添付ファイルを削除して容量を空けてください。");
+                            sessionStorage.setItem("_quota_alert_shown", "1");
+                        }
+                    } else if (pulled && !sessionStorage.getItem("_cloud_synced")) {
+                        // クラウドからデータを取得した場合、ページを一度リロードして
+                        // 全コンポーネントが最新データを反映するようにする
                         sessionStorage.setItem("_cloud_synced", "1");
                         window.location.reload();
                         return;

@@ -29,9 +29,9 @@ async function getClient(): Promise<SupabaseClient | null> {
 /**
  * クラウドからデータを取得して localStorage に書き込む
  */
-export async function pullFromCloud(): Promise<boolean> {
+export async function pullFromCloud(): Promise<{ success: boolean; hasData: boolean; error?: any }> {
     const supabase = await getClient();
-    if (!supabase) return false;
+    if (!supabase) return { success: false, hasData: false, error: "No Supabase client" };
     try {
         const { data, error } = await supabase
             .from("app_data")
@@ -39,20 +39,28 @@ export async function pullFromCloud(): Promise<boolean> {
 
         if (error) {
             console.error("[Sync] Pull error:", error.message);
-            return false;
+            return { success: false, hasData: false, error };
         }
 
         if (data && data.length > 0) {
             for (const row of data) {
-                localStorage.setItem(row.key, row.value);
+                try {
+                    localStorage.setItem(row.key, row.value);
+                } catch (setItemError: any) {
+                    console.error(`[Sync] Failed to setItem for ${row.key}:`, setItemError);
+                    if (setItemError.name === "QuotaExceededError" || (setItemError.message && setItemError.message.includes("quota"))) {
+                        // ブラウザ容量超過の場合は致命的なので、クラウドの有効なデータを上書きしないように失敗とする
+                        return { success: false, hasData: true, error: setItemError };
+                    }
+                }
             }
             console.log(`[Sync] Pulled ${data.length} keys from cloud`);
-            return true;
+            return { success: true, hasData: true };
         }
-        return false;
-    } catch (e) {
+        return { success: true, hasData: false };
+    } catch (e: any) {
         console.error("[Sync] Pull failed:", e);
-        return false;
+        return { success: false, hasData: false, error: e };
     }
 }
 
@@ -128,7 +136,7 @@ async function pushAllToCloud(): Promise<void> {
 /**
  * 初期同期
  */
-export async function initSync(): Promise<{ pulled: boolean }> {
+export async function initSync(): Promise<{ pulled: boolean; error?: string }> {
     const supabase = await getClient();
     if (!supabase) {
         console.log("[Sync] Supabase not available, skipping sync");
@@ -136,15 +144,31 @@ export async function initSync(): Promise<{ pulled: boolean }> {
         return { pulled: false };
     }
     try {
-        const hasCloud = await pullFromCloud();
-        if (!hasCloud) await pushAllToCloud();
+        const result = await pullFromCloud();
+        
+        // エラーによるPull失敗時は、絶対にスマホなどの空データ（または壊れたローカルデータ）をPushして上書きしてはいけない
+        if (!result.success) {
+            console.warn("[Sync] Pull failed, skipping push to prevent data loss.");
+            syncReady = true;
+            // 容量超過エラーがあった場合は上位に通知
+            if (result.error?.name === "QuotaExceededError" || (result.error?.message && result.error.message.includes("quota"))) {
+               return { pulled: false, error: "QUOTA_EXCEEDED" };
+            }
+            return { pulled: false };
+        }
+
+        // Pull は成功したが、クラウドが空だった場合のみローカルの初期データをPushする
+        if (result.success && !result.hasData) {
+            await pushAllToCloud();
+        }
+
         syncReady = true;
         console.log("[Sync] Ready");
-        return { pulled: hasCloud };
+        return { pulled: result.hasData };
     } catch (e) {
         console.error("[Sync] Init failed:", e);
         syncReady = true;
-        return { pulled: false };
+        return { pulled: false, error: "INIT_FAILED" };
     }
 }
 
