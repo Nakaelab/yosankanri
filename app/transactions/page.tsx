@@ -723,7 +723,7 @@ export default function TransactionsPage() {
                                                                         ? "bg-emerald-100 text-emerald-700"
                                                                         : "bg-orange-100 text-orange-700"
                                                                 }`}>
-                                                                    {tx.status === "confirmed" ? "確" : "仓"}
+                                                                    {tx.status === "confirmed" ? "確" : "仮"}
                                                                 </span>
                                                             )}
                                                         </div>
