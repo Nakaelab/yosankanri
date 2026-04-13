@@ -536,60 +536,68 @@ export default function ImportPage() {
         const isMultipleBudgets = validSplits.length > 1;
         const groupSplitId = (isMultipleBudgets || manualItems.length > 1) ? uuidv4() : undefined;
 
-        if (isMultipleBudgets) {
-            // 予算が複数に分割されている場合（全体の合算として扱う）
-            const combinedItemName = manualItems.length === 1 ? manualItems[0].itemName : `${manualItems[0].itemName} ほか${manualItems.length - 1}件`;
-            const combinedSpec = manualItems.length === 1 ? manualItems[0].specification : "";
-            validSplits.forEach((split, idx) => {
-                const txId = idx === 0 ? firstTxId : uuidv4();
-                saveTransaction({
-                    id: txId,
-                    budgetId: split.budgetId,
-                    slipNumber,
-                    orderDate: orderDate || undefined,
-                    date: dateUnknown ? "未定" : date,
-                    itemName: combinedItemName,
-                    specification: combinedSpec,
-                    payee,
-                    unitPrice: split.amount,
-                    quantity: 1,
-                    amount: split.amount,
-                    category,
-                    memo,
-                    attachmentCount: idx === 0 ? uploadedMeta.length : 0,
-                    attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
-                    ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
-                    splitGroupId: groupSplitId,
-                    createdAt: new Date().toISOString(),
+        try {
+            if (isMultipleBudgets) {
+                // 予算が複数に分割されている場合（全体の合算として扱う）
+                const combinedItemName = manualItems.length === 1 ? manualItems[0].itemName : `${manualItems[0].itemName} ほか${manualItems.length - 1}件`;
+                const combinedSpec = manualItems.length === 1 ? manualItems[0].specification : "";
+                validSplits.forEach((split, idx) => {
+                    const txId = idx === 0 ? firstTxId : uuidv4();
+                    saveTransaction({
+                        id: txId,
+                        budgetId: split.budgetId,
+                        slipNumber,
+                        orderDate: orderDate || undefined,
+                        date: dateUnknown ? "未定" : date,
+                        itemName: combinedItemName,
+                        specification: combinedSpec,
+                        payee,
+                        unitPrice: split.amount,
+                        quantity: 1,
+                        amount: split.amount,
+                        category,
+                        memo,
+                        attachmentCount: idx === 0 ? uploadedMeta.length : 0,
+                        attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
+                        ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
+                        splitGroupId: groupSplitId,
+                        createdAt: new Date().toISOString(),
+                    });
                 });
-            });
-        } else {
-            // 予算が1つの場合、各品目を個別のTransactionとして保存
-            manualItems.forEach((item, idx) => {
-                const txId = idx === 0 ? firstTxId : uuidv4();
-                saveTransaction({
-                    id: txId,
-                    budgetId: validSplits[0].budgetId,
-                    slipNumber,
-                    orderDate: orderDate || undefined,
-                    date: dateUnknown ? "未定" : date,
-                    itemName: item.itemName,
-                    specification: item.specification,
-                    payee,
-                    unitPrice: item.unitPrice,
-                    quantity: item.quantity,
-                    amount: item.amount,
-                    category,
-                    memo,
-                    attachmentCount: idx === 0 ? uploadedMeta.length : 0,
-                    attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
-                    ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
-                    createdAt: new Date().toISOString(),
+            } else {
+                // 予算が1つの場合、各品目を個別のTransactionとして保存
+                manualItems.forEach((item, idx) => {
+                    const txId = idx === 0 ? firstTxId : uuidv4();
+                    saveTransaction({
+                        id: txId,
+                        budgetId: validSplits[0].budgetId,
+                        slipNumber,
+                        orderDate: orderDate || undefined,
+                        date: dateUnknown ? "未定" : date,
+                        itemName: item.itemName,
+                        specification: item.specification,
+                        payee,
+                        unitPrice: item.unitPrice,
+                        quantity: item.quantity,
+                        amount: item.amount,
+                        category,
+                        memo,
+                        attachmentCount: idx === 0 ? uploadedMeta.length : 0,
+                        attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
+                        ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
+                        createdAt: new Date().toISOString(),
+                    });
                 });
-            });
+            }
+            router.push("/transactions");
+        } catch (e: any) {
+            console.error("Save error:", e);
+            if (e.name === "QuotaExceededError" || (e.message && e.message.includes("quota"))) {
+                alert("ブラウザのデータ保存容量（約5MB）の上限に達しました。添付ファイルが多すぎる可能性があります。\n不要なデータや添付ファイルを削除してから再度お試しください。");
+            } else {
+                alert("データの保存中にエラーが発生しました:\n" + (e.message || String(e)));
+            }
         }
-
-        router.push("/transactions");
     };
 
     // ---- Labor batch helpers ----
@@ -620,53 +628,61 @@ export default function ImportPage() {
         const tid = getCurrentTeacherId();
         const teacherId = tid === "default" ? undefined : tid;
 
-        for (const row of validRows) {
-            const baseTxId = uuidv4();
-            saveTransaction({
-                id: baseTxId,
-                budgetId: laborBudgetId,
-                slipNumber: "",
-                date: laborDate,
-                itemName: row.itemName,
-                specification: row.payee, // 対象者名
-                payee: row.payee,
-                unitPrice: row.amount,
-                quantity: 1,
-                amount: row.amount,
-                category: "labor",
-                status: row.status,
-                memo: row.memo,
-                attachmentCount: 0,
-                createdAt: new Date().toISOString(),
-            });
+        try {
+            for (const row of validRows) {
+                const baseTxId = uuidv4();
+                saveTransaction({
+                    id: baseTxId,
+                    budgetId: laborBudgetId,
+                    slipNumber: "",
+                    date: laborDate,
+                    itemName: row.itemName,
+                    specification: row.payee, // 対象者名
+                    payee: row.payee,
+                    unitPrice: row.amount,
+                    quantity: 1,
+                    amount: row.amount,
+                    category: "labor",
+                    status: row.status,
+                    memo: row.memo,
+                    attachmentCount: 0,
+                    createdAt: new Date().toISOString(),
+                });
 
-            // 各行ごとの消費税を個別に登録
-            if (laborIncludeTax) {
-                const taxAmount = Math.floor(row.amount * TAX_RATE);
-                if (taxAmount > 0) {
-                    saveTransaction({
-                        id: uuidv4(),
-                        budgetId: laborBudgetId,
-                        slipNumber: "",
-                        date: laborDate,
-                        itemName: `消費税 (10%)`,
-                        specification: row.payee, // 誰の消費税かわかるように対象者名をセット
-                        payee: row.payee,
-                        unitPrice: taxAmount,
-                        quantity: 1,
-                        amount: taxAmount,
-                        category: "labor",
-                        status: row.status,
-                        memo: row.memo,
-                        attachmentCount: 0,
-                        // ソート時に本体のすぐ下に来るようにcreatedAtを少しだけ遅らせる
-                        createdAt: new Date(Date.now() + 1).toISOString(),
-                    });
+                // 各行ごとの消費税を個別に登録
+                if (laborIncludeTax) {
+                    const taxAmount = Math.floor(row.amount * TAX_RATE);
+                    if (taxAmount > 0) {
+                        saveTransaction({
+                            id: uuidv4(),
+                            budgetId: laborBudgetId,
+                            slipNumber: "",
+                            date: laborDate,
+                            itemName: `消費税 (10%)`,
+                            specification: row.payee, // 誰の消費税かわかるように対象者名をセット
+                            payee: row.payee,
+                            unitPrice: taxAmount,
+                            quantity: 1,
+                            amount: taxAmount,
+                            category: "labor",
+                            status: row.status,
+                            memo: row.memo,
+                            attachmentCount: 0,
+                            // ソート時に本体のすぐ下に来るようにcreatedAtを少しだけ遅らせる
+                            createdAt: new Date(Date.now() + 1).toISOString(),
+                        });
+                    }
                 }
             }
+            router.push("/transactions");
+        } catch (e: any) {
+            console.error("Save error:", e);
+            if (e.name === "QuotaExceededError" || (e.message && e.message.includes("quota"))) {
+                alert("ブラウザのデータ保存容量（約5MB）の上限に達しました。\n不要なデータや古い添付ファイルを削除してから再度お試しください。");
+            } else {
+                alert("データの保存中にエラーが発生しました:\n" + (e.message || String(e)));
+            }
         }
-
-        router.push("/transactions");
     };
 
     // ---- Reset ----
@@ -728,13 +744,22 @@ export default function ImportPage() {
             ...editForm,
         };
 
-        saveTransaction(updated);
-        setEditingTx(null);
-        // Refresh existing transactions
-        const txData = getTransactions();
-        setExistingTransactions(
-            txData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        );
+        try {
+            saveTransaction(updated);
+            setEditingTx(null);
+            // Refresh existing transactions
+            const txData = getTransactions();
+            setExistingTransactions(
+                txData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            );
+        } catch (e: any) {
+            console.error("Save error:", e);
+            if (e.name === "QuotaExceededError" || (e.message && e.message.includes("quota"))) {
+                alert("ブラウザのデータ保存容量（約5MB）の上限に達しました。添付ファイルが多すぎる可能性があります。\n不要なデータや添付ファイルを削除してから再度お試しください。");
+            } else {
+                alert("データの保存中にエラーが発生しました:\n" + (e.message || String(e)));
+            }
+        }
     };
 
     const handleCancelEdit = () => {

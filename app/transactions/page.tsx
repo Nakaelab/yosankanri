@@ -217,49 +217,59 @@ export default function TransactionsPage() {
         const keptAttachments = (editingTx.attachments || []).filter(a => !editRemovedIds.includes(a.id));
         const allAttachments = [...keptAttachments, ...newMetas];
 
-        // 既存トランザクション（グループ）を削除してから再保存
-        if (editingTx.splitGroupId) {
-            deleteTransactionsBySplitGroup(editingTx.splitGroupId);
-        } else {
-            deleteTransaction(editingTx.id);
+        try {
+            // 既存トランザクション（グループ）を削除してから再保存
+            if (editingTx.splitGroupId) {
+                deleteTransactionsBySplitGroup(editingTx.splitGroupId);
+            } else {
+                deleteTransaction(editingTx.id);
+            }
+
+            const teacherId = getCurrentTeacherId() || undefined;
+            const isMulti = splitRows.length > 1;
+            const groupId = isMulti ? (editingTx.splitGroupId || uuidv4()) : undefined;
+            const now = new Date().toISOString();
+
+            splitRows.forEach((row, idx) => {
+                const tx: Transaction = {
+                    id: idx === 0 ? editingTx.id : uuidv4(),
+                    teacherId,
+                    budgetId: row.budgetId,
+                    slipNumber: editBase.slipNumber,
+                    orderDate: editBase.orderDate || undefined,
+                    date: editBase.date,
+                    itemName: editBase.itemName,
+                    specification: editBase.specification,
+                    payee: editBase.payee,
+                    unitPrice: editBase.category === "labor" ? row.amount : editBase.unitPrice,
+                    quantity: editBase.category === "labor" ? 1 : editBase.quantity,
+                    amount: row.amount,
+                    category: editBase.category,
+                    status: editBase.status,
+                    memo: editBase.memo,
+                    attachmentCount: idx === 0 ? allAttachments.length : 0,
+                    attachments: idx === 0 && allAttachments.length > 0 ? allAttachments : undefined,
+                    ocrRawText: editingTx.ocrRawText,
+                    splitGroupId: groupId,
+                    createdAt: idx === 0 ? editingTx.createdAt : now,
+                };
+                saveTransaction(tx);
+            });
+
+            setEditingTx(null);
+            setEditNewFiles([]);
+            setEditRemovedIds([]);
+            reload();
+        } catch (e: any) {
+            console.error("Save error:", e);
+            if (e.name === "QuotaExceededError" || e.message.includes("quota")) {
+                alert("ブラウザのデータ保存容量（約5MB）の上限に達しました。添付ファイルが多すぎる可能性があります。\n不要なデータや添付ファイルを削除してから再度お試しください。");
+            } else {
+                alert("データの保存中にエラーが発生しました:\n" + (e.message || String(e)));
+            }
+        } finally {
+            setEditUploading(false);
         }
-
-        const teacherId = getCurrentTeacherId() || undefined;
-        const isMulti = splitRows.length > 1;
-        const groupId = isMulti ? (editingTx.splitGroupId || uuidv4()) : undefined;
-        const now = new Date().toISOString();
-
-        splitRows.forEach((row, idx) => {
-            const tx: Transaction = {
-                id: idx === 0 ? editingTx.id : uuidv4(),
-                teacherId,
-                budgetId: row.budgetId,
-                slipNumber: editBase.slipNumber,
-                orderDate: editBase.orderDate || undefined,
-                date: editBase.date,
-                itemName: editBase.itemName,
-                specification: editBase.specification,
-                payee: editBase.payee,
-                unitPrice: editBase.category === "labor" ? row.amount : editBase.unitPrice,
-                quantity: editBase.category === "labor" ? 1 : editBase.quantity,
-                amount: row.amount,
-                category: editBase.category,
-                status: editBase.status,
-                memo: editBase.memo,
-                attachmentCount: idx === 0 ? allAttachments.length : 0,
-                attachments: idx === 0 && allAttachments.length > 0 ? allAttachments : undefined,
-                ocrRawText: editingTx.ocrRawText,
-                splitGroupId: groupId,
-                createdAt: idx === 0 ? editingTx.createdAt : now,
-            };
-            saveTransaction(tx);
-        });
-
-        setEditUploading(false);
-        setEditingTx(null);
-        setEditNewFiles([]);
-        setEditRemovedIds([]);
-        reload();
     };
 
     const handleCancelEdit = () => { setEditingTx(null); setEditNewFiles([]); setEditRemovedIds([]); };
