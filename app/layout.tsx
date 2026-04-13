@@ -60,27 +60,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         window.addEventListener("resize", checkMobile);
 
         // Cloud sync → then load teacher
-        initSync()
-            .then(({ pulled }) => {
-                setSyncStatus("done");
-                // クラウドからデータを取得した場合、ページを一度リロードして
-                // 全コンポーネントが最新データを反映するようにする
-                if (pulled && !sessionStorage.getItem("_cloud_synced")) {
-                    sessionStorage.setItem("_cloud_synced", "1");
-                    window.location.reload();
-                    return;
-                }
-                const t = getCurrentTeacher();
-                setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
-            })
-            .catch(() => {
-                setSyncStatus("error");
-                // オフラインでもローカルデータで動作
-                const t = getCurrentTeacher();
-                setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
-            });
+        const doSync = () => {
+            initSync()
+                .then(({ pulled }) => {
+                    setSyncStatus("done");
+                    // クラウドからデータを取得した場合、ページを一度リロードして
+                    // 全コンポーネントが最新データを反映するようにする
+                    if (pulled && !sessionStorage.getItem("_cloud_synced")) {
+                        sessionStorage.setItem("_cloud_synced", "1");
+                        window.location.reload();
+                        return;
+                    }
+                    const t = getCurrentTeacher();
+                    setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+                })
+                .catch(() => {
+                    setSyncStatus("error");
+                    const t = getCurrentTeacher();
+                    setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+                });
+        };
 
-        return () => window.removeEventListener("resize", checkMobile);
+        doSync();
+
+        // スマホなどでバックグラウンドから復帰した際に同期を再試行する
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                setSyncStatus("syncing");
+                // flagを消して、pullがあったら確実にリロードさせる
+                sessionStorage.removeItem("_cloud_synced");
+                doSync();
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener("resize", checkMobile);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
     }, []);
 
     // Close sidebar on route change (mobile)
