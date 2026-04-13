@@ -177,6 +177,10 @@ function Dashboard() {
     const [selectedYear, setSelectedYear] = useState<number | "all">("all");
     const [expandedBudgets, setExpandedBudgets] = useState<Record<string, boolean>>({});
     
+    // 今年度を計算 (4月始まり)
+    const today = new Date();
+    const currentFiscalYear = today.getMonth() < 3 ? today.getFullYear() - 1 : today.getFullYear();
+
     const toggleExpand = (budgetId: string) =>
         setExpandedBudgets(prev => ({ ...prev, [budgetId]: !prev[budgetId] }));
 
@@ -191,8 +195,10 @@ function Dashboard() {
         setAllTransactionsData(transactions);
         setFiscalYears(years);
         
-        // デフォルトで最新の年度を選択する（なければすべて）
-        if (years.length > 0) {
+        // デフォルトで今年度が存在すれば今年度を選択、なければ最新の年度
+        if (years.includes(currentFiscalYear)) {
+            setSelectedYear(currentFiscalYear);
+        } else if (years.length > 0) {
             setSelectedYear(years[0]);
         }
         
@@ -266,23 +272,43 @@ function Dashboard() {
         <div className="animate-fade-in">
             <div className="page-header">
                 <div>
-                    <h1 className="page-title">ダッシュボード</h1>
-                    <p className="page-subtitle">研究費予算の概要</p>
+                    <div className="flex items-center gap-3">
+                        <h1 className="page-title">ダッシュボード</h1>
+                        {selectedYear === currentFiscalYear && (
+                            <span className="bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold px-2 py-0.5 rounded-full inline-flex items-center shadow-sm">
+                                今年度
+                            </span>
+                        )}
+                    </div>
+                    <p className="page-subtitle">
+                        {selectedYear === "all" ? "すべての研究費予算の概要" : `${selectedYear}年度の研究費予算の概要`}
+                    </p>
                 </div>
                 {/* 年度の切り替えタブ */}
                 {fiscalYears.length > 0 && (
-                    <div className="mt-4 sm:mt-0 flex gap-1 bg-white p-1 rounded-xl border border-gray-200">
+                    <div className="mt-4 sm:mt-0 flex gap-1 bg-white p-1 rounded-xl border border-gray-200 flex-wrap">
                         {fiscalYears.map(year => (
                             <button
                                 key={year}
                                 onClick={() => setSelectedYear(year)}
-                                className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${
+                                className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors flex items-center gap-1.5 ${
                                     selectedYear === year
                                         ? "bg-brand-600 text-white shadow-sm"
                                         : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                                 }`}
                             >
-                                {year}年度
+                                <span>{year}年度</span>
+                                {year === currentFiscalYear && (
+                                    <span
+                                        className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                            selectedYear === year
+                                                ? "bg-white text-brand-600 shadow-sm"
+                                                : "bg-gray-100 text-gray-500"
+                                        }`}
+                                    >
+                                        今年度
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
