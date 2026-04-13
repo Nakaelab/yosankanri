@@ -128,21 +128,23 @@ async function pushAllToCloud(): Promise<void> {
 /**
  * 初期同期
  */
-export async function initSync(): Promise<void> {
+export async function initSync(): Promise<{ pulled: boolean }> {
     const supabase = await getClient();
     if (!supabase) {
         console.log("[Sync] Supabase not available, skipping sync");
         syncReady = true;
-        return;
+        return { pulled: false };
     }
     try {
         const hasCloud = await pullFromCloud();
         if (!hasCloud) await pushAllToCloud();
         syncReady = true;
         console.log("[Sync] Ready");
+        return { pulled: hasCloud };
     } catch (e) {
         console.error("[Sync] Init failed:", e);
         syncReady = true;
+        return { pulled: false };
     }
 }
 

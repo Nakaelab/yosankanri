@@ -61,8 +61,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         // Cloud sync → then load teacher
         initSync()
-            .then(() => {
+            .then(({ pulled }) => {
                 setSyncStatus("done");
+                // クラウドからデータを取得した場合、ページを一度リロードして
+                // 全コンポーネントが最新データを反映するようにする
+                if (pulled && !sessionStorage.getItem("_cloud_synced")) {
+                    sessionStorage.setItem("_cloud_synced", "1");
+                    window.location.reload();
+                    return;
+                }
                 const t = getCurrentTeacher();
                 setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
             })
