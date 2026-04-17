@@ -59,6 +59,39 @@ export default function TransactionsPage() {
     const [previewAttachments, setPreviewAttachments] = useState<AttachmentMeta[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [previewName, setPreviewName] = useState("");
+    const [previewMeta, setPreviewMeta] = useState<AttachmentMeta | null>(null);
+
+    // Create a blob URL for Base64 data, as Chrome blocks opening Data URIs in new tabs
+    // and large base64 strings can break iframes.
+    const [objectUrl, setObjectUrl] = useState<string | null>(null);
+    useEffect(() => {
+        if (!previewUrl) {
+            setObjectUrl(null);
+            return;
+        }
+        if (previewUrl.startsWith("data:")) {
+            try {
+                const parts = previewUrl.split(",");
+                const match = parts[0].match(/:(.*?);/);
+                const mime = match ? match[1] : "application/octet-stream";
+                const bstr = atob(parts[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                const blob = new Blob([u8arr], { type: mime });
+                const url = URL.createObjectURL(blob);
+                setObjectUrl(url);
+                return () => URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error("Failed to parse base64 Data URI", e);
+                setObjectUrl(previewUrl);
+            }
+        } else {
+            setObjectUrl(previewUrl);
+        }
+    }, [previewUrl]);
 
     // Edit modal
     const [editingTx, setEditingTx] = useState<Transaction | null>(null);  // 代表トランザクション
@@ -288,8 +321,8 @@ export default function TransactionsPage() {
         setPreviewAttachments(metas);
         if (metas.length > 0) showAttachment(metas[0]);
     };
-    const showAttachment = (meta: AttachmentMeta) => { setPreviewUrl(meta.storageUrl || null); setPreviewName(meta.fileName); };
-    const closePreview = () => { setPreviewTx(null); setPreviewAttachments([]); setPreviewUrl(null); setPreviewName(""); };
+    const showAttachment = (meta: AttachmentMeta) => { setPreviewMeta(meta); setPreviewUrl(meta.storageUrl || null); setPreviewName(meta.fileName); };
+    const closePreview = () => { setPreviewTx(null); setPreviewAttachments([]); setPreviewUrl(null); setPreviewName(""); setPreviewMeta(null); };
 
     // ===== ユーティリティ =====
     const fmt = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
@@ -784,13 +817,13 @@ export default function TransactionsPage() {
                             <p className="text-gray-400 text-[11px]">{previewTx.itemName} — {previewTx.date}</p>
                         </div>
                         <div className="flex items-center gap-2 ml-4 shrink-0">
-                            {previewUrl && (
+                            {objectUrl && (
                                 <>
-                                    <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg">
+                                    <a href={objectUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg">
                                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                                         別タブ
                                     </a>
-                                    <a href={previewUrl} download={previewName} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs rounded-lg">
+                                    <a href={objectUrl} download={previewName} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs rounded-lg">
                                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                         DL
                                     </a>
@@ -812,12 +845,12 @@ export default function TransactionsPage() {
                         </div>
                     )}
                     <div className="flex-1 relative" style={{ minHeight: 0 }} onClick={(e) => e.stopPropagation()}>
-                        {previewUrl ? (
-                            previewName.toLowerCase().endsWith(".pdf") ? (
-                                <iframe src={previewUrl} title={previewName} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
+                        {objectUrl ? (
+                            (previewName.toLowerCase().endsWith(".pdf") || previewMeta?.mimeType === "application/pdf") ? (
+                                <iframe src={objectUrl} title={previewName} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
                             ) : (
                                 <div className="absolute inset-0 flex items-center justify-center p-4">
-                                    <img src={previewUrl} alt={previewName} className="max-w-full max-h-full object-contain" />
+                                    <img src={objectUrl} alt={previewName} className="max-w-full max-h-full object-contain" />
                                 </div>
                             )
                         ) : (
