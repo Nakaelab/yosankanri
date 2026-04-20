@@ -192,8 +192,14 @@ export default function ImportPage() {
     };
 
     // ---- Budget Splits helpers ----
+    const splitTotal = budgetSplits.filter(s => s.budgetId).reduce((s, v) => s + v.amount, 0);
+    const splitRemainder = manualTotalAmount - splitTotal;
+
     const addBudgetSplit = () => {
-        setBudgetSplits(prev => [...prev, { id: uuidv4(), budgetId: "", amount: 0 }]);
+        // 残余金額を新しい行に自動セット（残余があれば）
+        const remainder = manualTotalAmount - budgetSplits.filter(s => s.budgetId).reduce((s, v) => s + v.amount, 0);
+        const autoAmount = remainder > 0 ? remainder : 0;
+        setBudgetSplits(prev => [...prev, { id: uuidv4(), budgetId: "", amount: autoAmount }]);
     };
 
     const removeBudgetSplit = (id: string) => {
@@ -203,9 +209,6 @@ export default function ImportPage() {
     const updateBudgetSplit = (id: string, field: keyof BudgetSplit, value: string | number) => {
         setBudgetSplits(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
-
-    const splitTotal = budgetSplits.filter(s => s.budgetId).reduce((s, v) => s + v.amount, 0);
-    const splitRemainder = manualTotalAmount - splitTotal;
 
     // ---- File upload (OCR/PDF) ----
     const handleFile = useCallback((file: File) => {

@@ -201,13 +201,29 @@ export default function TransactionsPage() {
     };
 
     // ===== 配分行操作 =====
-    const addSplitRow = () => setSplitRows(prev => [...prev, { key: uuidv4(), budgetId: "", amount: 0 }]);
+    const addSplitRow = () => {
+        // 残余金額を新しい行に自動セット
+        const currentTotal = splitRows.reduce((s, r) => s + (r.amount || 0), 0);
+        const isLaborMode = editBase.category === "labor";
+        const base = !isLaborMode && editBase.unitPrice > 0 && editBase.quantity > 0
+            ? editBase.unitPrice * editBase.quantity
+            : currentTotal; // 人件費の場合は現在の合計を基準に
+        const remainder = base - currentTotal;
+        const autoAmount = remainder > 0 ? remainder : 0;
+        setSplitRows(prev => [...prev, { key: uuidv4(), budgetId: "", amount: autoAmount }]);
+    };
     const removeSplitRow = (key: string) => setSplitRows(prev => prev.filter(r => r.key !== key));
     const updateSplitRow = (key: string, patch: Partial<SplitRow>) =>
         setSplitRows(prev => prev.map(r => r.key === key ? { ...r, ...patch } : r));
 
     // ===== 合計金額 =====
     const totalSplitAmount = splitRows.reduce((s, r) => s + (r.amount || 0), 0);
+    
+    // ===== 非人件費の想定合計（単価×数量） =====
+    const expectedTotal = editBase.category !== "labor" && editBase.unitPrice > 0 && editBase.quantity > 0
+        ? editBase.unitPrice * editBase.quantity
+        : 0;
+    const splitRemainder = expectedTotal > 0 ? expectedTotal - totalSplitAmount : 0;
 
     // ===== 金額自動計算（非人件費） =====
     useEffect(() => {
@@ -979,14 +995,27 @@ export default function TransactionsPage() {
                             <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2.5 space-y-2">
                                 <div className="flex items-center justify-between mb-1">
                                     <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide">予算配分</span>
-                                    <button
-                                        type="button"
-                                        onClick={addSplitRow}
-                                        className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-bold rounded-lg transition-colors"
-                                    >
-                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                                        予算を追加
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {!isLabor && expectedTotal > 0 && splitRows.length > 1 && (
+                                            <span className={`text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full ${
+                                                splitRemainder === 0 ? "bg-green-100 text-green-700" :
+                                                splitRemainder > 0 ? "bg-amber-100 text-amber-700" :
+                                                "bg-red-100 text-red-700"
+                                            }`}>
+                                                {splitRemainder === 0 ? "✓ 合計一致" :
+                                                 splitRemainder > 0 ? `残り ¥${splitRemainder.toLocaleString()}` :
+                                                 `超過 ¥${Math.abs(splitRemainder).toLocaleString()}`}
+                                            </span>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={addSplitRow}
+                                            className="flex items-center gap-1 px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-bold rounded-lg transition-colors"
+                                        >
+                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                            予算を追加
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {splitRows.map((row, idx) => (
@@ -1013,6 +1042,16 @@ export default function TransactionsPage() {
                                                 placeholder="0"
                                             />
                                         </div>
+                                        {!isLabor && expectedTotal > 0 && splitRemainder > 0 && row.amount === 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => updateSplitRow(row.key, { amount: splitRemainder })}
+                                                className="shrink-0 text-[9px] font-bold px-1.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors whitespace-nowrap"
+                                                title={`残余金額 ¥${splitRemainder.toLocaleString()} を入力`}
+                                            >
+                                                残余入力
+                                            </button>
+                                        )}
                                         {splitRows.length > 1 && (
                                             <button
                                                 type="button"
@@ -1028,9 +1067,16 @@ export default function TransactionsPage() {
                                 {/* 合計 */}
                                 <div className="flex justify-between items-center pt-1.5 border-t border-indigo-100 mt-1">
                                     <span className="text-[10px] text-indigo-600 font-bold">合計金額</span>
-                                    <span className="text-sm font-bold tabular-nums text-indigo-700">
-                                        {fmt(totalSplitAmount)}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        {!isLabor && expectedTotal > 0 && totalSplitAmount !== expectedTotal && (
+                                            <span className={`text-[10px] tabular-nums font-semibold ${totalSplitAmount > expectedTotal ? "text-red-500" : "text-amber-600"}`}>
+                                                {totalSplitAmount > expectedTotal ? `超過 ¥${(totalSplitAmount - expectedTotal).toLocaleString()}` : `不足 ¥${(expectedTotal - totalSplitAmount).toLocaleString()}`}
+                                            </span>
+                                        )}
+                                        <span className="text-sm font-bold tabular-nums text-indigo-700">
+                                            {fmt(totalSplitAmount)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
