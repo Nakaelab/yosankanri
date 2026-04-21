@@ -12,9 +12,9 @@ export type ExpenseCategory =
 /** 費目カテゴリの日本語ラベル */
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
     goods: "物品",
-    travel: "旅費(R)",
-    labor: "人件費(S)",
-    other: "その他(T)",
+    travel: "旅費",
+    labor: "人件費",
+    other: "その他",
 };
 
 /** 費目カテゴリのショートラベル */
