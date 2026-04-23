@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import LZString from "lz-string";
 
 // ==========================================
 // クラウド同期モジュール
@@ -45,7 +46,11 @@ export async function pullFromCloud(): Promise<{ success: boolean; hasData: bool
         if (data && data.length > 0) {
             for (const row of data) {
                 try {
-                    localStorage.setItem(row.key, row.value);
+                    let valToStore = row.value;
+                    if (row.key.includes("budget_app_transactions") || row.key.includes("budget_app_budgets")) {
+                        valToStore = "lz:" + LZString.compressToUTF16(row.value);
+                    }
+                    localStorage.setItem(row.key, valToStore);
                 } catch (setItemError: any) {
                     console.error(`[Sync] Failed to setItem for ${row.key}:`, setItemError);
                     if (setItemError.name === "QuotaExceededError" || (setItemError.message && setItemError.message.includes("quota"))) {
@@ -120,7 +125,13 @@ async function pushAllToCloud(): Promise<void> {
         const k = localStorage.key(i);
         if (k && k.startsWith("budget_app_")) {
             const v = localStorage.getItem(k);
-            if (v !== null) rows.push({ key: k, value: v, updated_at: new Date().toISOString() });
+            if (v !== null) {
+                let valToPush = v;
+                if (v.startsWith("lz:")) {
+                    valToPush = LZString.decompressFromUTF16(v.substring(3)) || v;
+                }
+                rows.push({ key: k, value: valToPush, updated_at: new Date().toISOString() });
+            }
         }
     }
     if (rows.length === 0) return;

@@ -4,6 +4,7 @@ import {
     Teacher,
 } from "./types";
 import { pushToCloud, deleteFromCloud } from "./cloud-sync";
+import LZString from "lz-string";
 
 // ==========================================
 // LocalStorage + Cloud Sync データ永続化
@@ -14,9 +15,27 @@ const BUDGETS_KEY = "budget_app_budgets_v2";
 const TEACHERS_KEY = "budget_app_teachers";
 const CURRENT_TEACHER_KEY = "budget_app_current_teacher";
 
+function getStorageItem(key: string): string | null {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    if (raw.startsWith("lz:")) {
+        return LZString.decompressFromUTF16(raw.substring(3)) || raw;
+    }
+    return raw;
+}
+
+function setStorageItem(key: string, value: string): void {
+    if (key.includes("budget_app_transactions") || key.includes("budget_app_budgets")) {
+        const compressed = "lz:" + LZString.compressToUTF16(value);
+        localStorage.setItem(key, compressed);
+    } else {
+        localStorage.setItem(key, value);
+    }
+}
+
 // ヘルパー: localStorage に書き込み + クラウドへ非同期プッシュ
 function setAndSync(key: string, value: string): void {
-    localStorage.setItem(key, value);
+    setStorageItem(key, value);
     pushToCloud(key, value);
 }
 
@@ -25,7 +44,7 @@ function setAndSync(key: string, value: string): void {
 export function getTeachers(): Teacher[] {
     if (typeof window === "undefined") return [];
     try {
-        const raw = localStorage.getItem(TEACHERS_KEY);
+        const raw = getStorageItem(TEACHERS_KEY);
         return raw ? JSON.parse(raw) : [];
     } catch {
         return [];
@@ -52,7 +71,7 @@ export function deleteTeacher(id: string): void {
 
 export function getCurrentTeacherId(): string | null {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem(CURRENT_TEACHER_KEY);
+    return getStorageItem(CURRENT_TEACHER_KEY);
 }
 
 export function setCurrentTeacherId(id: string | null): void {
@@ -87,7 +106,7 @@ export function getTransactions(): Transaction[] {
     if (typeof window === "undefined") return [];
     try {
         const key = getStorageKey(TRANSACTIONS_KEY);
-        const raw = localStorage.getItem(key);
+        const raw = getStorageItem(key);
         return raw ? JSON.parse(raw) : [];
     } catch {
         return [];
@@ -131,7 +150,7 @@ export function getBudgets(): Budget[] {
     if (typeof window === "undefined") return [];
     try {
         const key = getStorageKey(BUDGETS_KEY);
-        const raw = localStorage.getItem(key);
+        const raw = getStorageItem(key);
         const budgets: Budget[] = raw ? JSON.parse(raw) : [];
         // sortOrder がある場合はそれで並べ替え、なければ名前順
         return budgets.sort((a, b) => {
