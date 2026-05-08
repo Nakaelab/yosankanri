@@ -7,6 +7,7 @@ import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta, 
 import { getTransactions, deleteTransaction, deleteTransactionsBySplitGroup, getBudgets, saveTransaction } from "@/lib/storage";
 import { getCurrentTeacherId } from "@/lib/storage";
 import { formatFileSize } from "@/lib/attachments";
+import * as XLSX from "xlsx";
 
 // ===== 型定義 =====
 
@@ -463,16 +464,78 @@ export default function TransactionsPage() {
         return allTxs.filter(t => t.splitGroupId === tx.splitGroupId).reduce((s, t) => s + t.amount, 0);
     };
 
+    const downloadExcel = () => {
+        const wb = XLSX.utils.book_new();
+
+        const createRowData = (txs: Transaction[]) => {
+            return txs.map(tx => {
+                const totalAmt = getTxTotalAmount(tx);
+                const isTax = tx.category === "labor" && tx.itemName.includes("消費税");
+                return {
+                    "No": tx.slipNumber || "",
+                    "納品日": tx.date || "",
+                    "品名": tx.itemName || "",
+                    "規格等": tx.specification || "",
+                    "支払先": tx.payee || "",
+                    "単価": tx.unitPrice > 0 ? tx.unitPrice : 0,
+                    "数量": tx.quantity || 0,
+                    "支払金額": totalAmt || 0,
+                    "予算配分額": tx.amount || 0,
+                    "費目": isTax ? "人事(税)" : (CATEGORY_LABELS[tx.category] || ""),
+                    "予算": getTxBudgetDisplay(tx),
+                    "メモ": tx.memo || "",
+                };
+            });
+        };
+
+        const allSheetData = createRowData(allTxs);
+        const wsAll = XLSX.utils.json_to_sheet(allSheetData);
+        XLSX.utils.book_append_sheet(wb, wsAll, "すべての執行");
+
+        budgets.forEach(b => {
+            const bTxs = allTxs.filter(t => t.budgetId === b.id);
+            if (bTxs.length > 0) {
+                const bData = createRowData(bTxs);
+                const wsB = XLSX.utils.json_to_sheet(bData);
+                let sheetName = b.name.replace(/[\\/?*\[\]]/g, "_").substring(0, 31);
+                // Sheet names must be unique and <= 31 chars
+                if (wb.SheetNames.includes(sheetName)) {
+                    sheetName = sheetName.substring(0, 28) + "_" + b.id.substring(0, 2);
+                }
+                XLSX.utils.book_append_sheet(wb, wsB, sheetName);
+            }
+        });
+
+        const budgetIds = new Set(budgets.map(b => b.id));
+        const unallocatedTxs = allTxs.filter(t => !budgetIds.has(t.budgetId));
+        if (unallocatedTxs.length > 0) {
+            const uData = createRowData(unallocatedTxs);
+            const wsU = XLSX.utils.json_to_sheet(uData);
+            XLSX.utils.book_append_sheet(wb, wsU, "未割当");
+        }
+
+        XLSX.writeFile(wb, "執行一覧.xlsx");
+    };
+
     if (!mounted) return <div className="flex items-center justify-center h-screen"><div className="text-gray-400 text-sm">読み込み中...</div></div>;
 
     return (
         <div className="animate-fade-in">
             {/* Page Header */}
-            <div className="page-header">
+            <div className="page-header flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
                 <div>
                     <h1 className="page-title">執行一覧</h1>
                     <p className="page-subtitle">全支出明細</p>
                 </div>
+                <button
+                    onClick={downloadExcel}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Excel出力
+                </button>
             </div>
 
             {/* Status & Options Panel */}
