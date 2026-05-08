@@ -467,51 +467,82 @@ export default function TransactionsPage() {
     const downloadExcel = () => {
         const wb = XLSX.utils.book_new();
 
-        const createRowData = (txs: Transaction[]) => {
-            return txs.map(tx => {
-                const totalAmt = getTxTotalAmount(tx);
-                const isTax = tx.category === "labor" && tx.itemName.includes("消費税");
-                return {
-                    "No": tx.slipNumber || "",
-                    "納品日": tx.date || "",
-                    "品名": tx.itemName || "",
-                    "規格等": tx.specification || "",
-                    "支払先": tx.payee || "",
-                    "単価": tx.unitPrice > 0 ? tx.unitPrice : 0,
-                    "数量": tx.quantity || 0,
-                    "支払金額": totalAmt || 0,
-                    "予算配分額": tx.amount || 0,
-                    "費目": isTax ? "人事(税)" : (CATEGORY_LABELS[tx.category] || ""),
-                    "予算": getTxBudgetDisplay(tx),
-                    "メモ": tx.memo || "",
-                };
-            });
-        };
-
-        const allSheetData = createRowData(allTxs);
-        const wsAll = XLSX.utils.json_to_sheet(allSheetData);
-        XLSX.utils.book_append_sheet(wb, wsAll, "すべての執行");
-
         budgets.forEach(b => {
             const bTxs = allTxs.filter(t => t.budgetId === b.id);
-            if (bTxs.length > 0) {
-                const bData = createRowData(bTxs);
-                const wsB = XLSX.utils.json_to_sheet(bData);
-                let sheetName = b.name.replace(/[\\/?*\[\]]/g, "_").substring(0, 31);
-                // Sheet names must be unique and <= 31 chars
-                if (wb.SheetNames.includes(sheetName)) {
-                    sheetName = sheetName.substring(0, 28) + "_" + b.id.substring(0, 2);
-                }
-                XLSX.utils.book_append_sheet(wb, wsB, sheetName);
+            
+            // Calculate budget stats
+            const allocated = ALL_CATEGORIES.reduce((s, cat) => s + (b.allocations[cat] || 0), 0);
+            const spent = bTxs.reduce((s, t) => s + t.amount, 0);
+            const laborSpent = bTxs.filter(t => t.category === "labor").reduce((s, t) => s + t.amount, 0);
+            const remaining = allocated - spent;
+            const jCode = b.jCode || "";
+
+            const aoa: any[][] = [];
+
+            // Row 0: Header
+            aoa.push(["No", "納品日", "品名", "品番等", "支払先", "単価", "数量", "金額", "", "", "", "配分額", allocated]);
+
+            // Fill empty rows to make sure we have at least 12 rows (to place the summary properly)
+            const maxRows = Math.max(bTxs.length + 1, 12);
+            for (let i = 1; i < maxRows; i++) {
+                aoa.push(new Array(13).fill(""));
             }
+
+            // Fill transaction data
+            bTxs.forEach((tx, idx) => {
+                const row = idx + 1; // row 0 is header
+                aoa[row][0] = tx.slipNumber || "";
+                aoa[row][1] = tx.date || "";
+                aoa[row][2] = tx.itemName || "";
+                aoa[row][3] = tx.specification || "";
+                aoa[row][4] = tx.payee || "";
+                aoa[row][5] = tx.unitPrice > 0 ? tx.unitPrice : 0;
+                aoa[row][6] = tx.quantity || 0;
+                aoa[row][7] = tx.amount || 0;
+            });
+
+            // Fill summary data on the right
+            aoa[2][11] = "人件費";
+            aoa[2][12] = laborSpent;
+
+            aoa[3][11] = "執行額";
+            aoa[3][12] = spent;
+
+            aoa[4][11] = "残額";
+            aoa[4][12] = remaining;
+
+            aoa[11][11] = "コード";
+            aoa[11][12] = jCode;
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 18 }, // A: No
+                { wch: 12 }, // B: 納品日
+                { wch: 25 }, // C: 品名
+                { wch: 25 }, // D: 品番等
+                { wch: 15 }, // E: 支払先
+                { wch: 10 }, // F: 単価
+                { wch: 8 },  // G: 数量
+                { wch: 12 }, // H: 金額
+                { wch: 2 },  // I: (empty)
+                { wch: 2 },  // J: (empty)
+                { wch: 2 },  // K: (empty)
+                { wch: 10 }, // L: Labels
+                { wch: 15 }  // M: Values
+            ];
+
+            let sheetName = b.name.replace(/[\\/?*\[\]]/g, "_").substring(0, 31);
+            if (wb.SheetNames.includes(sheetName)) {
+                sheetName = sheetName.substring(0, 28) + "_" + b.id.substring(0, 2);
+            }
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
         });
 
-        const budgetIds = new Set(budgets.map(b => b.id));
-        const unallocatedTxs = allTxs.filter(t => !budgetIds.has(t.budgetId));
-        if (unallocatedTxs.length > 0) {
-            const uData = createRowData(unallocatedTxs);
-            const wsU = XLSX.utils.json_to_sheet(uData);
-            XLSX.utils.book_append_sheet(wb, wsU, "未割当");
+        if (wb.SheetNames.length === 0) {
+            const ws = XLSX.utils.aoa_to_sheet([["データがありません"]]);
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
         }
 
         XLSX.writeFile(wb, "執行一覧.xlsx");
