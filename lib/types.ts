@@ -174,3 +174,35 @@ export interface AttachmentMeta {
     storageUrl?: string;  // Supabase Storage の公開URL
     createdAt: string;
 }
+
+// ==========================================
+// 謝金管理
+// ==========================================
+
+/** 月番号 (5〜4 の年度月) */
+export type FiscalMonth = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 1 | 2 | 3 | 4;
+
+export const FISCAL_MONTHS: FiscalMonth[] = [5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4];
+
+export const MONTH_LABELS: Record<FiscalMonth, string> = {
+    5: "5月", 6: "6月", 7: "7月", 8: "8月", 9: "9月", 10: "10月",
+    11: "11月", 12: "12月", 1: "1月", 2: "2月", 3: "3月", 4: "4月",
+};
+
+/** 月別の時間・時給エントリ */
+export interface ShakinMonthEntry {
+    month: FiscalMonth;
+    hours: number | null;       // 稼働時間
+    hourlyRate: number | null;  // 時給（円）
+}
+
+/** 謝金対象者 */
+export interface ShakinPerson {
+    id: string;
+    name: string;              // 氏名
+    fiscalYear: number;        // 年度
+    budgetId?: string;         // 紐づく予算ID（任意）
+    months: ShakinMonthEntry[];
+    createdAt: string;
+    updatedAt: string;
+}

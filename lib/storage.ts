@@ -1,7 +1,7 @@
 import {
     Transaction, Budget, BudgetSummary, CategorySummary,
     ALL_CATEGORIES, ExpenseCategory, CategoryAllocations,
-    Teacher,
+    Teacher, ShakinPerson, FISCAL_MONTHS,
 } from "./types";
 import { pushToCloud, deleteFromCloud } from "./cloud-sync";
 import LZString from "lz-string";
@@ -297,3 +297,54 @@ export function getOverallCategorySummary(): CategorySummary[] {
 export function getUnassignedCount(): number {
     return getTransactions().filter((t) => !t.budgetId).length;
 }
+
+// ---------- 謝金 ----------
+
+const SHAKIN_KEY = "budget_app_shakin";
+
+function getShakinKey(): string {
+    return getStorageKey(SHAKIN_KEY);
+}
+
+export function getShakinPersons(): ShakinPerson[] {
+    if (typeof window === "undefined") return [];
+    try {
+        const key = getShakinKey();
+        const raw = getStorageItem(key);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
+export function saveShakinPerson(person: ShakinPerson): void {
+    const list = getShakinPersons();
+    const index = list.findIndex((p) => p.id === person.id);
+    if (index >= 0) {
+        list[index] = person;
+    } else {
+        list.push(person);
+    }
+    const key = getShakinKey();
+    setAndSync(key, JSON.stringify(list));
+}
+
+export function deleteShakinPerson(id: string): void {
+    const list = getShakinPersons().filter((p) => p.id !== id);
+    const key = getShakinKey();
+    setAndSync(key, JSON.stringify(list));
+}
+
+/** 年度でフィルタリング */
+export function getShakinPersonsByYear(fiscalYear: number): ShakinPerson[] {
+    return getShakinPersons().filter((p) => p.fiscalYear === fiscalYear);
+}
+
+/** 謝金集計: 人物ごとの年間支払合計 */
+export function calcShakinTotal(person: ShakinPerson): number {
+    return person.months.reduce((sum, m) => {
+        if (m.hours === null || m.hourlyRate === null) return sum;
+        return sum + Math.floor(m.hours * m.hourlyRate);
+    }, 0);
+}
+

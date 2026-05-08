@@ -415,3 +415,297 @@ body {
     @apply text-xs px-3 py-1.5;
   }
 }
+
+/* ==========================================
+   謝金管理ページ
+   ========================================== */
+
+.shakin-page {
+  @apply max-w-[1400px] mx-auto px-6 py-8;
+}
+
+.shakin-page-header {
+  @apply flex flex-wrap items-start justify-between gap-4 mb-6;
+}
+
+.shakin-page-title {
+  @apply text-xl font-bold text-gray-900 flex items-center gap-2;
+}
+
+.shakin-page-sub {
+  @apply text-xs text-gray-400 mt-1;
+}
+
+.shakin-header-actions {
+  @apply flex items-center gap-3;
+}
+
+.shakin-year-select {
+  @apply px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 bg-white
+         focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-300 cursor-pointer;
+}
+
+.shakin-add-btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium
+         hover:bg-brand-700 active:bg-brand-800 transition-all duration-200 shadow-sm;
+}
+
+.shakin-summary-bar {
+  @apply bg-white border border-gray-100 rounded-xl px-6 py-4 mb-6 flex items-center gap-6 shadow-sm;
+}
+
+.shakin-summary-item {
+  @apply flex flex-col gap-0.5;
+}
+
+.shakin-summary-label {
+  @apply text-[11px] text-gray-400 font-semibold uppercase tracking-wider;
+}
+
+.shakin-summary-value {
+  @apply text-lg font-bold text-gray-900 tabular-nums;
+}
+
+.shakin-summary-grand {
+  @apply text-brand-600;
+}
+
+.shakin-summary-divider {
+  @apply w-px h-10 bg-gray-100;
+}
+
+.shakin-list {
+  @apply space-y-4;
+}
+
+.shakin-person-card {
+  @apply bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden
+         transition-shadow duration-300 hover:shadow-md;
+}
+
+.shakin-person-header {
+  @apply px-5 py-4 flex items-center justify-between cursor-pointer
+         hover:bg-slate-50/60 transition-colors;
+}
+
+.shakin-person-header-left {
+  @apply flex items-center gap-3;
+}
+
+.shakin-avatar {
+  @apply w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-brand-700
+         flex items-center justify-center text-white font-bold text-sm shrink-0;
+}
+
+.shakin-person-name {
+  @apply text-sm font-bold text-gray-900;
+}
+
+.shakin-person-sub {
+  @apply text-[11px] text-gray-400;
+}
+
+.shakin-person-header-right {
+  @apply flex items-center gap-2;
+}
+
+.shakin-total-badge {
+  @apply flex flex-col items-end mr-2;
+}
+
+.shakin-total-label {
+  @apply text-[10px] text-gray-400 font-semibold uppercase tracking-wider;
+}
+
+.shakin-total-value {
+  @apply text-base font-bold text-gray-900 tabular-nums;
+}
+
+.shakin-action-btn {
+  @apply p-1.5 rounded-lg transition-colors duration-200;
+}
+
+.shakin-edit-btn {
+  @apply text-gray-400 hover:text-brand-600 hover:bg-brand-50;
+}
+
+.shakin-delete-btn {
+  @apply text-gray-400 hover:text-red-600 hover:bg-red-50;
+}
+
+.shakin-table-wrapper {
+  @apply border-t border-gray-100;
+}
+
+.shakin-table-scroll {
+  @apply overflow-x-auto;
+}
+
+.shakin-table {
+  @apply w-full text-[12px] border-collapse;
+  min-width: 900px;
+}
+
+.shakin-th {
+  @apply px-3 py-2 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide
+         bg-gray-50/80 border-b border-gray-100 whitespace-nowrap;
+}
+
+.shakin-th-label {
+  @apply text-left w-20 sticky left-0 bg-gray-50/95 z-10;
+}
+
+.shakin-th-total {
+  @apply bg-slate-100/80 text-gray-500 font-bold sticky right-0;
+}
+
+.shakin-td {
+  @apply px-2 py-2 text-center border-b border-gray-50 tabular-nums;
+}
+
+.shakin-td-label {
+  @apply px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-50
+         bg-white sticky left-0 whitespace-nowrap;
+}
+
+.shakin-td-label-total {
+  @apply text-gray-700 font-bold;
+}
+
+.shakin-td-rate {
+  @apply bg-amber-50/30;
+}
+
+.shakin-td-total {
+  @apply px-3 py-2 text-right font-bold text-gray-700 bg-slate-50/80
+         border-b border-gray-50 sticky right-0 tabular-nums;
+}
+
+.shakin-td-amount {
+  @apply bg-emerald-50/20;
+}
+
+.shakin-tr-total {
+  @apply bg-slate-50/60;
+}
+
+.shakin-cell-value {
+  @apply text-gray-800;
+}
+
+.shakin-cell-rate {
+  @apply text-amber-700;
+}
+
+.shakin-cell-empty {
+  @apply text-gray-200 text-[11px];
+}
+
+.shakin-amount {
+  @apply text-emerald-700 font-semibold;
+}
+
+.shakin-grand-total {
+  @apply text-brand-700 font-extrabold text-sm;
+}
+
+.shakin-input {
+  @apply w-full rounded-md border border-gray-200 text-center text-[12px] py-1 px-1.5
+         focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-200
+         transition-colors;
+}
+
+.shakin-edit-actions {
+  @apply flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-100 bg-gray-50/60;
+}
+
+.shakin-btn-save {
+  @apply inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-brand-600 text-white
+         text-xs font-semibold hover:bg-brand-700 active:bg-brand-800
+         transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.shakin-btn-cancel {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-500
+         text-xs font-semibold bg-white border border-gray-200
+         hover:bg-gray-50 transition-colors duration-200;
+}
+
+.shakin-modal-overlay {
+  @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.shakin-modal {
+  @apply bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden;
+  animation: slideUp 0.25s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.shakin-modal-title {
+  @apply text-base font-bold text-gray-900 px-6 py-4 border-b border-gray-100;
+}
+
+.shakin-modal-body {
+  @apply px-6 py-5 space-y-4;
+}
+
+.shakin-modal-footer {
+  @apply flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/60;
+}
+
+.shakin-form-row {
+  @apply flex flex-col gap-1;
+}
+
+.shakin-form-label {
+  @apply text-xs font-semibold text-gray-500 uppercase tracking-wider;
+}
+
+.shakin-form-input {
+  @apply block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800
+         focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-200
+         transition-colors;
+}
+
+.shakin-form-hint {
+  @apply text-[11px] text-gray-400 mt-0.5;
+}
+
+.shakin-empty {
+  @apply flex flex-col items-center justify-center py-20 gap-3 text-center;
+}
+
+.shakin-empty-text {
+  @apply text-sm text-gray-400;
+}
+
+@media (max-width: 768px) {
+  .shakin-page {
+    @apply px-3 py-5;
+  }
+
+  .shakin-page-header {
+    @apply flex-col;
+  }
+
+  .shakin-header-actions {
+    @apply w-full flex-wrap;
+  }
+
+  .shakin-year-select, .shakin-add-btn {
+    @apply flex-1;
+  }
+
+  .shakin-person-header {
+    @apply px-3 py-3;
+  }
+
+  .shakin-total-badge {
+    @apply hidden;
+  }
+}
