@@ -560,12 +560,19 @@ export default function TransactionsPage() {
                 </div>
                 <button
                     onClick={downloadExcel}
-                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md"
+                    className="group relative flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white overflow-hidden transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
+                    style={{ background: "linear-gradient(135deg, #16a34a 0%, #15803d 50%, #166534 100%)" }}
                 >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl" />
+                    <span className="relative flex items-center justify-center w-6 h-6 rounded-md bg-white/20 group-hover:bg-white/30 transition-colors duration-200 flex-shrink-0">
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8.5 14.5l1.5-2.5 1.5 2.5H8.5zm3 0L13 12l1.5 2.5h-3z"/>
+                        </svg>
+                    </span>
+                    <span className="relative leading-none">Excel 出力</span>
+                    <svg className="relative w-3.5 h-3.5 opacity-70 group-hover:translate-y-0.5 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
-                    Excel出力
                 </button>
             </div>
 
