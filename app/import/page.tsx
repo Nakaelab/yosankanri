@@ -65,10 +65,13 @@ interface EstimateFile {
     previewUrl: string;
 }
 
+const DRAFT_KEY = "import_form_draft";
+
 export default function ImportPage() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const estimateInputRef = useRef<HTMLInputElement>(null);
+    const [draftRestored, setDraftRestored] = useState(false);
 
     const [mode, setMode] = useState<Mode>("manual");
     const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -156,6 +159,51 @@ export default function ImportPage() {
         memo: "",
         status: "provisional" as "provisional" | "confirmed",
     });
+
+    // ---- Draft restore on mount ----
+    useEffect(() => {
+        try {
+            const saved = sessionStorage.getItem(DRAFT_KEY);
+            if (saved) {
+                const d = JSON.parse(saved);
+                // Only restore if there is meaningful content
+                const hasContent =
+                    d.slipNumber || d.payee || d.memo ||
+                    (d.manualItems && d.manualItems.some((i: ManualItemRow) => i.itemName)) ||
+                    (d.laborRows && d.laborRows.some((r: LaborRow) => r.itemName || r.payee));
+                if (hasContent) {
+                    if (d.mode) setMode(d.mode);
+                    if (d.slipNumber !== undefined) setSlipNumber(d.slipNumber);
+                    if (d.orderDate !== undefined) setOrderDate(d.orderDate);
+                    if (d.date) setDate(d.date);
+                    if (d.payee !== undefined) setPayee(d.payee);
+                    if (d.category) setCategory(d.category);
+                    if (d.memo !== undefined) setMemo(d.memo);
+                    if (d.dateUnknown !== undefined) setDateUnknown(d.dateUnknown);
+                    if (d.manualItems && d.manualItems.length > 0) setManualItems(d.manualItems);
+                    if (d.budgetSplits && d.budgetSplits.length > 0) setBudgetSplits(d.budgetSplits);
+                    if (d.laborRows && d.laborRows.length > 0) setLaborRows(d.laborRows);
+                    if (d.laborBudgetId !== undefined) setLaborBudgetId(d.laborBudgetId);
+                    if (d.laborIncludeTax !== undefined) setLaborIncludeTax(d.laborIncludeTax);
+                    if (d.laborDate) setLaborDate(d.laborDate);
+                    setDraftRestored(true);
+                }
+            }
+        } catch { /* sessionStorage unavailable */ }
+    }, []);
+
+    // ---- Auto-save draft to sessionStorage ----
+    useEffect(() => {
+        try {
+            const draft = {
+                mode, slipNumber, orderDate, date, payee, category, memo, dateUnknown,
+                manualItems, budgetSplits,
+                laborRows, laborBudgetId, laborIncludeTax, laborDate,
+            };
+            sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch { /* quota exceeded or unavailable */ }
+    }, [mode, slipNumber, orderDate, date, payee, category, memo, dateUnknown,
+        manualItems, budgetSplits, laborRows, laborBudgetId, laborIncludeTax, laborDate]);
 
     useEffect(() => {
         const load = () => {
@@ -592,6 +640,7 @@ export default function ImportPage() {
                     });
                 });
             }
+            sessionStorage.removeItem(DRAFT_KEY);
             router.push("/transactions");
         } catch (e: any) {
             console.error("Save error:", e);
@@ -677,6 +726,7 @@ export default function ImportPage() {
                     }
                 }
             }
+            sessionStorage.removeItem(DRAFT_KEY);
             router.push("/transactions");
         } catch (e: any) {
             console.error("Save error:", e);
@@ -701,6 +751,8 @@ export default function ImportPage() {
         const d = new Date();
         setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
         setOrderDate("");
+        setDraftRestored(false);
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
     };
 
     // Update category when mode changes
@@ -789,7 +841,32 @@ export default function ImportPage() {
             </div>
 
             <div className="p-6 space-y-5 max-w-4xl">
-                {/* Mode Tabs */}
+                {/* Draft Restored Banner */}
+                {draftRestored && (
+                    <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+                        <svg className="w-4 h-4 flex-shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                        </svg>
+                        <span className="flex-1 font-medium">前回の入力途中のデータを復元しました。</span>
+                        <button
+                            onClick={resetForm}
+                            className="text-amber-600 hover:text-amber-800 underline text-xs font-medium whitespace-nowrap"
+                        >
+                            クリアする
+                        </button>
+                        <button
+                            onClick={() => setDraftRestored(false)}
+                            className="ml-1 text-amber-400 hover:text-amber-600"
+                            aria-label="閉じる"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
+
+
                 <div className="flex bg-slate-100 rounded-lg p-1 w-fit gap-1">
                     <button
                         onClick={() => { setMode("manual"); }}
