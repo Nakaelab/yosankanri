@@ -8,6 +8,7 @@ import LZString from "lz-string";
 
 let _client: SupabaseClient | null = null;
 let syncReady = false;
+let initSyncPromise: Promise<{ pulled: boolean; error?: string }> | null = null;
 const pendingPushes: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
 /**
@@ -147,40 +148,48 @@ async function pushAllToCloud(): Promise<void> {
 /**
  * 初期同期
  */
-export async function initSync(): Promise<{ pulled: boolean; error?: string }> {
-    const supabase = await getClient();
-    if (!supabase) {
-        console.log("[Sync] Supabase not available, skipping sync");
-        syncReady = true;
-        return { pulled: false };
+export function initSync(): Promise<{ pulled: boolean; error?: string }> {
+    if (initSyncPromise) {
+        return initSyncPromise;
     }
-    try {
-        const result = await pullFromCloud();
-        
-        // エラーによるPull失敗時は、絶対にスマホなどの空データ（または壊れたローカルデータ）をPushして上書きしてはいけない
-        if (!result.success) {
-            console.warn("[Sync] Pull failed, skipping push to prevent data loss.");
+
+    initSyncPromise = (async () => {
+        const supabase = await getClient();
+        if (!supabase) {
+            console.log("[Sync] Supabase not available, skipping sync");
             syncReady = true;
-            // 容量超過エラーがあった場合は上位に通知
-            if (result.error?.name === "QuotaExceededError" || (result.error?.message && result.error.message.includes("quota"))) {
-               return { pulled: false, error: "QUOTA_EXCEEDED" };
-            }
             return { pulled: false };
         }
+        try {
+            const result = await pullFromCloud();
+            
+            // エラーによるPull失敗時は、絶対にスマホなどの空データ（または壊れたローカルデータ）をPushして上書きしてはいけない
+            if (!result.success) {
+                console.warn("[Sync] Pull failed, skipping push to prevent data loss.");
+                syncReady = true;
+                // 容量超過エラーがあった場合は上位に通知
+                if (result.error?.name === "QuotaExceededError" || (result.error?.message && result.error.message.includes("quota"))) {
+                   return { pulled: false, error: "QUOTA_EXCEEDED" };
+                }
+                return { pulled: false };
+            }
 
-        // Pull は成功したが、クラウドが空だった場合のみローカルの初期データをPushする
-        if (result.success && !result.hasData) {
-            await pushAllToCloud();
+            // Pull は成功したが、クラウドが空だった場合のみローカルの初期データをPushする
+            if (result.success && !result.hasData) {
+                await pushAllToCloud();
+            }
+
+            syncReady = true;
+            console.log("[Sync] Ready");
+            return { pulled: result.hasData };
+        } catch (e) {
+            console.error("[Sync] Init failed:", e);
+            syncReady = true;
+            return { pulled: false, error: "INIT_FAILED" };
         }
+    })();
 
-        syncReady = true;
-        console.log("[Sync] Ready");
-        return { pulled: result.hasData };
-    } catch (e) {
-        console.error("[Sync] Init failed:", e);
-        syncReady = true;
-        return { pulled: false, error: "INIT_FAILED" };
-    }
+    return initSyncPromise;
 }
 
 export function isSyncReady(): boolean {

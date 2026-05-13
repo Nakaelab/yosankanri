@@ -7,7 +7,6 @@ import { Transaction, CATEGORY_LABELS, CATEGORY_COLORS, Budget, AttachmentMeta, 
 import { getTransactions, deleteTransaction, deleteTransactionsBySplitGroup, getBudgets, saveTransaction } from "@/lib/storage";
 import { getCurrentTeacherId } from "@/lib/storage";
 import { formatFileSize } from "@/lib/attachments";
-import * as XLSX from "xlsx";
 
 // ===== 型定義 =====
 
@@ -464,7 +463,8 @@ export default function TransactionsPage() {
         return allTxs.filter(t => t.splitGroupId === tx.splitGroupId).reduce((s, t) => s + t.amount, 0);
     };
 
-    const downloadExcel = () => {
+    const downloadExcel = async () => {
+        const XLSX = await import("xlsx");
         const wb = XLSX.utils.book_new();
 
         budgets.forEach(b => {

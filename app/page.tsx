@@ -18,15 +18,15 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // クラウド同期が完了してからユーザー一覧を読み込む
+        // 先にローカルのユーザー一覧を表示してしまう（高速化）
+        loadTeachers();
+
+        // 裏でクラウド同期が完了したらリストを更新
         initSync()
             .then(() => {
                 loadTeachers();
             })
-            .catch(() => {
-                // オフラインでもローカルデータで表示
-                loadTeachers();
-            });
+            .catch(() => {});
     }, []);
 
     const loadTeachers = () => {
