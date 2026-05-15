@@ -27,6 +27,30 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                 loadTeachers();
             })
             .catch(() => {});
+
+        // Safari の BFCache（戻る/進む キャッシュ）対策:
+        // ページが復元されたとき（persisted=true）はstateが古いまま残るので再取得する
+        const handlePageShow = (e: PageTransitionEvent) => {
+            if (e.persisted) {
+                loadTeachers();
+                initSync().then(() => loadTeachers()).catch(() => {});
+            }
+        };
+
+        // タブが非アクティブ→アクティブに戻ったときも再取得
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                loadTeachers();
+            }
+        };
+
+        window.addEventListener("pageshow", handlePageShow);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener("pageshow", handlePageShow);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
     }, []);
 
     const loadTeachers = () => {
