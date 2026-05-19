@@ -189,6 +189,7 @@ async function pushAllToCloud(): Promise<void> {
  */
 export function initSync(): Promise<{ pulled: boolean; error?: string }> {
     if (initSyncPromise) {
+        console.log("[Sync] Returning cached initSyncPromise");
         return initSyncPromise;
     }
 
@@ -246,6 +247,16 @@ export function initSync(): Promise<{ pulled: boolean; error?: string }> {
     })();
 
     return initSyncPromise;
+}
+
+/**
+ * BFCache（戻る/進むキャッシュ）復元後などに
+ * initSync のキャッシュをリセットして再同期を強制する
+ */
+export function resetSyncCache(): void {
+    console.log("[Sync] Resetting sync cache for re-sync");
+    initSyncPromise = null;
+    // syncReady はそのままにしておく（pushToCloud が動くように）
 }
 
 export function isSyncReady(): boolean {

@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Budget, BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction } from "@/lib/types";
 import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions } from "@/lib/storage";
-import { initSync } from "@/lib/cloud-sync";
+import { initSync, resetSyncCache } from "@/lib/cloud-sync";
 
 // ===============================================
 // Teacher Selection
@@ -35,6 +35,8 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         const handlePageShow = (e: PageTransitionEvent) => {
             if (e.persisted) {
                 loadTeachers();
+                // BFCacheから復元時は initSync のキャッシュをリセットして強制再同期
+                resetSyncCache();
                 initSync().then(() => loadTeachers()).catch(() => {});
             }
         };
