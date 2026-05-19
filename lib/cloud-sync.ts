@@ -216,6 +216,23 @@ export function initSync(): Promise<{ pulled: boolean; error?: string }> {
             // Pull は成功したが、クラウドが空だった場合のみローカルの初期データをPushする
             if (result.success && !result.hasData) {
                 await pushAllToCloud();
+            } else if (result.success && result.hasData) {
+                // マージ後のteachersリストをクラウドへ書き戻す（ローカル追加分を反映）
+                const TEACHERS_KEY = "budget_app_teachers";
+                const localTeachersRaw = localStorage.getItem(TEACHERS_KEY);
+                if (localTeachersRaw) {
+                    const supabase = await getClient();
+                    if (supabase) {
+                        await supabase.from("app_data").upsert({
+                            key: TEACHERS_KEY,
+                            value: localTeachersRaw,
+                            updated_at: new Date().toISOString(),
+                        }).then(({ error }) => {
+                            if (error) console.error("[Sync] Failed to push merged teachers:", error.message);
+                            else console.log("[Sync] Pushed merged teachers to cloud");
+                        });
+                    }
+                }
             }
 
             syncReady = true;
