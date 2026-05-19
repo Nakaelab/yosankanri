@@ -45,8 +45,48 @@ export async function pullFromCloud(): Promise<{ success: boolean; hasData: bool
         }
 
         if (data && data.length > 0) {
+            const TEACHERS_KEY = "budget_app_teachers";
+            const CURRENT_TEACHER_KEY = "budget_app_current_teacher";
+
             for (const row of data) {
                 try {
+                    // ====================================================
+                    // teachers リストはローカルとクラウドをマージする
+                    // （ローカルで追加したユーザーがクラウドの古いデータで消えるのを防ぐ）
+                    // ====================================================
+                    if (row.key === TEACHERS_KEY) {
+                        const localRaw = localStorage.getItem(TEACHERS_KEY);
+                        const localList: { id: string; name: string; createdAt: string }[] =
+                            localRaw ? JSON.parse(localRaw) : [];
+                        let cloudList: { id: string; name: string; createdAt: string }[] = [];
+                        try { cloudList = JSON.parse(row.value); } catch {}
+
+                        // id をキーにしてマージ（両方のunion、タイムスタンプが新しい方を優先）
+                        const merged = new Map<string, { id: string; name: string; createdAt: string }>();
+                        for (const t of cloudList) merged.set(t.id, t);
+                        for (const t of localList) {
+                            const existing = merged.get(t.id);
+                            if (!existing || new Date(t.createdAt) >= new Date(existing.createdAt)) {
+                                merged.set(t.id, t);
+                            }
+                        }
+                        const mergedList = Array.from(merged.values());
+                        localStorage.setItem(TEACHERS_KEY, JSON.stringify(mergedList));
+                        console.log(`[Sync] Merged teachers: local=${localList.length}, cloud=${cloudList.length}, merged=${mergedList.length}`);
+                        continue;
+                    }
+
+                    // current_teacher はローカルが設定済みなら上書きしない
+                    if (row.key === CURRENT_TEACHER_KEY) {
+                        const localVal = localStorage.getItem(CURRENT_TEACHER_KEY);
+                        if (localVal) {
+                            // ローカルに既にユーザーが選択されているので上書きしない
+                            continue;
+                        }
+                        localStorage.setItem(CURRENT_TEACHER_KEY, row.value);
+                        continue;
+                    }
+
                     let valToStore = row.value;
                     if (row.key.includes("budget_app_transactions") || row.key.includes("budget_app_budgets")) {
                         valToStore = "lz:" + LZString.compressToUTF16(row.value);
@@ -55,7 +95,6 @@ export async function pullFromCloud(): Promise<{ success: boolean; hasData: bool
                 } catch (setItemError: any) {
                     console.error(`[Sync] Failed to setItem for ${row.key}:`, setItemError);
                     if (setItemError.name === "QuotaExceededError" || (setItemError.message && setItemError.message.includes("quota"))) {
-                        // ブラウザ容量超過の場合は致命的なので、クラウドの有効なデータを上書きしないように失敗とする
                         return { success: false, hasData: true, error: setItemError };
                     }
                 }
