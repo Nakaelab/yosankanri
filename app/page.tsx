@@ -16,6 +16,8 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
     const [showForm, setShowForm] = useState(false);
     const [newName, setNewName] = useState("");
     const [loading, setLoading] = useState(true);
+    const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
+    const [creating, setCreating] = useState(false);
 
     useEffect(() => {
         // 先にローカルのユーザー一覧を表示してしまう（高速化）
@@ -66,15 +68,21 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newName.trim()) return;
+        if (!newName.trim() || creating) return;
+        setCreating(true);
         const newTeacher: Teacher = {
             id: uuidv4(),
             name: newName.trim(),
             createdAt: new Date().toISOString(),
         };
+        // まずlocalStorageへ保存
         saveTeacher(newTeacher);
-        setCurrentTeacherId(newTeacher.id);
-        onSelected();
+        // リストを即時更新して表示
+        setTeachers(prev => [...prev, newTeacher]);
+        setJustCreatedId(newTeacher.id);
+        setNewName("");
+        setShowForm(false);
+        setCreating(false);
     };
 
     const handleDefault = () => {
@@ -108,6 +116,16 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                 </div>
 
                 <div className="px-6 pb-6 space-y-3 overflow-y-auto flex-1 min-h-0">
+                    {/* 追加成功バナー */}
+                    {justCreatedId && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium">
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                            利用者を追加しました。下のリストから選択してください。
+                        </div>
+                    )}
+
                     {/* Default User (if exists) */}
                     <button
                         onClick={handleDefault}
@@ -128,24 +146,40 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
                     </button>
 
                     {/* Teachers List */}
-                    {teachers.map((t) => (
-                        <button
-                            key={t.id}
-                            onClick={() => handleSelect(t.id)}
-                            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-brand-500 hover:bg-brand-50 transition-all group"
-                        >
-                            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center group-hover:bg-white text-indigo-500">
-                                <span className="text-lg font-bold">{t.name[0]}</span>
-                            </div>
-                            <div className="text-left">
-                                <div className="font-bold text-gray-900 group-hover:text-brand-700">{t.name}</div>
-                                <div className="text-xs text-gray-400">作成日: {t.createdAt.split("T")[0]}</div>
-                            </div>
-                            <svg className="w-5 h-5 ml-auto text-gray-300 group-hover:text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </button>
-                    ))}
+                    {teachers.map((t) => {
+                        const isNew = t.id === justCreatedId;
+                        return (
+                            <button
+                                key={t.id}
+                                onClick={() => handleSelect(t.id)}
+                                className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all group ${
+                                    isNew
+                                        ? "border-brand-400 bg-brand-50 ring-2 ring-brand-300 ring-offset-1"
+                                        : "border-gray-100 hover:border-brand-500 hover:bg-brand-50"
+                                }`}
+                            >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-white ${
+                                    isNew ? "bg-brand-200 text-brand-700" : "bg-indigo-50 text-indigo-500"
+                                }`}>
+                                    <span className="text-lg font-bold">{t.name[0]}</span>
+                                </div>
+                                <div className="text-left flex-1 min-w-0">
+                                    <div className={`font-bold group-hover:text-brand-700 ${
+                                        isNew ? "text-brand-700" : "text-gray-900"
+                                    }`}>{t.name}</div>
+                                    <div className="text-xs text-gray-400">作成日: {t.createdAt.split("T")[0]}</div>
+                                </div>
+                                {isNew && (
+                                    <span className="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full flex-shrink-0">NEW</span>
+                                )}
+                                <svg className={`w-5 h-5 ml-auto flex-shrink-0 ${
+                                    isNew ? "text-brand-400" : "text-gray-300 group-hover:text-brand-500"
+                                }`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 <div className="p-6 bg-gray-50 border-t border-gray-100 flex-shrink-0">
