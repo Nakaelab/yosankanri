@@ -207,6 +207,7 @@ export function initSync(): Promise<{ pulled: boolean; error?: string }> {
             if (!result.success) {
                 console.warn("[Sync] Pull failed, skipping push to prevent data loss.");
                 syncReady = true;
+                initSyncPromise = null; // エラー時はキャッシュをリセットして再試行可能にする
                 // 容量超過エラーがあった場合は上位に通知
                 if (result.error?.name === "QuotaExceededError" || (result.error?.message && result.error.message.includes("quota"))) {
                    return { pulled: false, error: "QUOTA_EXCEEDED" };
@@ -242,6 +243,7 @@ export function initSync(): Promise<{ pulled: boolean; error?: string }> {
         } catch (e) {
             console.error("[Sync] Init failed:", e);
             syncReady = true;
+            initSyncPromise = null; // 例外発生時もキャッシュをリセット
             return { pulled: false, error: "INIT_FAILED" };
         }
     })();

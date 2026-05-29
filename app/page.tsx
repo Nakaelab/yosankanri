@@ -23,9 +23,6 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         // 先にローカルのユーザー一覧を表示してしまう（高速化）
         loadTeachers();
 
-        // 最新のユーザー一覧を反映するため、マウント時に同期キャッシュをリセット
-        resetSyncCache();
-
         // 裏でクラウド同期が完了したらリストを更新
         initSync()
             .then(() => {
@@ -48,6 +45,13 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {
                 loadTeachers();
+                // 復帰時にキャッシュをクリアして再同期し、最新のユーザー情報を表示
+                resetSyncCache();
+                initSync()
+                    .then(() => {
+                        loadTeachers();
+                    })
+                    .catch(() => {});
             }
         };
 

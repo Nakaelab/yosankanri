@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getCurrentTeacher, setCurrentTeacherId } from "@/lib/storage";
 import { Teacher } from "@/lib/types";
-import { initSync } from "@/lib/cloud-sync";
+import { initSync, resetSyncCache } from "@/lib/cloud-sync";
 
 const NAV_ITEMS = [
     {
@@ -113,6 +113,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 setSyncStatus("syncing");
                 // flagを消して、pullがあったら確実にリロードさせる
                 sessionStorage.removeItem("_cloud_synced");
+                // 同期キャッシュをリセットして、必ず最新データをフェッチする
+                resetSyncCache();
                 doSync();
             }
         };
