@@ -68,6 +68,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         checkMobile();
         window.addEventListener("resize", checkMobile);
 
+        // スマホ(横幅768px以下)の場合、今セッションでまだユーザー選択していないなら
+        // 強制的に現在のユーザーIDをクリアしておく（Pageコンポーネント側と同期）
+        if (window.innerWidth <= 768) {
+            const hasSelectedInSession = sessionStorage.getItem("mobile_user_selected");
+            if (!hasSelectedInSession) {
+                setCurrentTeacherId(null);
+            }
+        }
+
         // Cloud sync → then load teacher
         const doSync = () => {
             initSync()

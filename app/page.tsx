@@ -23,6 +23,9 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         // 先にローカルのユーザー一覧を表示してしまう（高速化）
         loadTeachers();
 
+        // 最新のユーザー一覧を反映するため、マウント時に同期キャッシュをリセット
+        resetSyncCache();
+
         // 裏でクラウド同期が完了したらリストを更新
         initSync()
             .then(() => {
@@ -710,7 +713,18 @@ export default function Page() {
     useEffect(() => {
         // 現在のユーザーIDを取得
         // 注意: storage.ts の関数はSSR時にnullを返すことがあるため、クライアントサイドで確認
-        const current = getCurrentTeacherId();
+        let current = getCurrentTeacherId();
+
+        // スマホ(横幅768px以下)の場合、今セッションでまだユーザー選択していないなら
+        // 強制的に未選択状態にしてユーザー選択画面を表示する
+        if (window.innerWidth <= 768) {
+            const hasSelectedInSession = sessionStorage.getItem("mobile_user_selected");
+            if (!hasSelectedInSession) {
+                current = null;
+                setCurrentTeacherId(null);
+            }
+        }
+
         setTeacherId(current);
         setInitialized(true);
     }, []);
@@ -718,6 +732,10 @@ export default function Page() {
     const handleTeacherSelected = () => {
         const current = getCurrentTeacherId();
         setTeacherId(current);
+        // スマホでの選択状態をセッションに記憶
+        if (window.innerWidth <= 768) {
+            sessionStorage.setItem("mobile_user_selected", "true");
+        }
         window.location.reload(); // データ読み込みのためにリロード
     };
 
