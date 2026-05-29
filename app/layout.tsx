@@ -77,6 +77,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }
         }
 
+        // 先にローカルの現在のユーザー情報をロードして表示しておく（高速化）
+        const loadLocalTeacher = () => {
+            const t = getCurrentTeacher();
+            setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+        };
+        loadLocalTeacher();
+
         // Cloud sync → then load teacher
         const doSync = () => {
             initSync()
@@ -95,13 +102,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                         window.location.reload();
                         return;
                     }
-                    const t = getCurrentTeacher();
-                    setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+                    loadLocalTeacher();
                 })
                 .catch(() => {
                     setSyncStatus("error");
-                    const t = getCurrentTeacher();
-                    setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
+                    loadLocalTeacher();
                 });
         };
 

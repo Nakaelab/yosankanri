@@ -12,10 +12,32 @@ import { initSync, resetSyncCache } from "@/lib/cloud-sync";
 // ===============================================
 
 function TeacherSelect({ onSelected }: { onSelected: () => void }) {
-    const [teachers, setTeachers] = useState<Teacher[]>([]);
+    // クライアントサイドでの初期表示高速化のため、初期値をローカルストレージから取得
+    const [teachers, setTeachers] = useState<Teacher[]>(() => {
+        if (typeof window === "undefined") return [];
+        try {
+            const raw = localStorage.getItem("budget_app_teachers");
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    });
     const [showForm, setShowForm] = useState(false);
     const [newName, setNewName] = useState("");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        if (typeof window === "undefined") return true;
+        // ローカルにユーザーが既に登録されている場合はローディング表示をスキップ
+        const raw = localStorage.getItem("budget_app_teachers");
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                return parsed.length === 0;
+            } catch {
+                return true;
+            }
+        }
+        return true;
+    });
     const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
 
