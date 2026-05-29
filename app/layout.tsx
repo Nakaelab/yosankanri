@@ -4,7 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getCurrentTeacher, setCurrentTeacherId } from "@/lib/storage";
+import { getCurrentTeacher, getCurrentTeacherId, setCurrentTeacherId } from "@/lib/storage";
 import { Teacher } from "@/lib/types";
 import { initSync, resetSyncCache } from "@/lib/cloud-sync";
 
@@ -88,9 +88,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                             alert("システムエラー：スマホの保存容量制限を超えたため、最新データをダウンロードできませんでした。\nPC等からログインし、不要なデータや添付ファイルを削除して容量を空けてください。");
                             sessionStorage.setItem("_quota_alert_shown", "1");
                         }
-                    } else if (pulled && !sessionStorage.getItem("_cloud_synced")) {
-                        // クラウドからデータを取得した場合、ページを一度リロードして
-                        // 全コンポーネントが最新データを反映するようにする
+                    } else if (pulled && getCurrentTeacherId() && !sessionStorage.getItem("_cloud_synced")) {
+                        // クラウドからデータを取得した場合で、かつ既に利用者が選択されている場合のみ、
+                        // ページを一度リロードして最新データをコンポーネントに反映する
                         sessionStorage.setItem("_cloud_synced", "1");
                         window.location.reload();
                         return;
