@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Budget, BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction } from "@/lib/types";
 import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions } from "@/lib/storage";
-import { initSync, resetSyncCache } from "@/lib/cloud-sync";
+import { initSync, resetSyncCache, quickPullTeachers } from "@/lib/cloud-sync";
 
 // ===============================================
 // Teacher Selection
@@ -45,7 +45,15 @@ function TeacherSelect({ onSelected }: { onSelected: () => void }) {
         // 先にローカルのユーザー一覧を表示してしまう（高速化）
         loadTeachers();
 
-        // 裏でクラウド同期が完了したらリストを更新
+        // ① ユーザーリストだけをクラウドから素早く取得（全データ同期を待たない）
+        quickPullTeachers()
+            .then((changed) => {
+                if (changed) loadTeachers();
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+
+        // ② 全データ同期はバックグラウンドで実行（予算・執行データ用）
         initSync()
             .then(() => {
                 loadTeachers();

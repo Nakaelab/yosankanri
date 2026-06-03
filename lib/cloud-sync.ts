@@ -268,3 +268,46 @@ export function resetSyncCache(): void {
 export function isSyncReady(): boolean {
     return syncReady;
 }
+
+/**
+ * ユーザーリストだけをクラウドから素早く取得する軽量関数
+ * 全データ同期(initSync)を待たずにユーザー選択画面を即座に更新できる
+ */
+export async function quickPullTeachers(): Promise<boolean> {
+    const supabase = await getClient();
+    if (!supabase) return false;
+    try {
+        const TEACHERS_KEY = "budget_app_teachers";
+        const { data, error } = await supabase
+            .from("app_data")
+            .select("value")
+            .eq("key", TEACHERS_KEY)
+            .single();
+
+        if (error || !data?.value) return false;
+
+        let cloudList: { id: string; name: string; createdAt: string }[] = [];
+        try { cloudList = JSON.parse(data.value); } catch { return false; }
+
+        // ローカルとマージ
+        const localRaw = localStorage.getItem(TEACHERS_KEY);
+        const localList: { id: string; name: string; createdAt: string }[] =
+            localRaw ? JSON.parse(localRaw) : [];
+
+        const merged = new Map<string, { id: string; name: string; createdAt: string }>();
+        for (const t of cloudList) merged.set(t.id, t);
+        for (const t of localList) {
+            const existing = merged.get(t.id);
+            if (!existing || new Date(t.createdAt) >= new Date(existing.createdAt)) {
+                merged.set(t.id, t);
+            }
+        }
+        const mergedList = Array.from(merged.values());
+        localStorage.setItem(TEACHERS_KEY, JSON.stringify(mergedList));
+        console.log(`[Sync] Quick-pulled teachers: local=${localList.length}, cloud=${cloudList.length}, merged=${mergedList.length}`);
+        return mergedList.length !== localList.length; // 変更があったか
+    } catch (e) {
+        console.error("[Sync] Quick pull teachers failed:", e);
+        return false;
+    }
+}
