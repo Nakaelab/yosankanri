@@ -74,6 +74,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             const hasSelectedInSession = sessionStorage.getItem("mobile_user_selected");
             if (!hasSelectedInSession) {
                 setCurrentTeacherId(null);
+                // pullFromCloudがクラウドからteacher IDを復元するのを防ぐ
+                sessionStorage.setItem("_mobile_teacher_cleared", "1");
+                // 同期完了後の不要なリロードを防止する
+                sessionStorage.setItem("_cloud_synced", "1");
             }
         }
 

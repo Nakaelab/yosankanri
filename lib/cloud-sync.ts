@@ -83,6 +83,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; hasData: bool
                             // ローカルに既にユーザーが選択されているので上書きしない
                             continue;
                         }
+                        // モバイルで意図的にクリアされた場合はクラウドから復元しない
+                        if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("_mobile_teacher_cleared")) {
+                            continue;
+                        }
                         localStorage.setItem(CURRENT_TEACHER_KEY, row.value);
                         continue;
                     }

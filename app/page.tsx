@@ -761,6 +761,9 @@ export default function Page() {
         // スマホでの選択状態をセッションに記憶
         if (window.innerWidth <= 768) {
             sessionStorage.setItem("mobile_user_selected", "true");
+            // 意図的クリアのフラグを解除（今後の同期で正常に動くようにする）
+            sessionStorage.removeItem("_mobile_teacher_cleared");
+            sessionStorage.removeItem("_cloud_synced");
         }
         window.location.reload(); // データ読み込みのためにリロード
     };
