@@ -101,6 +101,7 @@ export interface Transaction {
     splitGroupId?: string;  // 複数予算に分割登録した場合のグループID（同じIDの分割分が同一物品）
     status?: "provisional" | "confirmed"; // 仮/確定（主に人件費用）
     memo?: string;          // 備考・メモ
+    finalProcessingNo?: string; // 最終処理No（事務から返却されたエクセルの値）
     createdAt: string;
 }
 

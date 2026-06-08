@@ -491,7 +491,7 @@ export default function TransactionsPage() {
             // Fill transaction data
             bTxs.forEach((tx, idx) => {
                 const row = idx + 1; // row 0 is header
-                aoa[row][0] = tx.slipNumber || "";
+                aoa[row][0] = tx.finalProcessingNo || tx.slipNumber || "";
                 aoa[row][1] = tx.date || "";
                 aoa[row][2] = tx.itemName || "";
                 aoa[row][3] = tx.specification || "";
@@ -866,7 +866,7 @@ export default function TransactionsPage() {
 
                                             return (
                                                 <tr key={tx.id} className={rowBg} onDoubleClick={() => handleEdit(tx)}>
-                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-500 text-[11px]" title={tx.slipNumber}>{tx.slipNumber || ""}</td>
+                                                    <td className={`border border-gray-200 px-2 py-1.5 truncate text-[11px] ${tx.finalProcessingNo ? "text-brand-600 font-bold" : "text-gray-500"}`} title={tx.finalProcessingNo || tx.slipNumber}>{tx.finalProcessingNo || tx.slipNumber || ""}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-700 text-[11px] whitespace-nowrap">{tx.date}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-900 font-medium" title={tx.itemName}>{tx.itemName}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={tx.specification}>{tx.specification || ""}</td>
