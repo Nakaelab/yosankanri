@@ -15,7 +15,7 @@ interface ExcelRow {
 }
 
 interface MatchResult {
-    type: "matched" | "excel_only" | "app_only";
+    type: "matched" | "already_applied" | "conflict" | "excel_only" | "app_only";
     excelRow?: ExcelRow;
     transaction?: Transaction;
     finalProcessingNo?: string;
@@ -100,8 +100,19 @@ export default function CheckPage() {
             if (matchTx) {
                 usedTxIds.add(matchTx.id);
                 usedExcelIdxs.add(ei);
+
+                // 状況に応じてタイプを分岐
+                let type: "matched" | "already_applied" | "conflict" = "matched";
+                if (matchTx.finalProcessingNo) {
+                    if (matchTx.finalProcessingNo === er.finalProcessingNo) {
+                        type = "already_applied";
+                    } else {
+                        type = "conflict";
+                    }
+                }
+
                 matchResults.push({
-                    type: "matched",
+                    type: type,
                     excelRow: er,
                     transaction: matchTx,
                     finalProcessingNo: er.finalProcessingNo,
@@ -144,8 +155,9 @@ export default function CheckPage() {
     };
 
     const handleApply = () => {
-        const matched = results.filter(r => r.type === "matched" && r.transaction && r.finalProcessingNo);
-        for (const m of matched) {
+        // 新規一致および番号不一致（上書き）を反映対象とする
+        const toApply = results.filter(r => (r.type === "matched" || r.type === "conflict") && r.transaction && r.finalProcessingNo);
+        for (const m of toApply) {
             if (m.transaction && m.finalProcessingNo) {
                 const updated: Transaction = {
                     ...m.transaction,
@@ -156,7 +168,7 @@ export default function CheckPage() {
         }
         // ローカルstateも更新
         const updatedTxs = [...allTransactions];
-        for (const m of matched) {
+        for (const m of toApply) {
             if (m.transaction && m.finalProcessingNo) {
                 const idx = updatedTxs.findIndex(t => t.id === m.transaction!.id);
                 if (idx >= 0) {
@@ -165,6 +177,22 @@ export default function CheckPage() {
             }
         }
         setAllTransactions(updatedTxs);
+
+        // 反映後の結果ステートを更新（matched, conflict -> already_applied）
+        const updatedResults = results.map(r => {
+            if ((r.type === "matched" || r.type === "conflict") && r.transaction && r.finalProcessingNo) {
+                return {
+                    ...r,
+                    type: "already_applied" as const,
+                    transaction: {
+                        ...r.transaction,
+                        finalProcessingNo: r.finalProcessingNo
+                    }
+                };
+            }
+            return r;
+        });
+        setResults(updatedResults);
         setApplied(true);
     };
 
@@ -211,7 +239,9 @@ export default function CheckPage() {
     };
 
     const fmt = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
-    const matchedCount = results.filter(r => r.type === "matched").length;
+    const newMatchedCount = results.filter(r => r.type === "matched").length;
+    const alreadyAppliedCount = results.filter(r => r.type === "already_applied").length;
+    const conflictCount = results.filter(r => r.type === "conflict").length;
     const excelOnlyCount = results.filter(r => r.type === "excel_only").length;
     const appOnlyCount = results.filter(r => r.type === "app_only").length;
 
@@ -284,10 +314,18 @@ export default function CheckPage() {
                 {checked && (
                     <div className="space-y-4">
                         {/* サマリー */}
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-                                <div className="text-2xl font-bold text-emerald-600">{matchedCount}</div>
-                                <div className="text-xs text-gray-500 mt-1">✅ 一致</div>
+                                <div className="text-2xl font-bold text-emerald-600">{newMatchedCount}</div>
+                                <div className="text-xs text-gray-500 mt-1">✅ 一致（新規）</div>
+                            </div>
+                            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+                                <div className="text-2xl font-bold text-slate-500">{alreadyAppliedCount}</div>
+                                <div className="text-xs text-gray-500 mt-1">🗹 一致（反映済み）</div>
+                            </div>
+                            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+                                <div className="text-2xl font-bold text-orange-500">{conflictCount}</div>
+                                <div className="text-xs text-gray-500 mt-1">⚡ 番号不一致</div>
                             </div>
                             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
                                 <div className="text-2xl font-bold text-red-500">{excelOnlyCount}</div>
@@ -300,14 +338,14 @@ export default function CheckPage() {
                         </div>
 
                         {/* 反映ボタン */}
-                        {matchedCount > 0 && !applied && (
+                        {(newMatchedCount > 0 || conflictCount > 0) && !applied && (
                             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
                                 <div>
                                     <div className="text-sm font-bold text-emerald-800">
-                                        {matchedCount}件の一致が見つかりました
+                                        {newMatchedCount + conflictCount}件の新規一致・上書き対象が見つかりました
                                     </div>
                                     <div className="text-xs text-emerald-600 mt-0.5">
-                                        一致した取引に最終処理Noを反映します
+                                        一致した取引に最終処理Noを反映（または更新）します
                                     </div>
                                 </div>
                                 <button
@@ -325,7 +363,7 @@ export default function CheckPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                 </svg>
                                 <div className="text-sm font-bold text-emerald-800">
-                                    {matchedCount}件の最終処理Noを反映しました
+                                    最終処理Noを反映しました
                                 </div>
                             </div>
                         )}
@@ -360,13 +398,13 @@ export default function CheckPage() {
                             </div>
 
                             <div className="divide-y divide-gray-50">
-                                {/* 一致 */}
+                                {/* 一致 (新規) */}
                                 {results.filter(r => r.type === "matched").map((r, i) => (
                                     <div key={`m-${i}`} className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
                                         <span className="text-emerald-500 text-lg flex-shrink-0 mt-0.5">✅</span>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-gray-900">
-                                                一致: {fmt(r.excelRow!.amount)}
+                                                新規一致: {fmt(r.excelRow!.amount)}
                                             </div>
                                             <div className="text-xs text-gray-500 mt-0.5">
                                                 最終処理No: <span className="font-bold text-brand-600">{r.finalProcessingNo}</span>
@@ -377,6 +415,52 @@ export default function CheckPage() {
                                                 )}
                                             </div>
                                         </div>
+                                        <span className="badge badge-success text-[10px] ml-auto shrink-0 self-center">反映待ち</span>
+                                    </div>
+                                ))}
+
+                                {/* 一致 (反映済み) */}
+                                {results.filter(r => r.type === "already_applied").map((r, i) => (
+                                    <div key={`aa-${i}`} className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors opacity-75">
+                                        <span className="text-slate-400 text-lg flex-shrink-0 mt-0.5">🗹</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-slate-600">
+                                                反映済み: {fmt(r.excelRow!.amount)}
+                                            </div>
+                                            <div className="text-xs text-slate-500 mt-0.5">
+                                                最終処理No: <span className="font-semibold text-slate-700">{r.finalProcessingNo}</span>
+                                                {" → "}
+                                                <span className="text-slate-600">{r.transaction!.itemName}</span>
+                                                {r.transaction!.slipNumber && (
+                                                    <span className="text-slate-400 ml-1">（現No: {r.transaction!.slipNumber}）</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 ml-auto shrink-0 self-center">登録済み</span>
+                                    </div>
+                                ))}
+
+                                {/* 一致 (番号不一致) */}
+                                {results.filter(r => r.type === "conflict").map((r, i) => (
+                                    <div key={`c-${i}`} className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors bg-orange-50/30">
+                                        <span className="text-orange-500 text-lg flex-shrink-0 mt-0.5">⚡</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-orange-800">
+                                                最終処理No不一致: {fmt(r.excelRow!.amount)}
+                                            </div>
+                                            <div className="text-xs text-orange-600 mt-0.5">
+                                                Excel値: <span className="font-bold text-orange-700">{r.finalProcessingNo}</span>
+                                                {" ｜ アプリ登録値: "}
+                                                <span className="font-bold text-red-600">{r.transaction!.finalProcessingNo || "(空)"}</span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                対象: <span className="text-gray-700">{r.transaction!.itemName}</span>
+                                                {r.transaction!.slipNumber && (
+                                                    <span className="text-gray-400 ml-1">（現No: {r.transaction!.slipNumber}）</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="badge badge-warning text-[10px] ml-auto shrink-0 self-center">上書き対象</span>
                                     </div>
                                 ))}
 
