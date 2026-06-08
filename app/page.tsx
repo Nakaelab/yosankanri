@@ -403,29 +403,43 @@ function Dashboard() {
             </div>
 
             <div className="p-4 md:p-6 space-y-6">
-                {/* ===== 全体サマリー ===== */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                    <div className="stat-card">
-                        <div className="stat-card-label">配分総額</div>
-                        <div className="stat-card-value text-gray-900">{fmtYen(totalAllocated)}</div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-card-label">執行総額</div>
-                        <div className="stat-card-value text-brand-700">{fmtYen(totalSpent)}</div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-card-label">残額</div>
-                        <div className={`stat-card-value ${totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
-                            {fmtYen(totalRemaining)}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ===== 費目別全体状況 ===== */}
+                {/* ===== 費目別全体状況 / 全予算 合計 ===== */}
                 {activeOverallCats.length > 0 && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white">
-                            <h2 className="text-base font-bold text-gray-900">費目別 全体執行状況</h2>
+                        {/* 予算と同じデザインのヘッダー */}
+                        <div className="px-5 py-4 border-b border-gray-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-slate-50 to-white">
+                            {/* 左側：タイトルと情報 */}
+                            <div className="flex items-start gap-3 min-w-0">
+                                <div className={`w-3 h-10 rounded-full flex-shrink-0 mt-0.5 ${pct(totalSpent, totalAllocated) > 100 ? "bg-red-400" : pct(totalSpent, totalAllocated) > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
+                                <div className="min-w-0">
+                                    <div className="text-base font-bold text-gray-900 break-words">全予算 合計</div>
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                        <span className="text-[11px] text-gray-400">
+                                            {selectedYear === "all" ? "全年度" : `${selectedYear}年度`}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 右側：配分・執行・残額 */}
+                            <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:gap-6 flex-shrink-0">
+                                <div className="grid grid-cols-3 gap-1 bg-slate-50 rounded-xl p-2.5 sm:p-0 sm:bg-transparent sm:flex sm:items-center sm:gap-4 text-center sm:text-right border border-slate-100 sm:border-0 w-full sm:w-auto">
+                                    <div className="px-1">
+                                        <div className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">配分</div>
+                                        <div className="text-xs sm:text-sm font-bold tabular-nums text-indigo-700">{fmtYen(totalAllocated)}</div>
+                                    </div>
+                                    <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
+                                        <div className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">執行</div>
+                                        <div className="text-xs sm:text-sm font-bold tabular-nums text-amber-700">{fmtYen(totalSpent)}</div>
+                                    </div>
+                                    <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
+                                        <div className={`text-[10px] font-semibold uppercase tracking-wider ${totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
+                                        <div className={`text-xs sm:text-sm font-bold tabular-nums ${totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                            {totalRemaining < 0 ? "▲" : ""}{fmtYen(Math.abs(totalRemaining))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div className="px-5 py-4 border-b border-gray-100">
                             {/* スタックバーグラフ */}
