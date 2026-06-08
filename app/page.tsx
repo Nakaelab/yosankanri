@@ -521,9 +521,11 @@ function Dashboard() {
                                     className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200"
                                 >
                                     {/* ===== 予算ヘッダー ===== */}
-                                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-white">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-3 h-10 rounded-full flex-shrink-0 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
+                                    {/* ===== 予算ヘッダー ===== */}
+                                    <div className="px-5 py-4 border-b border-gray-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-slate-50 to-white">
+                                        {/* 左側：タイトルと年度などの情報 */}
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <div className={`w-3 h-10 rounded-full flex-shrink-0 mt-0.5 ${usageRate > 100 ? "bg-red-400" : usageRate > 80 ? "bg-amber-400" : "bg-brand-500"}`} />
                                             <div className="min-w-0">
                                                 <div className="text-base font-bold text-gray-900 break-words">{s.budget.name}</div>
                                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -532,65 +534,50 @@ function Dashboard() {
                                                         <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
                                                     )}
                                                 </div>
-                                                {/* スマホ用: 配分・執行・残額のインライン表示（強調しすぎないデザイン） */}
-                                                <div className="flex sm:hidden items-center gap-x-2.5 gap-y-1 mt-1 text-[11px] tabular-nums text-gray-500 flex-wrap">
-                                                    <div>
-                                                        <span className="text-[10px] text-gray-400 mr-0.5">配分</span>
-                                                        <span className="font-semibold text-indigo-700">{fmtYen(s.totalAllocated)}</span>
-                                                    </div>
-                                                    <div className="w-px h-3 bg-gray-200" />
-                                                    <div>
-                                                        <span className="text-[10px] text-gray-400 mr-0.5">執行</span>
-                                                        <span className="font-semibold text-amber-700">{fmtYen(s.totalSpent)}</span>
-                                                    </div>
-                                                    <div className="w-px h-3 bg-gray-200" />
-                                                    <div>
-                                                        <span className={`text-[10px] mr-0.5 ${s.totalRemaining < 0 ? "text-red-400" : "text-gray-400"}`}>残額</span>
-                                                        <span className={`font-semibold ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
-                                                            {s.totalRemaining < 0 ? "▲" : ""}{fmtYen(Math.abs(s.totalRemaining))}
-                                                        </span>
-                                                    </div>
-                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4 flex-shrink-0">
-                                            {/* 配分・執行・残額 3カラム */}
-                                            <div className="hidden sm:flex items-center gap-4">
-                                                <div className="text-right">
+
+                                        {/* 右側（PC表示時は横並び、スマホ表示時は縦積み） */}
+                                        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:gap-6 flex-shrink-0">
+                                            {/* 配分・執行・残額の3連カード（スマホ時はカード風、PC時はシンプルな数字） */}
+                                            <div className="grid grid-cols-3 gap-1 bg-slate-50 rounded-xl p-2.5 sm:p-0 sm:bg-transparent sm:flex sm:items-center sm:gap-4 text-center sm:text-right border border-slate-100 sm:border-0 w-full sm:w-auto">
+                                                <div className="px-1">
                                                     <div className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">配分</div>
-                                                    <div className="text-sm font-bold tabular-nums text-indigo-700">{fmtYen(s.totalAllocated)}</div>
+                                                    <div className="text-xs sm:text-sm font-bold tabular-nums text-indigo-700">{fmtYen(s.totalAllocated)}</div>
                                                 </div>
-                                                <div className="w-px h-8 bg-gray-200" />
-                                                <div className="text-right">
+                                                <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
                                                     <div className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">執行</div>
-                                                    <div className="text-sm font-bold tabular-nums text-amber-700">{fmtYen(s.totalSpent)}</div>
+                                                    <div className="text-xs sm:text-sm font-bold tabular-nums text-amber-700">{fmtYen(s.totalSpent)}</div>
                                                 </div>
-                                                <div className="w-px h-8 bg-gray-200" />
-                                                <div className="text-right">
+                                                <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
                                                     <div className={`text-[10px] font-semibold uppercase tracking-wider ${s.totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
-                                                    <div className={`text-sm font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                                    <div className={`text-xs sm:text-sm font-bold tabular-nums ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
                                                         {s.totalRemaining < 0 ? "▲" : ""}{fmtYen(Math.abs(s.totalRemaining))}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Link
-                                                href={`/transactions?budget=${s.budget.id}`}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors text-xs font-medium flex-shrink-0"
-                                            >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                                                </svg>
-                                                執行一覧へ
-                                            </Link>
-                                            <Link
-                                                href="/budgets"
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors text-xs font-medium flex-shrink-0"
-                                            >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                                                </svg>
-                                                編集
-                                            </Link>
+
+                                            {/* 操作ボタン */}
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <Link
+                                                    href={`/transactions?budget=${s.budget.id}`}
+                                                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors text-xs font-semibold whitespace-nowrap"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                                                    </svg>
+                                                    <span>執行一覧へ</span>
+                                                </Link>
+                                                <Link
+                                                    href="/budgets"
+                                                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors text-xs font-semibold whitespace-nowrap"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                                    </svg>
+                                                    <span>編集</span>
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
 
