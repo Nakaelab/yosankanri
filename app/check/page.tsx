@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Budget, Transaction } from "@/lib/types";
+import { Budget, Transaction, CATEGORY_LABELS } from "@/lib/types";
 import { getBudgets, getTransactions, saveTransaction } from "@/lib/storage";
 
 // =============================================
@@ -30,6 +30,7 @@ export default function CheckPage() {
     const [applied, setApplied] = useState(false);
     const [fileName, setFileName] = useState<string>("");
     const [dragOver, setDragOver] = useState(false);
+    const [excelHeader, setExcelHeader] = useState<string[]>([]);
 
     useEffect(() => {
         const b = getBudgets();
@@ -47,6 +48,10 @@ export default function CheckPage() {
         // 最初のシートを使用
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        if (rows.length > 0) {
+            setExcelHeader(rows[0].map((c: any) => String(c ?? "")));
+        }
 
         const excelRows: ExcelRow[] = [];
 
@@ -70,7 +75,7 @@ export default function CheckPage() {
         }
 
         return excelRows;
-    }, []);
+    }, [setExcelHeader]);
 
     const runCheck = useCallback(async (file: File) => {
         setFileName(file.name);
@@ -161,6 +166,48 @@ export default function CheckPage() {
         }
         setAllTransactions(updatedTxs);
         setApplied(true);
+    };
+
+    const handleExportInconsistencies = async () => {
+        const XLSX = await import("xlsx");
+        const wb = XLSX.utils.book_new();
+
+        // 1. エクセルのみ存在シート
+        const excelOnlyResults = results.filter(r => r.type === "excel_only");
+        const excelOnlyData = excelOnlyResults.map(r => r.excelRow!.rawRow);
+        
+        // ヘッダーを追加してシート作成
+        const wsExcel = XLSX.utils.aoa_to_sheet([excelHeader, ...excelOnlyData]);
+        XLSX.utils.book_append_sheet(wb, wsExcel, "エクセルのみ存在");
+
+        // 2. アプリのみ存在シート
+        const appOnlyResults = results.filter(r => r.type === "app_only");
+        const appOnlyHeaders = ["伝票番号", "納品日", "品名", "規格", "支払先", "金額", "カテゴリ", "備考"];
+        const appOnlyData = appOnlyResults.map(r => {
+            const tx = r.transaction!;
+            return [
+                tx.slipNumber || "",
+                tx.date || "",
+                tx.itemName || "",
+                tx.specification || "",
+                tx.payee || "",
+                tx.amount,
+                tx.category ? CATEGORY_LABELS[tx.category] : "",
+                tx.memo || ""
+            ];
+        });
+        
+        const wsApp = XLSX.utils.aoa_to_sheet([appOnlyHeaders, ...appOnlyData]);
+        XLSX.utils.book_append_sheet(wb, wsApp, "アプリのみ存在");
+
+        // ファイル書き出し
+        // 予算名があればファイル名に含める
+        const budget = budgets.find(b => b.id === selectedBudgetId);
+        const budgetName = budget ? `_${budget.name}` : "";
+        const today = new Date().toISOString().split("T")[0];
+        const exportFileName = `不整合ログ${budgetName}_${today}.xlsx`;
+
+        XLSX.writeFile(wb, exportFileName);
     };
 
     const fmt = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
@@ -280,6 +327,29 @@ export default function CheckPage() {
                                 <div className="text-sm font-bold text-emerald-800">
                                     {matchedCount}件の最終処理Noを反映しました
                                 </div>
+                            </div>
+                        )}
+
+                        {/* 不整合ログ出力ボタン */}
+                        {(excelOnlyCount > 0 || appOnlyCount > 0) && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div>
+                                    <div className="text-sm font-bold text-amber-800">
+                                        不整合（一致しなかった取引）が{excelOnlyCount + appOnlyCount}件あります
+                                    </div>
+                                    <div className="text-xs text-amber-600 mt-0.5">
+                                        エクセルのみ、またはアプリのみに存在する取引のリストをダウンロードできます
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleExportInconsistencies}
+                                    className="btn-secondary text-sm whitespace-nowrap bg-white hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-lg flex items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                    不整合ログを出力 (Excel)
+                                </button>
                             </div>
                         )}
 
