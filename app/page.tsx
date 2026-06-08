@@ -532,6 +532,25 @@ function Dashboard() {
                                                         <span className="text-[11px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{s.budget.jCode}</span>
                                                     )}
                                                 </div>
+                                                {/* スマホ用: 配分・執行・残額のインライン表示（強調しすぎないデザイン） */}
+                                                <div className="flex sm:hidden items-center gap-x-2.5 gap-y-1 mt-1 text-[11px] tabular-nums text-gray-500 flex-wrap">
+                                                    <div>
+                                                        <span className="text-[10px] text-gray-400 mr-0.5">配分</span>
+                                                        <span className="font-semibold text-indigo-700">{fmtYen(s.totalAllocated)}</span>
+                                                    </div>
+                                                    <div className="w-px h-3 bg-gray-200" />
+                                                    <div>
+                                                        <span className="text-[10px] text-gray-400 mr-0.5">執行</span>
+                                                        <span className="font-semibold text-amber-700">{fmtYen(s.totalSpent)}</span>
+                                                    </div>
+                                                    <div className="w-px h-3 bg-gray-200" />
+                                                    <div>
+                                                        <span className={`text-[10px] mr-0.5 ${s.totalRemaining < 0 ? "text-red-400" : "text-gray-400"}`}>残額</span>
+                                                        <span className={`font-semibold ${s.totalRemaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                                                            {s.totalRemaining < 0 ? "▲" : ""}{fmtYen(Math.abs(s.totalRemaining))}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4 flex-shrink-0">
