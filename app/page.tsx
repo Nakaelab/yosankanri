@@ -325,7 +325,7 @@ function Dashboard() {
         const categories = ALL_CATEGORIES.map(cat => {
             const allocated = b.allocations[cat] || 0;
             const spent = bTxs.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
-            const provisional = bTxs.filter(t => t.category === cat && t.status === "provisional").reduce((sum, t) => sum + t.amount, 0);
+            const provisional = cat === "labor" ? 0 : bTxs.filter(t => t.category === cat && t.status === "provisional").reduce((sum, t) => sum + t.amount, 0);
             return { category: cat, allocated, spent, provisional, remaining: allocated - spent };
         });
         const totalAllocated = categories.reduce((sum, c) => sum + c.allocated, 0);
@@ -706,7 +706,12 @@ function Dashboard() {
                                                                 <span className="text-gray-400">配分</span>
                                                                 <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated ?? 0)}</span>
                                                                 <span className="text-gray-400">執行</span>
-                                                                <span className="text-right text-gray-800 font-bold">¥{fmt(c.spent)}</span>
+                                                                <div className="text-right flex flex-col items-end">
+                                                                    <span className="text-gray-800 font-bold">¥{fmt(c.spent)}</span>
+                                                                    {c.provisional ? c.provisional > 0 && (
+                                                                        <span className="text-[9px] font-semibold text-amber-600 leading-none mt-0.5">(仮登録: ¥{fmt(c.provisional)})</span>
+                                                                    ) : null}
+                                                                </div>
                                                                 <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
                                                                 <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}¥{fmt(Math.abs(c.remaining))}</span>
                                                             </div>
