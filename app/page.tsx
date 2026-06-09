@@ -422,19 +422,22 @@ function Dashboard() {
                             </div>
 
                             {/* 右側：配分・執行・残額 */}
-                            <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:gap-6 flex-shrink-0">
-                                <div className="grid grid-cols-3 gap-1 bg-slate-50 rounded-xl p-2.5 sm:p-0 sm:bg-transparent sm:flex sm:items-center sm:gap-4 text-center sm:text-right border border-slate-100 sm:border-0 w-full sm:w-auto">
-                                    <div className="px-1">
-                                        <div className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">配分</div>
-                                        <div className="text-xs sm:text-sm font-bold tabular-nums text-indigo-700">{fmtYen(totalAllocated)}</div>
+                            <div className="w-full sm:w-auto flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-6 flex-shrink-0">
+                                <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 w-full sm:w-auto">
+                                    {/* 配分 */}
+                                    <div className="flex items-center justify-between sm:block bg-indigo-50/50 sm:bg-transparent px-4 py-2.5 sm:p-0 rounded-xl border border-indigo-100/50 sm:border-0">
+                                        <div className="text-xs font-bold text-indigo-500 sm:text-indigo-400 uppercase tracking-wider">配分</div>
+                                        <div className="text-lg sm:text-xl md:text-2xl font-black tabular-nums text-indigo-700 mt-0 sm:mt-1">{fmtYen(totalAllocated)}</div>
                                     </div>
-                                    <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
-                                        <div className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">執行</div>
-                                        <div className="text-xs sm:text-sm font-bold tabular-nums text-amber-700">{fmtYen(totalSpent)}</div>
+                                    {/* 執行 */}
+                                    <div className="flex items-center justify-between sm:block bg-amber-50/50 sm:bg-transparent px-4 py-2.5 sm:p-0 rounded-xl border border-amber-100/50 sm:border-0">
+                                        <div className="text-xs font-bold text-amber-500 uppercase tracking-wider">執行</div>
+                                        <div className="text-lg sm:text-xl md:text-2xl font-black tabular-nums text-amber-700 mt-0 sm:mt-1">{fmtYen(totalSpent)}</div>
                                     </div>
-                                    <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
-                                        <div className={`text-[10px] font-semibold uppercase tracking-wider ${totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
-                                        <div className={`text-xs sm:text-sm font-bold tabular-nums ${totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                    {/* 残額 */}
+                                    <div className={`flex items-center justify-between sm:block ${totalRemaining < 0 ? "bg-red-50/50 border-red-100/50" : "bg-emerald-50/50 border-emerald-100/50"} sm:bg-transparent px-4 py-2.5 sm:p-0 rounded-xl border sm:border-0`}>
+                                        <div className={`text-xs font-bold uppercase tracking-wider ${totalRemaining < 0 ? "text-red-500" : "text-emerald-500"}`}>残額</div>
+                                        <div className={`text-lg sm:text-xl md:text-2xl font-black tabular-nums mt-0 sm:mt-1 ${totalRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
                                             {totalRemaining < 0 ? "▲" : ""}{fmtYen(Math.abs(totalRemaining))}
                                         </div>
                                     </div>
