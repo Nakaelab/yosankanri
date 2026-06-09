@@ -126,6 +126,7 @@ export interface CategorySummary {
     category: ExpenseCategory;
     allocated?: number;
     spent: number;
+    provisional?: number;
     remaining: number;
 }
 
@@ -135,6 +136,7 @@ export interface BudgetSummary {
     categories: CategorySummary[];
     totalAllocated: number;
     totalSpent: number;
+    totalProvisional?: number;
     totalRemaining: number;
 }
 

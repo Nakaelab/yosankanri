@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Budget, BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction } from "@/lib/types";
@@ -325,21 +325,25 @@ function Dashboard() {
         const categories = ALL_CATEGORIES.map(cat => {
             const allocated = b.allocations[cat] || 0;
             const spent = bTxs.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
-            return { category: cat, allocated, spent, remaining: allocated - spent };
+            const provisional = bTxs.filter(t => t.category === cat && t.status === "provisional").reduce((sum, t) => sum + t.amount, 0);
+            return { category: cat, allocated, spent, provisional, remaining: allocated - spent };
         });
         const totalAllocated = categories.reduce((sum, c) => sum + c.allocated, 0);
         const totalSpent = categories.reduce((sum, c) => sum + c.spent, 0);
+        const totalProvisional = categories.reduce((sum, c) => sum + (c.provisional || 0), 0);
         return {
             budget: b,
             categories,
             totalAllocated,
             totalSpent,
+            totalProvisional,
             totalRemaining: totalAllocated - totalSpent
         };
     });
 
     const totalAllocated = summaries.reduce((sum, item) => sum + item.totalAllocated, 0);
     const totalSpent = summaries.reduce((sum, item) => sum + item.totalSpent, 0);
+    const totalProvisional = summaries.reduce((sum, item) => sum + (item.totalProvisional || 0), 0);
     const totalRemaining = totalAllocated - totalSpent;
 
     const activeOverallCats = ALL_CATEGORIES.map(cat => {
@@ -350,7 +354,8 @@ function Dashboard() {
             return sum + (catAlloc ?? 0);
         }, 0);
         const spent = summaries.reduce((sum, s) => sum + (s.categories.find(c => c.category === cat)?.spent || 0), 0);
-        return { category: cat, allocated, spent, remaining: allocated - spent, hasDefinedAlloc };
+        const provisional = summaries.reduce((sum, s) => sum + (s.categories.find(c => c.category === cat)?.provisional || 0), 0);
+        return { category: cat, allocated, spent, provisional, remaining: allocated - spent, hasDefinedAlloc };
     }).filter(c => c.hasDefinedAlloc || c.spent > 0);
 
     // Group transactions by budgetId (sorted by date desc) for the accordion
@@ -431,8 +436,17 @@ function Dashboard() {
                                     </div>
                                     {/* 執行 */}
                                     <div className="flex items-center justify-between sm:block bg-amber-50/50 sm:bg-transparent px-4 py-2.5 sm:p-0 rounded-xl border border-amber-100/50 sm:border-0">
-                                        <div className="text-xs font-bold text-amber-500 uppercase tracking-wider">執行</div>
-                                        <div className="text-lg sm:text-xl md:text-2xl font-black tabular-nums text-amber-700 mt-0 sm:mt-1">{fmtYen(totalSpent)}</div>
+                                        <div className="text-xs font-bold text-amber-500 uppercase tracking-wider">
+                                            執行{totalProvisional > 0 && <span className="text-[10px] font-normal text-amber-600/80 normal-case ml-1">(仮含む)</span>}
+                                        </div>
+                                        <div className="text-lg sm:text-xl md:text-2xl font-black tabular-nums text-amber-700 mt-0 sm:mt-1 flex flex-col sm:items-end">
+                                            <span>{fmtYen(totalSpent)}</span>
+                                            {totalProvisional > 0 && (
+                                                <span className="text-[10px] md:text-xs font-semibold text-amber-600/95 mt-0.5 sm:mt-0">
+                                                    (仮登録: {fmtYen(totalProvisional)})
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     {/* 残額 */}
                                     <div className={`flex items-center justify-between sm:block ${totalRemaining < 0 ? "bg-red-50/50 border-red-100/50" : "bg-emerald-50/50 border-emerald-100/50"} sm:bg-transparent px-4 py-2.5 sm:p-0 rounded-xl border sm:border-0`}>
@@ -452,15 +466,30 @@ function Dashboard() {
                             </div>
                             <div className="h-4 rounded-full bg-gray-200 overflow-hidden flex">
                                 {activeOverallCats.map(c => {
-                                    const ratio = totalAllocated > 0 ? (c.spent / totalAllocated) * 100 : 0;
-                                    if (ratio <= 0) return null;
+                                    const confirmedSpent = c.spent - (c.provisional || 0);
+                                    const confirmedRatio = totalAllocated > 0 ? (confirmedSpent / totalAllocated) * 100 : 0;
+                                    const provisionalRatio = totalAllocated > 0 ? ((c.provisional || 0) / totalAllocated) * 100 : 0;
+                                    
                                     return (
-                                        <div 
-                                            key={c.category}
-                                            className={`h-full ${CATEGORY_COLORS[c.category].bar} border-r border-white/20 last:border-0 hover:opacity-80 transition-opacity`}
-                                            style={{ width: `${ratio}%` }}
-                                            title={`${CATEGORY_LABELS[c.category]}: ${fmtYen(c.spent)}`}
-                                        />
+                                        <Fragment key={c.category}>
+                                            {confirmedRatio > 0 && (
+                                                <div 
+                                                    className={`h-full ${CATEGORY_COLORS[c.category].bar} border-r border-white/20 last:border-0 hover:opacity-85 transition-opacity`}
+                                                    style={{ width: `${confirmedRatio}%` }}
+                                                    title={`${CATEGORY_LABELS[c.category]} (確定): ${fmtYen(confirmedSpent)}`}
+                                                />
+                                            )}
+                                            {provisionalRatio > 0 && (
+                                                <div 
+                                                    className={`h-full ${CATEGORY_COLORS[c.category].bar} opacity-40 border-r border-white/20 last:border-0 hover:opacity-60 transition-opacity`}
+                                                    style={{ 
+                                                        width: `${provisionalRatio}%`,
+                                                        backgroundImage: "linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent)"
+                                                    }}
+                                                    title={`${CATEGORY_LABELS[c.category]} (仮登録): ${fmtYen(c.provisional || 0)}`}
+                                                />
+                                            )}
+                                        </Fragment>
                                     );
                                 })}
                             </div>
@@ -471,7 +500,7 @@ function Dashboard() {
                                     return (
                                         <div key={`legend-${c.category}`} className="flex items-center gap-1.5 min-w-0">
                                             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${CATEGORY_COLORS[c.category].bar}`} />
-                                            <span className="text-[11px] text-gray-500 font-medium">{CATEGORY_LABELS[c.category]}</span>
+                                            <span className="text-[11px] text-gray-500 font-medium">{CATEGORY_LABELS[c.category]} {c.provisional > 0 && <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1 rounded border border-amber-100/50">仮有</span>}</span>
                                         </div>
                                     );
                                 })}
@@ -484,6 +513,8 @@ function Dashboard() {
                                 {activeOverallCats.map((c) => {
                                     const colors = CATEGORY_COLORS[c.category];
                                     const catPct = (c.allocated ?? 0) > 0 ? Math.min(Math.round((c.spent / (c.allocated ?? 0)) * 100), 100) : 0;
+                                    const provisionalPct = (c.allocated ?? 0) > 0 ? Math.min(Math.round(((c.provisional || 0) / (c.allocated ?? 0)) * 100), 100) : 0;
+                                    const confirmedPct = Math.max(0, catPct - provisionalPct);
                                     const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                     const isOver = c.remaining < 0;
                                     return (
@@ -495,14 +526,21 @@ function Dashboard() {
                                                 </div>
                                                 <span className="text-[10px] text-gray-400 font-semibold tabular-nums">{catPct}%</span>
                                             </div>
-                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5">
-                                                <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                            {/* ミニ進捗バー（確定分と仮登録分を横並び） */}
+                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5 flex">
+                                                <div className={`h-full ${barCol}`} style={{ width: `${confirmedPct}%` }} />
+                                                <div className={`h-full ${colors.bar} opacity-40`} style={{ width: `${provisionalPct}%` }} />
                                             </div>
                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
                                                 <span className="text-gray-400">配分</span>
                                                 <span className="text-right text-gray-700 font-medium">¥{fmt(c.allocated ?? 0)}</span>
                                                 <span className="text-gray-400">執行</span>
-                                                <span className="text-right text-gray-800 font-bold">¥{fmt(c.spent)}</span>
+                                                <div className="text-right flex flex-col items-end">
+                                                    <span className="text-gray-800 font-bold">¥{fmt(c.spent)}</span>
+                                                    {c.provisional ? c.provisional > 0 && (
+                                                        <span className="text-[9px] font-semibold text-amber-600 leading-none mt-0.5">(仮: ¥{fmt(c.provisional)})</span>
+                                                    ) : null}
+                                                </div>
                                                 <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
                                                 <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}¥{fmt(Math.abs(c.remaining))}</span>
                                             </div>
@@ -538,7 +576,6 @@ function Dashboard() {
                                     className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200"
                                 >
                                     {/* ===== 予算ヘッダー ===== */}
-                                    {/* ===== 予算ヘッダー ===== */}
                                     <div className="px-5 py-4 border-b border-gray-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-slate-50 to-white">
                                         {/* 左側：タイトルと年度などの情報 */}
                                         <div className="flex items-start gap-3 min-w-0">
@@ -565,6 +602,9 @@ function Dashboard() {
                                                 <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
                                                     <div className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">執行</div>
                                                     <div className="text-xs sm:text-sm font-bold tabular-nums text-amber-700">{fmtYen(s.totalSpent)}</div>
+                                                    {s.totalProvisional ? s.totalProvisional > 0 && (
+                                                        <div className="text-[9px] font-semibold text-amber-600/80 leading-none mt-0.5">(仮: {fmtYen(s.totalProvisional)})</div>
+                                                    ) : null}
                                                 </div>
                                                 <div className="px-1 border-l border-slate-200 sm:border-l-0 sm:pl-0">
                                                     <div className={`text-[10px] font-semibold uppercase tracking-wider ${s.totalRemaining < 0 ? "text-red-400" : "text-emerald-500"}`}>残額</div>
@@ -606,15 +646,30 @@ function Dashboard() {
                                         </div>
                                         <div className="h-4 rounded-full bg-gray-200 overflow-hidden flex">
                                             {s.categories.map(c => {
-                                                const ratio = s.totalAllocated > 0 ? (c.spent / s.totalAllocated) * 100 : 0;
-                                                if (ratio <= 0) return null;
+                                                const confirmedSpent = c.spent - (c.provisional || 0);
+                                                const confirmedRatio = s.totalAllocated > 0 ? (confirmedSpent / s.totalAllocated) * 100 : 0;
+                                                const provisionalRatio = s.totalAllocated > 0 ? ((c.provisional || 0) / s.totalAllocated) * 100 : 0;
+                                                
                                                 return (
-                                                    <div 
-                                                        key={c.category}
-                                                        className={`h-full ${CATEGORY_COLORS[c.category].bar} border-r border-white/20 last:border-0 hover:opacity-80 transition-opacity`}
-                                                        style={{ width: `${ratio}%` }}
-                                                        title={`${CATEGORY_LABELS[c.category]}: ¥${fmt(c.spent)}`}
-                                                    />
+                                                    <Fragment key={c.category}>
+                                                        {confirmedRatio > 0 && (
+                                                            <div 
+                                                                className={`h-full ${CATEGORY_COLORS[c.category].bar} border-r border-white/20 last:border-0 hover:opacity-85 transition-opacity`}
+                                                                style={{ width: `${confirmedRatio}%` }}
+                                                                title={`${CATEGORY_LABELS[c.category]} (確定): ¥${fmt(confirmedSpent)}`}
+                                                            />
+                                                        )}
+                                                        {provisionalRatio > 0 && (
+                                                            <div 
+                                                                className={`h-full ${CATEGORY_COLORS[c.category].bar} opacity-40 border-r border-white/20 last:border-0 hover:opacity-60 transition-opacity`}
+                                                                style={{ 
+                                                                    width: `${provisionalRatio}%`,
+                                                                    backgroundImage: "linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent)"
+                                                                }}
+                                                                title={`${CATEGORY_LABELS[c.category]} (仮登録): ¥${fmt(c.provisional || 0)}`}
+                                                            />
+                                                        )}
+                                                    </Fragment>
                                                 );
                                             })}
                                         </div>
@@ -627,6 +682,8 @@ function Dashboard() {
                                                 {activeCats.map((c) => {
                                                     const colors = CATEGORY_COLORS[c.category];
                                                     const catPct = (c.allocated ?? 0) > 0 ? Math.min(Math.round((c.spent / (c.allocated ?? 0)) * 100), 100) : 0;
+                                                    const provisionalPct = (c.allocated ?? 0) > 0 ? Math.min(Math.round(((c.provisional || 0) / (c.allocated ?? 0)) * 100), 100) : 0;
+                                                    const confirmedPct = Math.max(0, catPct - provisionalPct);
                                                     const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                                     const isOver = c.remaining < 0;
                                                     return (
@@ -639,9 +696,10 @@ function Dashboard() {
                                                                 </div>
                                                                 <span className="text-[10px] text-gray-400 font-semibold tabular-nums">{catPct}%</span>
                                                             </div>
-                                                            {/* ミニ進捗バー */}
-                                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5">
-                                                                <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                                            {/* ミニ進捗バー（確定分と仮登録分を分割） */}
+                                                            <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5 flex">
+                                                                <div className={`h-full ${barCol}`} style={{ width: `${confirmedPct}%` }} />
+                                                                <div className={`h-full ${colors.bar} opacity-40`} style={{ width: `${provisionalPct}%` }} />
                                                             </div>
                                                             {/* 配分・執行・残額 */}
                                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">

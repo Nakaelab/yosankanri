@@ -400,20 +400,23 @@ export default function TransactionsPage() {
     let totalAllocated = 0;
     let totalSpent = 0;
     let totalRemaining = 0;
-    const activeStats: { category: ExpenseCategory; allocated: number; spent: number; remaining: number }[] = [];
+    let totalProvisional = 0;
+    const activeStats: { category: ExpenseCategory; allocated: number; spent: number; provisional: number; remaining: number }[] = [];
 
     if (filterBudgetId === "all") {
         totalAllocated = budgets.reduce((acc, b) => acc + ALL_CATEGORIES.reduce((s, cat) => s + (b.allocations[cat] || 0), 0), 0);
         totalSpent = allTxs.reduce((s, t) => s + t.amount, 0);
+        totalProvisional = allTxs.filter(t => t.status === "provisional").reduce((s, t) => s + t.amount, 0);
         totalRemaining = totalAllocated - totalSpent;
 
         ALL_CATEGORIES.forEach(cat => {
             const isAllocated = budgets.some(b => b.allocations[cat] !== undefined);
             const allocated = budgets.reduce((acc, b) => acc + (b.allocations[cat] || 0), 0);
             const spent = allTxs.filter(t => t.category === cat).reduce((s, t) => s + t.amount, 0);
+            const provisional = allTxs.filter(t => t.category === cat && t.status === "provisional").reduce((s, t) => s + t.amount, 0);
             const remaining = allocated - spent;
             if (isAllocated || spent > 0) {
-                activeStats.push({ category: cat, allocated, spent, remaining });
+                activeStats.push({ category: cat, allocated, spent, provisional, remaining });
             }
         });
     } else {
@@ -421,6 +424,7 @@ export default function TransactionsPage() {
         if (selectedBudget) {
             totalAllocated = ALL_CATEGORIES.reduce((s, cat) => s + (selectedBudget.allocations[cat] || 0), 0);
             totalSpent = allTxs.filter(t => t.budgetId === filterBudgetId).reduce((s, t) => s + t.amount, 0);
+            totalProvisional = allTxs.filter(t => t.budgetId === filterBudgetId && t.status === "provisional").reduce((s, t) => s + t.amount, 0);
             totalRemaining = totalAllocated - totalSpent;
 
             ALL_CATEGORIES.forEach(cat => {
@@ -428,9 +432,10 @@ export default function TransactionsPage() {
                 const isAllocated = val !== undefined;
                 const allocated = val || 0;
                 const spent = allTxs.filter(t => t.budgetId === filterBudgetId && t.category === cat).reduce((s, t) => s + t.amount, 0);
+                const provisional = allTxs.filter(t => t.budgetId === filterBudgetId && t.category === cat && t.status === "provisional").reduce((s, t) => s + t.amount, 0);
                 const remaining = allocated - spent;
                 if (isAllocated || spent > 0) {
-                    activeStats.push({ category: cat, allocated, spent, remaining });
+                    activeStats.push({ category: cat, allocated, spent, provisional, remaining });
                 }
             });
         }
@@ -587,8 +592,15 @@ export default function TransactionsPage() {
                             <div className="text-xl sm:text-3xl font-bold tabular-nums text-gray-900">{fmt(totalAllocated)}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">執行済</div>
+                            <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">
+                                執行済{totalProvisional > 0 && <span className="text-[10px] font-normal text-amber-600/80 normal-case ml-1">(仮含む)</span>}
+                            </div>
                             <div className="text-xl sm:text-3xl font-bold tabular-nums text-brand-600">{fmt(totalSpent)}</div>
+                            {totalProvisional > 0 && (
+                                <div className="text-[10px] font-semibold text-amber-600/90 mt-0.5">
+                                    (仮登録: {fmt(totalProvisional)})
+                                </div>
+                            )}
                         </div>
                         <div>
                             <div className="text-[11px] text-gray-400 uppercase font-bold tracking-widest mb-1">残額</div>
@@ -613,6 +625,8 @@ export default function TransactionsPage() {
                             {activeStats.map(s => {
                                 const colors = CATEGORY_COLORS[s.category];
                                 const catPct = (s.allocated ?? 0) > 0 ? Math.min(Math.round((s.spent / (s.allocated ?? 0)) * 100), 100) : 0;
+                                const provisionalPct = (s.allocated ?? 0) > 0 ? Math.min(Math.round((s.provisional / (s.allocated ?? 0)) * 100), 100) : 0;
+                                const confirmedPct = Math.max(0, catPct - provisionalPct);
                                 const barCol = catPct >= 100 ? "bg-red-400" : catPct >= 80 ? "bg-amber-400" : colors.bar;
                                 const isOver = s.remaining < 0;
 
@@ -627,15 +641,21 @@ export default function TransactionsPage() {
                                             <span className="text-[10px] text-gray-400 font-semibold tabular-nums">{catPct}%</span>
                                         </div>
                                         {/* ミニ進捗バー */}
-                                        <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5">
-                                            <div className={`h-full rounded-full ${barCol}`} style={{ width: `${catPct}%` }} />
+                                        <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mb-2.5 flex">
+                                            <div className={`h-full ${barCol}`} style={{ width: `${confirmedPct}%` }} />
+                                            <div className={`h-full ${colors.bar} opacity-40`} style={{ width: `${provisionalPct}%` }} />
                                         </div>
                                         {/* 配分・執行・残額 */}
                                         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] tabular-nums">
                                             <span className="text-gray-400">配分</span>
                                             <span className="text-right text-gray-700 font-medium">{fmt(s.allocated ?? 0)}</span>
                                             <span className="text-gray-400">執行</span>
-                                            <span className="text-right text-gray-800 font-bold">{fmt(s.spent)}</span>
+                                            <div className="text-right flex flex-col items-end">
+                                                <span className="text-gray-800 font-bold">{fmt(s.spent)}</span>
+                                                {s.provisional > 0 && (
+                                                    <span className="text-[9px] font-semibold text-amber-600 leading-none mt-0.5">(仮: {fmt(s.provisional)})</span>
+                                                )}
+                                            </div>
                                             <span className={`${isOver ? "text-red-500" : "text-emerald-500"} font-bold`}>残額</span>
                                             <span className={`text-right font-bold ${isOver ? "text-red-600" : "text-emerald-600"}`}>{isOver ? "▲" : ""}{fmt(Math.abs(s.remaining))}</span>
                                         </div>
@@ -773,16 +793,21 @@ export default function TransactionsPage() {
                                     const totalAmt = getTxTotalAmount(tx);
                                     const isLabor = tx.category === "labor";
                                     const isTax = isLabor && tx.itemName.includes("消費税");
-                                    const bgClass = isLabor ? (isTax ? "bg-slate-50/50" : "bg-indigo-50/20") : "bg-white";
+                                    const isProvisional = tx.status === "provisional";
+                                    const bgClass = isProvisional 
+                                        ? "bg-amber-50/25 text-gray-500" 
+                                        : isLabor 
+                                            ? (isTax ? "bg-slate-50/50" : "bg-indigo-50/20") 
+                                            : "bg-white";
 
                                     return (
                                         <div key={tx.id} className={`flex py-2 px-3 border-b border-gray-100 last:border-0 ${bgClass} relative cursor-pointer md:cursor-auto`}>
                                             <div className="flex-1 flex flex-col min-w-0" onClick={() => handleEdit(tx)}>
                                                 <div className="flex justify-between items-baseline mb-0.5">
-                                                    <div className="font-bold text-[13px] truncate pr-2 text-gray-900 max-w-[65%]">
+                                                    <div className={`font-bold text-[13px] truncate pr-2 max-w-[65%] ${isProvisional ? "text-gray-500 font-medium" : "text-gray-900"}`}>
                                                         {tx.itemName || "—"}
                                                     </div>
-                                                    <div className="font-bold text-[14px] tabular-nums text-gray-900 shrink-0">
+                                                    <div className={`font-bold text-[14px] tabular-nums shrink-0 ${isProvisional ? "text-gray-500 font-medium" : "text-gray-900"}`}>
                                                         {fmt(totalAmt)}
                                                     </div>
                                                 </div>
@@ -791,13 +816,9 @@ export default function TransactionsPage() {
                                                         {tx.date}{tx.payee && ` · ${tx.payee}`}
                                                     </div>
                                                     <div className="shrink-0 flex items-center gap-1">
-                                                        {isLabor && !isTax && (
-                                                            <span className={`inline-flex items-center px-1 py-0 rounded text-[10px] font-bold leading-4 ${
-                                                                tx.status === "confirmed"
-                                                                    ? "bg-emerald-100 text-emerald-700"
-                                                                    : "bg-orange-100 text-orange-700"
-                                                            }`}>
-                                                                {tx.status === "confirmed" ? "確" : "仮"}
+                                                        {isProvisional && (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold leading-3 bg-amber-100 text-amber-800 border border-amber-200">
+                                                                仮
                                                             </span>
                                                         )}
                                                         <span className="font-medium">{CATEGORY_LABELS[tx.category]}</span>
@@ -858,32 +879,30 @@ export default function TransactionsPage() {
                                             const totalAmt = getTxTotalAmount(tx);
                                             const isLabor = tx.category === "labor";
                                             const isTax = isLabor && tx.itemName.includes("消費税");
+                                            const isProvisional = tx.status === "provisional";
                                             
                                             // Make double click edit and match color scheme loosely
                                             let rowBg = "hover:bg-blue-50/50 cursor-pointer transition-colors";
-                                            if (isLabor) rowBg += isTax ? " bg-slate-50" : " bg-indigo-50/30";
+                                            if (isProvisional) rowBg += " bg-amber-50/20 text-gray-500";
+                                            else if (isLabor) rowBg += isTax ? " bg-slate-50" : " bg-indigo-50/30";
                                             else rowBg += " bg-white";
 
                                             return (
                                                 <tr key={tx.id} className={rowBg} onDoubleClick={() => handleEdit(tx)}>
                                                     <td className={`border border-gray-200 px-2 py-1.5 truncate text-[11px] ${tx.finalProcessingNo ? "text-brand-600 font-bold" : "text-gray-500"}`} title={tx.finalProcessingNo || tx.slipNumber}>{tx.finalProcessingNo || tx.slipNumber || ""}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-700 text-[11px] whitespace-nowrap">{tx.date}</td>
-                                                    <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-900 font-medium" title={tx.itemName}>{tx.itemName}</td>
+                                                    <td className={`border border-gray-200 px-2 py-1.5 truncate ${isProvisional ? "text-gray-500 font-normal" : "text-gray-900 font-medium"}`} title={tx.itemName}>{tx.itemName}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={tx.specification}>{tx.specification || ""}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 truncate text-gray-600 text-[11px]" title={tx.payee}>{tx.payee || ""}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-right tabular-nums text-gray-700">{tx.unitPrice > 0 ? tx.unitPrice.toLocaleString() : "0"}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-center tabular-nums text-gray-700">{tx.quantity}</td>
-                                                    <td className="border border-gray-200 px-2 py-1.5 text-right tabular-nums font-bold text-gray-900 bg-blue-50/60">{totalAmt.toLocaleString()}</td>
+                                                    <td className={`border border-gray-200 px-2 py-1.5 text-right tabular-nums font-bold ${isProvisional ? "text-gray-500" : "text-gray-900 bg-blue-50/60"}`}>{totalAmt.toLocaleString()}</td>
                                                     <td className="border border-gray-200 px-2 py-1.5 text-center truncate text-gray-600 text-[11px]">
                                                         <div className="flex items-center justify-center gap-1">
                                                             {isTax ? "人事(税)" : CATEGORY_LABELS[tx.category]}
-                                                            {isLabor && !isTax && (
-                                                                <span className={`inline-flex items-center px-1 py-0 rounded text-[10px] font-bold leading-4 ${
-                                                                    tx.status === "confirmed"
-                                                                        ? "bg-emerald-100 text-emerald-700"
-                                                                        : "bg-orange-100 text-orange-700"
-                                                                }`}>
-                                                                    {tx.status === "confirmed" ? "確" : "仮"}
+                                                            {isProvisional && (
+                                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold leading-3 bg-amber-100 text-amber-800 border border-amber-200">
+                                                                    仮
                                                                 </span>
                                                             )}
                                                         </div>
@@ -1009,7 +1028,7 @@ export default function TransactionsPage() {
                         {/* Body */}
                         <div className="px-4 py-3 space-y-3">
 
-                            {/* 費目 & 状態(人件費のみ) */}
+                            {/* 費目 & 状態 */}
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">費目</label>
@@ -1017,23 +1036,21 @@ export default function TransactionsPage() {
                                         {ALL_CATEGORIES.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
                                     </select>
                                 </div>
-                                {isLabor && (
-                                    <div>
-                                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">ステータス (仮/確)</label>
-                                        <div className="flex rounded-md overflow-hidden border border-gray-200 text-xs font-semibold mt-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditBase({ ...editBase, status: "provisional" })}
-                                                className={`flex-1 py-1 transition-colors ${editBase.status === "provisional" ? "bg-amber-400 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
-                                            >仮</button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditBase({ ...editBase, status: "confirmed" })}
-                                                className={`flex-1 py-1 transition-colors border-l border-gray-200 ${editBase.status === "confirmed" ? "bg-green-500 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
-                                            >確定</button>
-                                        </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">ステータス (仮/確)</label>
+                                    <div className="flex rounded-md overflow-hidden border border-gray-200 text-xs font-semibold mt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditBase({ ...editBase, status: "provisional" })}
+                                            className={`flex-1 py-1 transition-colors ${editBase.status === "provisional" ? "bg-amber-400 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                        >仮登録</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditBase({ ...editBase, status: "confirmed" })}
+                                            className={`flex-1 py-1 transition-colors border-l border-gray-200 ${editBase.status === "confirmed" ? "bg-green-500 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+                                        >確定</button>
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             {/* 伝票 + 日付 */}

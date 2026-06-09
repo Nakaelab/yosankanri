@@ -535,7 +535,7 @@ export default function ImportPage() {
     };
 
     // ---- Save ----
-    const handleSave = async () => {
+    const handleSave = async (isProvisional: boolean = false) => {
         const errs = validate();
         const validSplits = budgetSplits.filter(s => s.budgetId);
         if (validSplits.length === 0) {
@@ -612,6 +612,7 @@ export default function ImportPage() {
                         attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
                         ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
                         splitGroupId: groupSplitId,
+                        status: isProvisional ? "provisional" : "confirmed",
                         createdAt: new Date().toISOString(),
                     });
                 });
@@ -636,6 +637,7 @@ export default function ImportPage() {
                         attachmentCount: idx === 0 ? uploadedMeta.length : 0,
                         attachments: idx === 0 && uploadedMeta.length > 0 ? uploadedMeta : undefined,
                         ocrRawText: mode === "ocr" && idx === 0 ? ocrRawText : undefined,
+                        status: isProvisional ? "provisional" : "confirmed",
                         createdAt: new Date().toISOString(),
                     });
                 });
@@ -1424,12 +1426,22 @@ export default function ImportPage() {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-                            <button className="btn-primary" onClick={handleSave}>
+                        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100">
+                            <button className="btn-primary" onClick={() => handleSave(false)}>
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3" />
                                 </svg>
-                                保存して執行一覧へ
+                                確定登録して保存
+                            </button>
+                            <button 
+                                type="button"
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 border border-amber-200 bg-amber-50/70 text-amber-700 hover:bg-amber-100 shadow-sm hover:shadow active:scale-[0.98]" 
+                                onClick={() => handleSave(true)}
+                            >
+                                <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                </svg>
+                                仮登録として保存
                             </button>
                             <button className="btn-secondary" onClick={resetForm}>クリア</button>
                             {estimates.length > 0 && (
