@@ -182,7 +182,7 @@ export default function TransactionsPage() {
         setEditNewFiles([]);
         setEditRemovedIds([]);
         setEditBase({
-            slipNumber: rep.slipNumber,
+            slipNumber: rep.slipNumber || rep.finalProcessingNo || "",
             orderDate: rep.orderDate || "",
             date: rep.date,
             itemName: rep.itemName,
