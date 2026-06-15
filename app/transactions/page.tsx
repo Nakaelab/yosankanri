@@ -298,7 +298,7 @@ export default function TransactionsPage() {
                     category: editBase.category,
                     status: editBase.status,
                     memo: editBase.memo,
-                    finalProcessingNo: editBase.finalProcessingNo || undefined,
+                    finalProcessingNo: editBase.slipNumber || undefined,
                     attachmentCount: idx === 0 ? allAttachments.length : 0,
                     attachments: idx === 0 && allAttachments.length > 0 ? allAttachments : undefined,
                     ocrRawText: editingTx.ocrRawText,
@@ -1056,15 +1056,11 @@ export default function TransactionsPage() {
                                 </div>
                             </div>
 
-                            {/* 伝票 + 最終処理No + 日付 */}
-                            <div className="grid grid-cols-4 gap-2">
+                            {/* 伝票番号 + 日付 */}
+                            <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">伝票番号</label>
                                     <input type="text" className="form-input font-mono text-xs py-1" value={editBase.slipNumber} onChange={(e) => setEditBase({ ...editBase, slipNumber: e.target.value })} placeholder="例: P250..." />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-bold text-brand-500 uppercase tracking-wide block mb-0.5">最終処理No</label>
-                                    <input type="text" className="form-input font-mono text-xs py-1" value={editBase.finalProcessingNo || ""} onChange={(e) => setEditBase({ ...editBase, finalProcessingNo: e.target.value })} placeholder="" />
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">発注日</label>
