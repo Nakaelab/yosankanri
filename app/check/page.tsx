@@ -162,6 +162,7 @@ export default function CheckPage() {
                 const updated: Transaction = {
                     ...m.transaction,
                     finalProcessingNo: m.finalProcessingNo,
+                    slipNumber: m.finalProcessingNo,
                 };
                 saveTransaction(updated);
             }
@@ -172,7 +173,7 @@ export default function CheckPage() {
             if (m.transaction && m.finalProcessingNo) {
                 const idx = updatedTxs.findIndex(t => t.id === m.transaction!.id);
                 if (idx >= 0) {
-                    updatedTxs[idx] = { ...updatedTxs[idx], finalProcessingNo: m.finalProcessingNo };
+                    updatedTxs[idx] = { ...updatedTxs[idx], finalProcessingNo: m.finalProcessingNo, slipNumber: m.finalProcessingNo };
                 }
             }
         }
@@ -186,7 +187,8 @@ export default function CheckPage() {
                     type: "already_applied" as const,
                     transaction: {
                         ...r.transaction,
-                        finalProcessingNo: r.finalProcessingNo
+                        finalProcessingNo: r.finalProcessingNo,
+                        slipNumber: r.finalProcessingNo
                     }
                 };
             }
