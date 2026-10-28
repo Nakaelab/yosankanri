@@ -273,6 +273,7 @@ function Dashboard() {
     const [fiscalYears, setFiscalYears] = useState<number[]>([]);
     const [selectedYear, setSelectedYear] = useState<number | "all">("all");
     const [expandedBudgets, setExpandedBudgets] = useState<Record<string, boolean>>({});
+    const [sortAscByBudget, setSortAscByBudget] = useState<Record<string, boolean>>({});
     
     // 今年度を計算 (4月始まり)
     const today = new Date();
@@ -367,7 +368,11 @@ function Dashboard() {
         txByBudget[tx.budgetId].push(tx);
     }
     for (const k of Object.keys(txByBudget)) {
-        txByBudget[k].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        txByBudget[k].sort((a, b) => {
+            const dDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dDiff !== 0) return dDiff;
+            return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
     }
 
     return (
@@ -727,14 +732,23 @@ function Dashboard() {
                                         const bTxs = txByBudget[s.budget.id] || [];
                                         if (bTxs.length === 0) return null;
                                         const isOpen = expandedBudgets[s.budget.id] ?? false;
+                                        const isAsc = sortAscByBudget[s.budget.id] ?? false;
+
+                                        // 累積残額の計算：時系列順（古い日付から新しい日付）に並べ替えて初期配分額から順次減算
+                                        const chronoSorted = [...bTxs].sort((a, b) => {
+                                            const dDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+                                            if (dDiff !== 0) return dDiff;
+                                            return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+                                        });
+
                                         let running = s.totalAllocated;
-                                        const rowsAsc = [...bTxs].reverse();
-                                        const accumulated: { tx: Transaction; remaining: number }[] = [];
-                                        for (const tx of rowsAsc) {
+                                        const accumulated = chronoSorted.map(tx => {
                                             running -= tx.amount;
-                                            accumulated.push({ tx, remaining: running });
-                                        }
-                                        const rowsDesc = accumulated.reverse();
+                                            return { tx, remaining: running };
+                                        });
+
+                                        // 表示順：デフォルトは新しい順（降順）、トグルで古い順（昇順）
+                                        const displayRows = isAsc ? accumulated : [...accumulated].reverse();
 
                                         return (
                                             <div className="border-t border-gray-100">
@@ -761,7 +775,18 @@ function Dashboard() {
                                                         <table className="w-full text-xs border-collapse">
                                                             <thead>
                                                                 <tr className="border-b border-gray-100">
-                                                                    <th className="text-left py-2 px-2 text-gray-400 font-semibold">日付</th>
+                                                                    <th
+                                                                        onClick={() => setSortAscByBudget(prev => ({ ...prev, [s.budget.id]: !isAsc }))}
+                                                                        className="text-left py-2 px-2 text-gray-400 font-semibold cursor-pointer hover:text-gray-700 select-none group"
+                                                                        title={isAsc ? "新しい順に並び替え" : "古い順に並び替え"}
+                                                                    >
+                                                                        <span className="inline-flex items-center gap-1">
+                                                                            日付
+                                                                            <span className="text-[10px] text-gray-400 group-hover:text-gray-600 font-normal">
+                                                                                {isAsc ? "▲(古い順)" : "▼(新しい順)"}
+                                                                            </span>
+                                                                        </span>
+                                                                    </th>
                                                                     <th className="text-left py-2 px-2 text-gray-400 font-semibold">品名</th>
                                                                     <th className="text-left py-2 px-2 text-gray-400 font-semibold hidden sm:table-cell">費目</th>
                                                                     <th className="text-right py-2 px-2 text-gray-400 font-semibold">金額</th>
@@ -769,7 +794,7 @@ function Dashboard() {
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {rowsDesc.map(({ tx, remaining }) => {
+                                                                {displayRows.map(({ tx, remaining }) => {
                                                                     const catColor = CATEGORY_COLORS[tx.category];
                                                                     return (
                                                                         <tr key={tx.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
