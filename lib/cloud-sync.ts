@@ -1,3 +1,4 @@
+import type { Teacher } from './types';
 import type { SupabaseClient } from "@supabase/supabase-js";
 import LZString from "lz-string";
 
@@ -56,18 +57,20 @@ export async function pullFromCloud(): Promise<{ success: boolean; hasData: bool
                     // ====================================================
                     if (row.key === TEACHERS_KEY) {
                         const localRaw = localStorage.getItem(TEACHERS_KEY);
-                        const localList: { id: string; name: string; createdAt: string }[] =
+                        const localList: Teacher[] =
                             localRaw ? JSON.parse(localRaw) : [];
-                        let cloudList: { id: string; name: string; createdAt: string }[] = [];
+                        let cloudList: Teacher[] = [];
                         try { cloudList = JSON.parse(row.value); } catch {}
 
                         // id をキーにしてマージ（両方のunion、タイムスタンプが新しい方を優先）
-                        const merged = new Map<string, { id: string; name: string; createdAt: string }>();
+                        const merged = new Map<string, Teacher>();
                         for (const t of cloudList) merged.set(t.id, t);
                         for (const t of localList) {
                             const existing = merged.get(t.id);
-                            if (!existing || new Date(t.createdAt) >= new Date(existing.createdAt)) {
+                            if (!existing) {
                                 merged.set(t.id, t);
+                            } else {
+                                merged.set(t.id, { ...existing, ...t, authUserId: t.authUserId || existing.authUserId, email: t.email || existing.email });
                             }
                         }
                         const mergedList = Array.from(merged.values());
@@ -286,20 +289,22 @@ export async function quickPullTeachers(): Promise<boolean> {
 
         if (error || !data?.value) return false;
 
-        let cloudList: { id: string; name: string; createdAt: string }[] = [];
+        let cloudList: Teacher[] = [];
         try { cloudList = JSON.parse(data.value); } catch { return false; }
 
         // ローカルとマージ
         const localRaw = localStorage.getItem(TEACHERS_KEY);
-        const localList: { id: string; name: string; createdAt: string }[] =
+        const localList: Teacher[] =
             localRaw ? JSON.parse(localRaw) : [];
 
-        const merged = new Map<string, { id: string; name: string; createdAt: string }>();
+        const merged = new Map<string, Teacher>();
         for (const t of cloudList) merged.set(t.id, t);
         for (const t of localList) {
             const existing = merged.get(t.id);
-            if (!existing || new Date(t.createdAt) >= new Date(existing.createdAt)) {
+            if (!existing) {
                 merged.set(t.id, t);
+            } else {
+                merged.set(t.id, { ...existing, ...t, authUserId: t.authUserId || existing.authUserId, email: t.email || existing.email });
             }
         }
         const mergedList = Array.from(merged.values());

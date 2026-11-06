@@ -6,6 +6,9 @@ import Link from "next/link";
 import { Budget, BudgetSummary, CATEGORY_LABELS, CATEGORY_COLORS, ALL_CATEGORIES, Teacher, Transaction } from "@/lib/types";
 import { getCurrentTeacherId, setCurrentTeacherId, getTeachers, saveTeacher, getBudgets, getTransactions } from "@/lib/storage";
 import { initSync, resetSyncCache, quickPullTeachers } from "@/lib/cloud-sync";
+import type { User } from "@supabase/supabase-js";
+import { findTeacherByAuthUser, getSupabaseAuthClient } from "@/lib/auth";
+import AuthModal from "@/components/AuthModal";
 
 // ===============================================
 // Teacher Selection
@@ -853,44 +856,92 @@ function Dashboard() {
 
 export default function Page() {
     const [teacherId, setTeacherId] = useState<string | null>(null);
-    const [initialized, setInitialized] = useState(false);
+    const [authUser, setAuthUser] = useState<User | null>(null);
+    const [checkingAuth, setCheckingAuth] = useState(true);
 
-    useEffect(() => {
-        // 現在のユーザーIDを取得
-        // 注意: storage.ts の関数はSSR時にnullを返すことがあるため、クライアントサイドで確認
-        let current = getCurrentTeacherId();
+    const checkAuthAndTeacher = async () => {
+        try {
+            // クラウドから最新の先生リストを取得
+            await quickPullTeachers().catch(() => {});
+            
+            const supabase = await getSupabaseAuthClient();
+            if (supabase) {
+                const { data: { user } } = await supabase.auth.getUser();
+                setAuthUser(user || null);
 
-        // スマホ(横幅768px以下)の場合、今セッションでまだユーザー選択していないなら
-        // 強制的に未選択状態にしてユーザー選択画面を表示する
-        if (window.innerWidth <= 768) {
-            const hasSelectedInSession = sessionStorage.getItem("mobile_user_selected");
-            if (!hasSelectedInSession) {
-                current = null;
-                setCurrentTeacherId(null);
+                if (user) {
+                    // ログイン中のユーザーに紐づく先生を検索
+                    const matched = findTeacherByAuthUser(user);
+                    if (matched) {
+                        setCurrentTeacherId(matched.id);
+                        setTeacherId(matched.id);
+                        setCheckingAuth(false);
+                        return;
+                    } else {
+                        // 未紐付け（引き継ぎまたは新規作成が必要）
+                        setTeacherId(null);
+                        setCheckingAuth(false);
+                        return;
+                    }
+                }
             }
+            
+            // 未ログイン
+            setTeacherId(null);
+            setCheckingAuth(false);
+        } catch (err) {
+            console.error("Auth check failed:", err);
+            setCheckingAuth(false);
         }
-
-        setTeacherId(current);
-        setInitialized(true);
-    }, []);
-
-    const handleTeacherSelected = () => {
-        const current = getCurrentTeacherId();
-        setTeacherId(current);
-        // スマホでの選択状態をセッションに記憶
-        if (window.innerWidth <= 768) {
-            sessionStorage.setItem("mobile_user_selected", "true");
-            // 意図的クリアのフラグを解除（今後の同期で正常に動くようにする）
-            sessionStorage.removeItem("_mobile_teacher_cleared");
-            sessionStorage.removeItem("_cloud_synced");
-        }
-        window.location.reload(); // データ読み込みのためにリロード
     };
 
-    if (!initialized) return null;
+    useEffect(() => {
+        checkAuthAndTeacher();
 
-    if (!teacherId) {
-        return <TeacherSelect onSelected={handleTeacherSelected} />;
+        // Auth state change listener
+        let unsubscribe: (() => void) | undefined;
+        getSupabaseAuthClient().then(supabase => {
+            if (supabase) {
+                const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+                    if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+                        setAuthUser(session?.user || null);
+                        checkAuthAndTeacher();
+                    } else if (event === "SIGNED_OUT") {
+                        setAuthUser(null);
+                        setTeacherId(null);
+                        setCurrentTeacherId(null);
+                    }
+                });
+                unsubscribe = () => subscription.unsubscribe();
+            }
+        });
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, []);
+
+    const handleAuthComplete = () => {
+        // 紐付けまたは新規作成完了後
+        const current = getCurrentTeacherId();
+        setTeacherId(current);
+        window.location.reload();
+    };
+
+    if (checkingAuth) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="text-xs text-gray-400 font-medium">読み込み中...</div>
+                </div>
+            </div>
+        );
+    }
+
+    // 未ログイン または 先生未紐付けの場合
+    if (!authUser || !teacherId) {
+        return <AuthModal authUser={authUser} onComplete={handleAuthComplete} />;
     }
 
     return <Dashboard />;

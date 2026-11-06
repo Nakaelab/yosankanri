@@ -165,6 +165,8 @@ export interface Teacher {
     id: string;
     name: string;
     createdAt: string;
+    authUserId?: string;
+    email?: string;
 }
 
 /** 添付ファイルメタデータ */

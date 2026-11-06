@@ -53,7 +53,12 @@ export function getTeachers(): Teacher[] {
 
 export function saveTeacher(teacher: Teacher): void {
     const list = getTeachers();
-    list.push(teacher);
+    const existingIdx = list.findIndex(t => t.id === teacher.id);
+    if (existingIdx >= 0) {
+        list[existingIdx] = teacher;
+    } else {
+        list.push(teacher);
+    }
     setAndSync(TEACHERS_KEY, JSON.stringify(list));
 }
 

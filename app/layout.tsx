@@ -4,9 +4,10 @@ import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getCurrentTeacher, getCurrentTeacherId, setCurrentTeacherId } from "@/lib/storage";
+import { getCurrentTeacher, getCurrentTeacherId, setCurrentTeacherId, getTeachers } from "@/lib/storage";
 import { Teacher } from "@/lib/types";
 import { initSync, resetSyncCache } from "@/lib/cloud-sync";
+import { signOutUser, isUserAdmin, getCurrentAuthUser } from "@/lib/auth";
 
 const NAV_ITEMS = [
     {
@@ -70,6 +71,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [allTeachers, setAllTeachers] = useState<Teacher[]>([]);
     const [syncStatus, setSyncStatus] = useState<"syncing" | "done" | "error">("syncing");
 
     useEffect(() => {
@@ -96,6 +99,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             setCurrentTeacher(t || (localStorage.getItem("budget_app_current_teacher") === "default" ? { id: "default", name: "メインユーザー", createdAt: "" } : null));
         };
         loadLocalTeacher();
+        getCurrentAuthUser().then(u => {
+            if (isUserAdmin(u)) {
+                setIsAdmin(true);
+                setAllTeachers(getTeachers());
+            }
+        });
 
         // Cloud sync → then load teacher
         const doSync = () => {
@@ -149,9 +158,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         if (isMobile) setSidebarOpen(false);
     }, [pathname, isMobile]);
 
-    const handleSwitchUser = () => {
-        if (confirm("利用者を切り替えますか？")) {
-            setCurrentTeacherId(null);
+    const handleSelectTeacherByAdmin = (id: string) => {
+        setCurrentTeacherId(id);
+        window.location.reload();
+    };
+
+    const handleLogout = async () => {
+        if (confirm("ログアウトしますか？")) {
+            await signOutUser();
             window.location.href = "/";
         }
     };
@@ -230,7 +244,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-xs font-medium text-slate-200 truncate">{currentTeacher.name}</div>
-                                    <div className="text-[10px] text-slate-500 truncate">ログイン中</div>
+                                    <div className="text-[10px] text-slate-500 truncate">
+                                        {isAdmin ? "管理者モード (朝日)" : "ログイン中"}
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -239,14 +255,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                             </div>
                         )}
 
+                        {isAdmin && (
+                            <div className="mb-3">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                    管理対象を切替
+                                </label>
+                                <select
+                                    value={currentTeacher?.id || ""}
+                                    onChange={(e) => handleSelectTeacherByAdmin(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+                                >
+                                    {allTeachers.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <button
-                            onClick={handleSwitchUser}
+                            onClick={handleLogout}
                             className="w-full py-1.5 px-3 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 transition-colors flex items-center justify-center gap-2"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
                             </svg>
-                            利用者を切り替え
+                            ログアウト
                         </button>
                     </div>
 
